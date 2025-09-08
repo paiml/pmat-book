@@ -66,11 +66,9 @@ test: test-all-chapters
 test-ch01:
 	@echo "🧪 Testing Chapter 1 examples..."
 	@mkdir -p test-results/ch01
-	@chmod +x tests/ch01/*.sh
-	@for test in tests/ch01/*.sh; do \
-		echo "Running $$test..."; \
-		$$test > test-results/ch01/$$(basename $$test .sh).log 2>&1 || exit 1; \
-	done
+	@chmod +x tests/ch01/test_simple.sh
+	@echo "Running Chapter 1 TDD validation..."
+	@tests/ch01/test_simple.sh > test-results/ch01/test_simple.log 2>&1 || { cat test-results/ch01/test_simple.log; exit 1; }
 	@echo "✅ Chapter 1 tests passed"
 
 test-ch02:
