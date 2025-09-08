@@ -123,7 +123,23 @@ test-ch09:
 	@tests/ch09/test_simple.sh > test-results/ch09/test_simple.log 2>&1 || { cat test-results/ch09/test_simple.log; exit 1; }
 	@echo "✅ Chapter 9 tests passed"
 
-test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09
+test-ch10:
+	@echo "🧪 Testing Chapter 10: Auto-clippy Integration..."
+	@mkdir -p test-results/ch10
+	@chmod +x tests/ch10/test_auto_clippy.sh
+	@echo "Running Chapter 10 auto-clippy tests..."
+	@tests/ch10/test_auto_clippy.sh > test-results/ch10/test_auto_clippy.log 2>&1 || { cat test-results/ch10/test_auto_clippy.log; exit 1; }
+	@echo "✅ Chapter 10 tests passed"
+
+test-ch11:
+	@echo "🧪 Testing Chapter 11: Custom Quality Rules..."
+	@mkdir -p test-results/ch11
+	@chmod +x tests/ch11/test_custom_rules.sh
+	@echo "Running Chapter 11 custom rules tests..."
+	@tests/ch11/test_custom_rules.sh > test-results/ch11/test_custom_rules.log 2>&1 || { cat test-results/ch11/test_custom_rules.log; exit 1; }
+	@echo "✅ Chapter 11 tests passed"
+
+test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11
 
 # Lint code examples
 lint:

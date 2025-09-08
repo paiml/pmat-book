@@ -52,6 +52,10 @@
 
 - [Chapter 9: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
 
+- [Chapter 10: Auto-clippy Integration](ch10-00-auto-clippy.md)
+
+- [Chapter 11: Custom Quality Rules](ch11-00-custom-rules.md)
+
 ## Conclusion
 
 - [Conclusion](conclusion.md)
