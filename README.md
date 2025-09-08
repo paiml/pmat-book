@@ -1,9 +1,14 @@
 # The PMAT Book
 
-[![Deploy Book](https://github.com/paiml/pmat-book/actions/workflows/deploy.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/deploy.yml)
+[![Deploy Book](https://github.com/paiml/pmat-book/actions/workflows/pages.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/pages.yml)
 [![Test Examples](https://github.com/paiml/pmat-book/actions/workflows/test.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/test.yml)
 
-📚 **[Read the Book Online](https://paiml.github.io/pmat-book/)** | [GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
+📚 **[Read the Book Online](https://paiml.github.io/pmat-book/)** (After enabling Pages) | [GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
+
+> **📢 IMPORTANT**: To deploy the book, GitHub Pages must be enabled:
+> 1. Go to [Settings → Pages](https://github.com/paiml/pmat-book/settings/pages)
+> 2. Under "Build and deployment", set Source to **"GitHub Actions"**
+> 3. The book will deploy automatically on the next push
 
 Official documentation for [PMAT (PAIML MCP Agent Toolkit)](https://github.com/paiml/paiml-mcp-agent-toolkit) - Zero-configuration AI context generation with extreme quality enforcement.
 
