@@ -1,0 +1,57 @@
+# The PMAT Book Configuration
+# PAIML MCP Agent Toolkit Documentation
+
+[book]
+title = "PMAT: The PAIML MCP Agent Toolkit"
+authors = ["Pragmatic AI Labs"]
+description = "Complete guide to PMAT - Zero-configuration AI context generation with MCP integration"
+language = "en"
+multilingual = false
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false  # Prevent accidental file creation
+
+[preprocessor.index]
+
+[preprocessor.links]
+
+[output.html]
+theme = "theme"
+default-theme = "rust"
+preferred-dark-theme = "coal"
+smart-punctuation = true
+mathjax-support = false
+copy-fonts = true
+additional-css = ["theme/pmat.css"]
+additional-js = []
+git-repository-url = "https://github.com/paiml/pmat-book"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/paiml/pmat-book/edit/main/{path}"
+
+[output.html.print]
+enable = true
+page-break = true
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.playground]
+editable = true
+copyable = true
+copy-js = true
+line-numbers = true
+
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
+copy-js = true

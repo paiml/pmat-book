@@ -1,0 +1,130 @@
+name: Test All Examples
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-examples:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install PMAT
+      run: |
+        cargo install pmat
+        pmat --version
+    
+    - name: Run chapter tests
+      run: |
+        make test-${{ matrix.chapter }}
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.chapter }}
+        path: test-results/
+  
+  dogfood-pmat:
+    runs-on: ubuntu-latest
+    needs: test-examples
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install PMAT
+      run: |
+        cargo install pmat
+        pmat --version
+    
+    - name: Analyze book codebase with PMAT
+      run: |
+        pmat analyze . --format json > pmat-analysis.json
+        pmat analyze tdg . --format json > pmat-tdg.json
+        pmat similarity . --format json > pmat-similarity.json
+    
+    - name: Check quality gates
+      run: |
+        # Extract grade from TDG analysis
+        GRADE=$(jq -r '.grade' pmat-tdg.json)
+        echo "Code Quality Grade: $GRADE"
+        
+        # Fail if grade is below B
+        if [[ "$GRADE" < "B" ]]; then
+          echo "❌ Quality gate failed: Grade $GRADE is below B"
+          exit 1
+        fi
+        
+        echo "✅ Quality gate passed: Grade $GRADE"
+    
+    - name: Generate quality report
+      run: |
+        echo "# PMAT Quality Report" > quality-report.md
+        echo "" >> quality-report.md
+        echo "## Analysis Summary" >> quality-report.md
+        jq -r '"- Files: \(.summary.total_files)\n- Lines: \(.summary.total_lines)\n- Languages: \(.languages | length)"' pmat-analysis.json >> quality-report.md
+        echo "" >> quality-report.md
+        echo "## Technical Debt Grade" >> quality-report.md
+        jq -r '"- Grade: \(.grade)\n- Score: \(.overall_score)"' pmat-tdg.json >> quality-report.md
+        echo "" >> quality-report.md
+        echo "## Code Similarity" >> quality-report.md
+        jq -r '"- Duplicates Found: \(.summary.total_duplicates)\n- Similarity Ratio: \(.summary.similarity_ratio)"' pmat-similarity.json >> quality-report.md
+    
+    - name: Upload PMAT reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: pmat-reports
+        path: |
+          pmat-*.json
+          quality-report.md
+    
+    - name: Comment PR with quality report
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('quality-report.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
+  
+  build-book:
+    runs-on: ubuntu-latest
+    needs: [test-examples, dogfood-pmat]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install mdBook
+      run: |
+        cargo install mdbook
+        cargo install mdbook-linkcheck
+    
+    - name: Build book
+      run: make build
+    
+    - name: Upload book artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: book
+        path: book/
+    
+    - name: Deploy to GitHub Pages
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./book
