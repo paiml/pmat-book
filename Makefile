@@ -86,10 +86,12 @@ test-ch03:
 	@echo "✅ Chapter 3 tests passed"
 
 test-ch04:
-	@echo "🧪 Testing Chapter 4 examples..."
+	@echo "🧪 Testing Chapter 4: Technical Debt Grading (TDG)..."
 	@mkdir -p test-results/ch04
-	@chmod +x tests/ch04/*.sh 2>/dev/null || echo "No tests for chapter 4 yet"
-	@echo "⚠️  Chapter 4 tests not implemented"
+	@chmod +x tests/ch04/test_tdg.sh
+	@echo "Running Chapter 4 TDG tests..."
+	@tests/ch04/test_tdg.sh > test-results/ch04/test_tdg.log 2>&1 || { cat test-results/ch04/test_tdg.log; exit 1; }
+	@echo "✅ Chapter 4 TDG tests passed"
 
 test-ch05:
 	@echo "🧪 Testing Chapter 5 examples..."
