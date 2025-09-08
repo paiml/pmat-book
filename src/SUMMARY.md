@@ -58,6 +58,20 @@
 
 - [Chapter 12: Architecture Analysis](ch12-00-architecture.md)
 
+- [Chapter 13: Performance Analysis](ch13-00-performance.md)
+
+- [Chapter 14: Large Codebase Optimization](ch14-00-large-codebases.md)
+
+- [Chapter 15: Team Workflows](ch15-00-team-workflows.md)
+
+- [Chapter 16: CI/CD Integration](ch16-00-cicd.md)
+
+- [Chapter 17: Plugin Development](ch17-00-plugins.md)
+
+- [Chapter 18: API Integration](ch18-00-api.md)
+
+- [Chapter 19: AI Integration](ch19-00-ai.md)
+
 ## Conclusion
 
 - [Conclusion](conclusion.md)
