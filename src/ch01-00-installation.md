@@ -45,5 +45,5 @@ That's it! PMAT is now analyzing your code.
 
 The following sections dive deeper into:
 - [Installing PMAT](ch01-01-installing.md) - All installation methods
-- [First Analysis](ch01-02-first-analysis.md) - Running your first analysis
+- [First Analysis (TDD)](ch01-02-first-analysis-tdd.md) - Running your first analysis
 - [Understanding Output](ch01-03-output.md) - Interpreting the results

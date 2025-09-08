@@ -195,4 +195,4 @@ npm update -g pmat-agent
 
 ## Next Steps
 
-Now that PMAT is installed, let's run your first analysis in the [next section](ch01-02-first-analysis.md).
+Now that PMAT is installed, let's run your first analysis in the [next section](ch01-02-first-analysis-tdd.md).
