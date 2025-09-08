@@ -56,6 +56,8 @@
 
 - [Chapter 11: Custom Quality Rules](ch11-00-custom-rules.md)
 
+- [Chapter 12: Architecture Analysis](ch12-00-architecture.md)
+
 ## Conclusion
 
 - [Conclusion](conclusion.md)

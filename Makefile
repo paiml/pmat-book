@@ -139,7 +139,15 @@ test-ch11:
 	@tests/ch11/test_custom_rules.sh > test-results/ch11/test_custom_rules.log 2>&1 || { cat test-results/ch11/test_custom_rules.log; exit 1; }
 	@echo "✅ Chapter 11 tests passed"
 
-test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11
+test-ch12:
+	@echo "🧪 Testing Chapter 12: Architecture Analysis..."
+	@mkdir -p test-results/ch12
+	@chmod +x tests/ch12/test_architecture.sh
+	@echo "Running Chapter 12 architecture tests..."
+	@tests/ch12/test_architecture.sh > test-results/ch12/test_architecture.log 2>&1 || { cat test-results/ch12/test_architecture.log; exit 1; }
+	@echo "✅ Chapter 12 tests passed"
+
+test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12
 
 # Lint code examples
 lint:
