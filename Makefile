@@ -115,7 +115,15 @@ test-ch08:
 	@chmod +x tests/ch08/*.sh 2>/dev/null || echo "No tests for chapter 8 yet"
 	@echo "⚠️  Chapter 8 tests not implemented"
 
-test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08
+test-ch09:
+	@echo "🧪 Testing Chapter 9: Pre-commit Hooks..."
+	@mkdir -p test-results/ch09
+	@chmod +x tests/ch09/test_simple.sh
+	@echo "Running Chapter 9 pre-commit hooks tests..."
+	@tests/ch09/test_simple.sh > test-results/ch09/test_simple.log 2>&1 || { cat test-results/ch09/test_simple.log; exit 1; }
+	@echo "✅ Chapter 9 tests passed"
+
+test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09
 
 # Lint code examples
 lint:

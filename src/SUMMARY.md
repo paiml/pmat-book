@@ -50,6 +50,8 @@
   - [Large Codebases](ch08-01-large-repos.md)
   - [Optimization Tips](ch08-02-optimization.md)
 
+- [Chapter 9: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
+
 ## Conclusion
 
 - [Conclusion](conclusion.md)
