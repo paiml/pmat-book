@@ -120,10 +120,12 @@ test-ch07:
 	@echo "✅ Chapter 7 tests passed"
 
 test-ch08:
-	@echo "🧪 Testing Chapter 8 examples..."
+	@echo "🧪 Testing Chapter 8: Demo Command..."
 	@mkdir -p test-results/ch08
-	@chmod +x tests/ch08/*.sh 2>/dev/null || echo "No tests for chapter 8 yet"
-	@echo "⚠️  Chapter 8 tests not implemented"
+	@chmod +x tests/ch08/test_demo.sh
+	@echo "Running Chapter 8 demo tests..."
+	@tests/ch08/test_demo.sh > test-results/ch08/test_demo.log 2>&1 || { cat test-results/ch08/test_demo.log; exit 1; }
+	@echo "✅ Chapter 8 tests passed"
 
 test-ch09:
 	@echo "🧪 Testing Chapter 9: Pre-commit Hooks..."
