@@ -72,10 +72,12 @@ test-ch01:
 	@echo "✅ Chapter 1 tests passed"
 
 test-ch02:
-	@echo "🧪 Testing Chapter 2 examples..."
+	@echo "🧪 Testing Chapter 2: Getting Started (context command)..."
 	@mkdir -p test-results/ch02
-	@chmod +x tests/ch02/*.sh 2>/dev/null || echo "No tests for chapter 2 yet"
-	@echo "⚠️  Chapter 2 tests not implemented"
+	@chmod +x tests/ch02/test_context.sh
+	@echo "Running Chapter 2 context tests..."
+	@tests/ch02/test_context.sh > test-results/ch02/test_context.log 2>&1 || { cat test-results/ch02/test_context.log; exit 1; }
+	@echo "✅ Chapter 2 tests passed"
 
 test-ch03:
 	@echo "🧪 Testing Chapter 3 examples..."
@@ -94,16 +96,20 @@ test-ch04:
 	@echo "✅ Chapter 4 TDG tests passed"
 
 test-ch05:
-	@echo "🧪 Testing Chapter 5 examples..."
+	@echo "🧪 Testing Chapter 5: Analyze Command Suite..."
 	@mkdir -p test-results/ch05
-	@chmod +x tests/ch05/*.sh 2>/dev/null || echo "No tests for chapter 5 yet"
-	@echo "⚠️  Chapter 5 tests not implemented"
+	@chmod +x tests/ch05/test_analyze.sh
+	@echo "Running Chapter 5 analyze tests..."
+	@tests/ch05/test_analyze.sh > test-results/ch05/test_analyze.log 2>&1 || { cat test-results/ch05/test_analyze.log; exit 1; }
+	@echo "✅ Chapter 5 tests passed"
 
 test-ch06:
-	@echo "🧪 Testing Chapter 6 examples..."
+	@echo "🧪 Testing Chapter 6: Scaffold Command..."
 	@mkdir -p test-results/ch06
-	@chmod +x tests/ch06/*.sh 2>/dev/null || echo "No tests for chapter 6 yet"
-	@echo "⚠️  Chapter 6 tests not implemented"
+	@chmod +x tests/ch06/test_scaffold.sh
+	@echo "Running Chapter 6 scaffold tests..."
+	@tests/ch06/test_scaffold.sh > test-results/ch06/test_scaffold.log 2>&1 || { cat test-results/ch06/test_scaffold.log; exit 1; }
+	@echo "✅ Chapter 6 tests passed"
 
 test-ch07:
 	@echo "🧪 Testing Chapter 7 examples..."
