@@ -11,6 +11,7 @@
   - [First Analysis (TDD)](ch01-02-first-analysis-tdd.md)
   - [Understanding Output](ch01-03-output.md)
 
+- [Chapter 2: Getting Started with PMAT](ch02-00-getting-started.md)
 
 ## Part II: MCP Integration
 
@@ -21,13 +22,19 @@
 
 - [Chapter 4: Technical Debt Grading (TDG)](ch04-01-tdg.md)
 
-## Part III: Working PMAT Tools
+## Part III: Core PMAT Commands
 
-- [Chapter 5: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
-- [Chapter 6: Auto-clippy Integration](ch10-00-auto-clippy.md)
-- [Chapter 7: Custom Quality Rules](ch11-00-custom-rules.md)
-- [Chapter 8: Architecture Analysis](ch12-00-architecture.md)
-- [Chapter 9: Quality-Driven Development (QDD)](ch14-00-qdd.md)
+- [Chapter 5: The Analyze Command Suite](ch05-00-analyze-suite.md)
+- [Chapter 6: The Scaffold Command](ch06-00-scaffold.md)
+- [Chapter 7: Quality Gates](ch07-00-quality-gate.md)
+
+## Part IV: Advanced PMAT Tools
+
+- [Chapter 8: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
+- [Chapter 9: Auto-clippy Integration](ch10-00-auto-clippy.md)
+- [Chapter 10: Custom Quality Rules](ch11-00-custom-rules.md)
+- [Chapter 11: Architecture Analysis](ch12-00-architecture.md)
+- [Chapter 12: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 
 ## Conclusion
 
