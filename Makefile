@@ -112,10 +112,12 @@ test-ch06:
 	@echo "✅ Chapter 6 tests passed"
 
 test-ch07:
-	@echo "🧪 Testing Chapter 7 examples..."
+	@echo "🧪 Testing Chapter 7: Quality Gate Command..."
 	@mkdir -p test-results/ch07
-	@chmod +x tests/ch07/*.sh 2>/dev/null || echo "No tests for chapter 7 yet"
-	@echo "⚠️  Chapter 7 tests not implemented"
+	@chmod +x tests/ch07/test_quality_gate.sh
+	@echo "Running Chapter 7 quality gate tests..."
+	@tests/ch07/test_quality_gate.sh > test-results/ch07/test_quality_gate.log 2>&1 || { cat test-results/ch07/test_quality_gate.log; exit 1; }
+	@echo "✅ Chapter 7 tests passed"
 
 test-ch08:
 	@echo "🧪 Testing Chapter 8 examples..."
