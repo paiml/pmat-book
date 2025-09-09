@@ -60,7 +60,7 @@
 
 - [Chapter 13: Performance Analysis](ch13-00-performance.md)
 
-- [Chapter 14: Large Codebase Optimization](ch14-00-large-codebases.md)
+- [Chapter 14: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 
 - [Chapter 15: Team Workflows](ch15-00-team-workflows.md)
 

@@ -156,10 +156,12 @@ test-ch13:
 	@echo "✅ Chapter 13 tests passed"
 
 test-ch14:
-	@echo "🧪 Testing Chapter 14: Large Codebases..."
+	@echo "🧪 Testing Chapter 14: Quality-Driven Development (QDD)..."
 	@mkdir -p test-results/ch14
-	@tests/ch14/test_large_codebases.sh > test-results/ch14/test_large_codebases.log 2>&1 || { cat test-results/ch14/test_large_codebases.log; exit 1; }
-	@echo "✅ Chapter 14 tests passed"
+	@chmod +x tests/ch14/test_qdd.sh
+	@echo "Running Chapter 14 QDD tests..."
+	@tests/ch14/test_qdd.sh > test-results/ch14/test_qdd.log 2>&1 || { cat test-results/ch14/test_qdd.log; exit 1; }
+	@echo "✅ Chapter 14 QDD tests passed"
 
 test-ch15:
 	@echo "🧪 Testing Chapter 15: Team Workflows..."
