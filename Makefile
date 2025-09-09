@@ -128,19 +128,19 @@ test-ch08:
 	@echo "✅ Chapter 8 tests passed"
 
 test-ch09:
-	@echo "🧪 Testing Chapter 9: Pre-commit Hooks..."
+	@echo "🧪 Testing Chapter 9: Report Command..."
 	@mkdir -p test-results/ch09
-	@chmod +x tests/ch09/test_simple.sh
-	@echo "Running Chapter 9 pre-commit hooks tests..."
-	@tests/ch09/test_simple.sh > test-results/ch09/test_simple.log 2>&1 || { cat test-results/ch09/test_simple.log; exit 1; }
+	@chmod +x tests/ch09/test_report.sh
+	@echo "Running Chapter 9 report tests..."
+	@tests/ch09/test_report.sh > test-results/ch09/test_report.log 2>&1 || { cat test-results/ch09/test_report.log; exit 1; }
 	@echo "✅ Chapter 9 tests passed"
 
 test-ch10:
-	@echo "🧪 Testing Chapter 10: Auto-clippy Integration..."
+	@echo "🧪 Testing Chapter 10: Pre-commit Hooks..."
 	@mkdir -p test-results/ch10
-	@chmod +x tests/ch10/test_auto_clippy.sh
-	@echo "Running Chapter 10 auto-clippy tests..."
-	@tests/ch10/test_auto_clippy.sh > test-results/ch10/test_auto_clippy.log 2>&1 || { cat test-results/ch10/test_auto_clippy.log; exit 1; }
+	@chmod +x tests/ch10/test_precommit.sh
+	@echo "Running Chapter 10 pre-commit hooks tests..."
+	@tests/ch10/test_precommit.sh > test-results/ch10/test_precommit.log 2>&1 || { cat test-results/ch10/test_precommit.log; exit 1; }
 	@echo "✅ Chapter 10 tests passed"
 
 test-ch11:

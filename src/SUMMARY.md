@@ -28,14 +28,15 @@
 - [Chapter 6: The Scaffold Command](ch06-00-scaffold.md)
 - [Chapter 7: Quality Gates](ch07-00-quality-gate.md)
 - [Chapter 8: Interactive Demo and Reporting](ch08-00-demo.md)
+- [Chapter 9: Enhanced Analysis Reports](ch09-00-report.md)
 
 ## Part IV: Advanced PMAT Tools
 
-- [Chapter 9: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
-- [Chapter 10: Auto-clippy Integration](ch10-00-auto-clippy.md)
-- [Chapter 11: Custom Quality Rules](ch11-00-custom-rules.md)
-- [Chapter 12: Architecture Analysis](ch12-00-architecture.md)
-- [Chapter 13: Quality-Driven Development (QDD)](ch14-00-qdd.md)
+- [Chapter 10: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
+- [Chapter 11: Auto-clippy Integration](ch10-00-auto-clippy.md)
+- [Chapter 12: Custom Quality Rules](ch11-00-custom-rules.md)
+- [Chapter 13: Architecture Analysis](ch12-00-architecture.md)
+- [Chapter 14: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 
 ## Conclusion
 
