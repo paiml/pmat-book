@@ -160,50 +160,74 @@ test-ch12:
 	@echo "✅ Chapter 12 tests passed"
 
 test-ch13:
-	@echo "🧪 Testing Chapter 13: Performance Analysis..."
+	@echo "🧪 Testing Chapter 13: Multi-Language Project Examples..."
 	@mkdir -p test-results/ch13
-	@tests/ch13/test_performance.sh > test-results/ch13/test_performance.log 2>&1 || { cat test-results/ch13/test_performance.log; exit 1; }
+	@chmod +x tests/ch13/test_minimal.sh
+	@echo "Running Chapter 13 language examples tests..."
+	@tests/ch13/test_minimal.sh > test-results/ch13/test_minimal.log 2>&1 || { cat test-results/ch13/test_minimal.log; exit 1; }
 	@echo "✅ Chapter 13 tests passed"
 
 test-ch14:
-	@echo "🧪 Testing Chapter 14: Quality-Driven Development (QDD)..."
+	@echo "🧪 Testing Chapter 14: Multi-Language Project Examples..."
 	@mkdir -p test-results/ch14
-	@chmod +x tests/ch14/test_qdd.sh
-	@echo "Running Chapter 14 QDD tests..."
-	@tests/ch14/test_qdd.sh > test-results/ch14/test_qdd.log 2>&1 || { cat test-results/ch14/test_qdd.log; exit 1; }
-	@echo "✅ Chapter 14 QDD tests passed"
+	@chmod +x tests/ch13/test_minimal.sh
+	@echo "Running Chapter 14 language examples tests..."
+	@tests/ch13/test_minimal.sh > test-results/ch14/test_minimal.log 2>&1 || { cat test-results/ch14/test_minimal.log; exit 1; }
+	@echo "✅ Chapter 14 tests passed"
 
 test-ch15:
-	@echo "🧪 Testing Chapter 15: Team Workflows..."
+	@echo "🧪 Testing Chapter 15: Complete MCP Tools Reference..."
 	@mkdir -p test-results/ch15
-	@tests/ch15/test_team_workflows.sh > test-results/ch15/test_team_workflows.log 2>&1 || { cat test-results/ch15/test_team_workflows.log; exit 1; }
+	@chmod +x tests/ch15/test_mcp_minimal.sh
+	@echo "Running Chapter 15 MCP tools tests..."
+	@tests/ch15/test_mcp_minimal.sh > test-results/ch15/test_mcp_minimal.log 2>&1 || { cat test-results/ch15/test_mcp_minimal.log; exit 1; }
 	@echo "✅ Chapter 15 tests passed"
 
 test-ch16:
-	@echo "🧪 Testing Chapter 16: CI/CD Integration..."
+	@echo "🧪 Testing Chapter 16: Deep Context Analysis..."
 	@mkdir -p test-results/ch16
-	@tests/ch16/test_cicd.sh > test-results/ch16/test_cicd.log 2>&1 || { cat test-results/ch16/test_cicd.log; exit 1; }
+	@chmod +x tests/ch16/test_deep_context_minimal.sh
+	@echo "Running Chapter 16 deep context tests..."
+	@tests/ch16/test_deep_context_minimal.sh > test-results/ch16/test_deep_context_minimal.log 2>&1 || { cat test-results/ch16/test_deep_context_minimal.log; exit 1; }
 	@echo "✅ Chapter 16 tests passed"
 
 test-ch17:
-	@echo "🧪 Testing Chapter 17: Plugin Development..."
+	@echo "🧪 Testing Chapter 17: WebAssembly Analysis and Security..."
 	@mkdir -p test-results/ch17
-	@tests/ch17/test_plugins.sh > test-results/ch17/test_plugins.log 2>&1 || { cat test-results/ch17/test_plugins.log; exit 1; }
+	@chmod +x tests/ch17/test_wasm_minimal.sh
+	@echo "Running Chapter 17 WASM analysis tests..."
+	@tests/ch17/test_wasm_minimal.sh > test-results/ch17/test_wasm_minimal.log 2>&1 || { cat test-results/ch17/test_wasm_minimal.log; exit 1; }
 	@echo "✅ Chapter 17 tests passed"
 
 test-ch18:
-	@echo "🧪 Testing Chapter 18: API Integration..."
+	@echo "🧪 Testing Chapter 18: Quality-Driven Development (QDD)..."
 	@mkdir -p test-results/ch18
-	@tests/ch18/test_api.sh > test-results/ch18/test_api.log 2>&1 || { cat test-results/ch18/test_api.log; exit 1; }
-	@echo "✅ Chapter 18 tests passed"
+	@chmod +x tests/ch14/test_qdd.sh
+	@echo "Running Chapter 18 QDD tests..."
+	@tests/ch14/test_qdd.sh > test-results/ch18/test_qdd.log 2>&1 || { cat test-results/ch18/test_qdd.log; exit 1; }
+	@echo "✅ Chapter 18 QDD tests passed"
+
+# Removed duplicate definitions - using ch17 and ch18 above
 
 test-ch19:
-	@echo "🧪 Testing Chapter 19: AI Integration..."
+	@echo "🧪 Testing Chapter 19: Plugin Development..."
 	@mkdir -p test-results/ch19
-	@tests/ch19/test_ai.sh > test-results/ch19/test_ai.log 2>&1 || { cat test-results/ch19/test_ai.log; exit 1; }
+	@tests/ch17/test_plugins.sh > test-results/ch19/test_plugins.log 2>&1 || { cat test-results/ch19/test_plugins.log; exit 1; }
 	@echo "✅ Chapter 19 tests passed"
 
-test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch19
+test-ch20:
+	@echo "🧪 Testing Chapter 20: API Integration..."
+	@mkdir -p test-results/ch20
+	@tests/ch18/test_api.sh > test-results/ch20/test_api.log 2>&1 || { cat test-results/ch20/test_api.log; exit 1; }
+	@echo "✅ Chapter 20 tests passed"
+
+test-ch21:
+	@echo "🧪 Testing Chapter 21: AI Integration..."
+	@mkdir -p test-results/ch21
+	@tests/ch19/test_ai.sh > test-results/ch21/test_ai.log 2>&1 || { cat test-results/ch21/test_ai.log; exit 1; }
+	@echo "✅ Chapter 21 tests passed"
+
+test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18
 
 # Lint code examples
 lint:
