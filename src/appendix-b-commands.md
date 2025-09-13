@@ -100,6 +100,19 @@
 | `pmat scaffold agent` | Scaffold MCP agent | `pmat scaffold agent deterministic --name agent` |
 | `pmat scaffold list-templates` | List agent templates | `pmat scaffold list-templates` |
 | `pmat scaffold validate-template` | Validate agent template | `pmat scaffold validate-template agent.yaml` |
+
+## System Diagnostics
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat diagnose` | Run system diagnostics | `pmat diagnose --verbose` |
+| `pmat diagnose --format json` | JSON diagnostic output | `pmat diagnose --format json > report.json` |
+| `pmat diagnose --only` | Test specific features | `pmat diagnose --only cache --only analysis` |
+| `pmat diagnose --skip` | Skip features | `pmat diagnose --skip telemetry` |
+| `pmat diagnose --timeout` | Set timeout | `pmat diagnose --timeout 30` |
+| `pmat diagnose --troubleshoot` | Troubleshooting mode | `pmat diagnose --troubleshoot` |
+| `pmat diagnose --repair-cache` | Repair cache | `pmat diagnose --repair-cache` |
+| `pmat diagnose --serve` | Start diagnostic server | `pmat diagnose --serve --port 8090` |
 | `pmat secrets` | Secret detection | `pmat secrets scan --all-history` |
 | `pmat compliance` | Compliance check | `pmat compliance --standard=SOC2` |
 | `pmat audit` | Security audit | `pmat audit --comprehensive` |
