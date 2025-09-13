@@ -43,7 +43,8 @@
 - [Chapter 18: API Server and Roadmap Management](ch18-00-api.md)
 - [Chapter 19: Agent Management and Continuous Monitoring](ch19-00-agent.md)
 - [Chapter 20: AI-Powered Code Refactoring](ch20-00-refactor.md)
-- [Chapter 21: Quality-Driven Development (QDD)](ch14-00-qdd.md)
+- [Chapter 21: Template Generation and Project Scaffolding](ch21-00-templates.md)
+- [Chapter 22: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 
 ## Conclusion
 

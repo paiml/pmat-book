@@ -87,6 +87,19 @@
 | `pmat refactor status` | Refactoring status | `pmat refactor status` |
 | `pmat refactor resume` | Resume from checkpoint | `pmat refactor resume --checkpoint state.json` |
 | `pmat refactor docs` | Documentation cleanup | `pmat refactor docs --dry-run` |
+
+## Template Generation & Scaffolding
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat list` | List available templates | `pmat list --format json` |
+| `pmat search` | Search templates | `pmat search "web" --limit 10` |
+| `pmat generate` | Generate single template | `pmat generate rust cli -p name=app` |
+| `pmat validate` | Validate template params | `pmat validate rust web` |
+| `pmat scaffold project` | Scaffold complete project | `pmat scaffold project rust-api --name api` |
+| `pmat scaffold agent` | Scaffold MCP agent | `pmat scaffold agent deterministic --name agent` |
+| `pmat scaffold list-templates` | List agent templates | `pmat scaffold list-templates` |
+| `pmat scaffold validate-template` | Validate agent template | `pmat scaffold validate-template agent.yaml` |
 | `pmat secrets` | Secret detection | `pmat secrets scan --all-history` |
 | `pmat compliance` | Compliance check | `pmat compliance --standard=SOC2` |
 | `pmat audit` | Security audit | `pmat audit --comprehensive` |
