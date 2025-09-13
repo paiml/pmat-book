@@ -1,0 +1,142 @@
+# Project Context
+
+## Project Structure
+
+- **Language**: rust
+- **Total Files**: 39
+- **Total Functions**: 0
+- **Total Structs**: 0
+- **Total Enums**: 0
+- **Total Traits**: 0
+
+## Quality Scorecard
+
+- **Overall Health**: 85.0%
+- **Complexity Score**: 100.0%
+- **Maintainability Index**: 70.0%
+- **Technical Debt Hours**: 40.0
+- **Test Coverage**: 65.0%
+- **Modularity Score**: 85.0%
+
+## Files
+
+### ./book.toml
+
+
+### ./scripts/enable-pages.sh
+
+
+### ./tests/ch01/test_01_installation.sh
+
+
+### ./tests/ch01/test_01_installation_simple.sh
+
+
+### ./tests/ch01/test_02_first_analysis.sh
+
+
+### ./tests/ch01/test_simple.sh
+
+
+### ./tests/ch02/test_context.sh
+
+
+### ./tests/ch03/test_01_mcp_setup.sh
+
+
+### ./tests/ch03/test_02_mcp_tools.sh
+
+
+### ./tests/ch03/test_simple.sh
+
+
+### ./tests/ch04/test_tdg.sh
+
+
+### ./tests/ch05/test_analyze.sh
+
+
+### ./tests/ch06/test_scaffold.sh
+
+
+### ./tests/ch07/test_quality_gate.sh
+
+
+### ./tests/ch08/test_demo.sh
+
+
+### ./tests/ch09/test_precommit_hooks.sh
+
+
+### ./tests/ch09/test_report.sh
+
+
+### ./tests/ch10/test_auto_clippy.sh
+
+
+### ./tests/ch10/test_precommit.sh
+
+
+### ./tests/ch11/test_custom_rules.sh
+
+
+### ./tests/ch12/test_architecture.sh
+
+
+### ./tests/ch13/test_language_examples.sh
+
+
+### ./tests/ch13/test_minimal.sh
+
+
+### ./tests/ch13/test_performance.sh
+
+
+### ./tests/ch14/test_large_codebases.sh
+
+
+### ./tests/ch14/test_qdd.sh
+
+
+### ./tests/ch15/test_mcp_minimal.sh
+
+
+### ./tests/ch15/test_mcp_tools.sh
+
+
+### ./tests/ch15/test_team_workflows.sh
+
+
+### ./tests/ch16/test_cicd.sh
+
+
+### ./tests/ch16/test_deep_context.sh
+
+
+### ./tests/ch16/test_deep_context_minimal.sh
+
+
+### ./tests/ch17/test_plugins.sh
+
+
+### ./tests/ch17/test_wasm_features.sh
+
+
+### ./tests/ch17/test_wasm_minimal.sh
+
+
+### ./tests/ch18/test_api.sh
+
+
+### ./tests/ch18/test_api_minimal.sh
+
+
+### ./tests/ch18/test_api_server.sh
+
+
+### ./tests/ch19/test_ai.sh
+
+
+## Recommendations
+
+- **Technical debt detected**: Found 2 SATD comments. Zero-tolerance policy requires immediate remediation. (Priority: Critical, Impact: High)

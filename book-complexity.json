@@ -1,0 +1,40 @@
+# Complexity Analysis Summary
+
+📊 **Files analyzed**: 10
+🔧 **Total functions**: 66
+
+## Complexity Metrics
+
+- **Median Cyclomatic**: 2.0
+- **Median Cognitive**: 2.0
+- **Max Cyclomatic**: 20
+- **Max Cognitive**: 55
+- **90th Percentile Cyclomatic**: 7
+- **90th Percentile Cognitive**: 9
+
+⏱️  **Estimated Refactoring Time**: 19.8 hours
+
+## Issues Found
+
+❌ **Errors**: 2
+⚠️  **Warnings**: 3
+
+## Top Files by Complexity
+
+1. `searcher.js` - Cyclomatic: 113, Cognitive: 174, Functions: 30
+2. `book.js` - Cyclomatic: 87, Cognitive: 90, Functions: 35
+3. `searchindex.js` - Cyclomatic: 3, Cognitive: 2, Functions: 1
+4. `mark.min.js` - Cyclomatic: 1, Cognitive: 1, Functions: 0
+5. `elasticlunr.min.js` - Cyclomatic: 1, Cognitive: 1, Functions: 0
+6. `clipboard.min.js` - Cyclomatic: 1, Cognitive: 1, Functions: 0
+7. `theme-dawn.js` - Cyclomatic: 1, Cognitive: 1, Functions: 0
+8. `highlight.js` - Cyclomatic: 1, Cognitive: 1, Functions: 0
+9. `editor.js` - Cyclomatic: 1, Cognitive: 1, Functions: 0
+10. `mode-rust.js` - Cyclomatic: 1, Cognitive: 1, Functions: 0
+
+## Top Complexity Hotspots
+
+1. `globalKeyHandler` - cyclomatic complexity: 20
+   📁 ./book/searcher.js:352
+2. `makeTeaser` - cyclomatic complexity: 18
+   📁 ./book/searcher.js:162

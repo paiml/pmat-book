@@ -40,7 +40,10 @@
 - [Chapter 15: Complete MCP Tools Reference](ch15-00-mcp-tools.md)
 - [Chapter 16: Deep Context Analysis](ch16-00-deep-context.md)
 - [Chapter 17: WebAssembly Analysis and Security](ch17-00-wasm-analysis.md)
-- [Chapter 18: Quality-Driven Development (QDD)](ch14-00-qdd.md)
+- [Chapter 18: API Server and Roadmap Management](ch18-00-api.md)
+- [Chapter 19: Agent Management and Continuous Monitoring](ch19-00-agent.md)
+- [Chapter 20: AI-Powered Code Refactoring](ch20-00-refactor.md)
+- [Chapter 21: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 
 ## Conclusion
 

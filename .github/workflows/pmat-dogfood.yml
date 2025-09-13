@@ -1,0 +1,359 @@
+name: PMAT Dogfooding - Quality Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+
+env:
+  PMAT_VERSION: "2.69.0"
+
+jobs:
+  pmat-analysis:
+    name: PMAT Self-Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Full history for trend analysis
+    
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    
+    - name: Install PMAT
+      run: |
+        cargo install pmat --version ${{ env.PMAT_VERSION }}
+        pmat --version
+    
+    - name: Cache PMAT Analysis
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.pmat/cache
+          ./pmat-cache
+        key: pmat-cache-${{ runner.os }}-${{ hashFiles('**/*.md', '**/*.rs', '**/*.toml') }}
+        restore-keys: |
+          pmat-cache-${{ runner.os }}-
+    
+    - name: Generate Project Context
+      run: |
+        echo "🔍 Generating project context..."
+        pmat context --output context-report.json
+        echo "✅ Context generated"
+    
+    - name: Analyze Code Complexity
+      run: |
+        echo "📊 Analyzing complexity..."
+        pmat analyze complexity --path . --output complexity-report.json
+        echo "✅ Complexity analysis complete"
+    
+    - name: Check Technical Debt (SATD)
+      run: |
+        echo "💸 Checking technical debt..."
+        pmat analyze satd --path . --output satd-report.json
+        echo "✅ SATD analysis complete"
+    
+    - name: Find Dead Code
+      run: |
+        echo "☠️ Looking for dead code..."
+        pmat analyze dead-code --path . --output deadcode-report.json
+        echo "✅ Dead code analysis complete"
+    
+    - name: Generate Quality Metrics
+      run: |
+        echo "📈 Generating quality metrics..."
+        # Create comprehensive quality report
+        cat > quality-summary.md << 'EOF'
+        # PMAT Book Quality Report
+        
+        Generated on: $(date -u)
+        PMAT Version: ${{ env.PMAT_VERSION }}
+        Commit: ${{ github.sha }}
+        
+        ## Complexity Analysis
+        $(head -20 complexity-report.json)
+        
+        ## Technical Debt
+        $(head -10 satd-report.json)
+        
+        ## Dead Code Analysis
+        $(head -10 deadcode-report.json)
+        
+        ## Context Summary
+        $(head -15 context-report.json)
+        EOF
+        echo "✅ Quality summary generated"
+    
+    - name: Test All Examples
+      run: |
+        echo "🧪 Running comprehensive tests..."
+        if command -v make >/dev/null 2>&1; then
+          make test || echo "⚠️ Some tests failed - continuing analysis"
+        else
+          echo "⚠️ Make not available, skipping tests"
+        fi
+    
+    - name: Validate Documentation Links
+      run: |
+        echo "🔗 Validating documentation links..."
+        # Check for broken internal links
+        find src -name "*.md" -exec grep -l "](ch" {} \; | while read file; do
+          echo "Checking $file..."
+          grep -o "](ch[^)]*\.md)" "$file" | sed 's/](//g' | sed 's/)//g' | while read link; do
+            if [ ! -f "src/$link" ]; then
+              echo "❌ Broken link in $file: $link"
+              echo "broken-link: $file -> $link" >> link-issues.txt
+            fi
+          done
+        done
+        
+        if [ -f link-issues.txt ]; then
+          echo "❌ Found broken links:"
+          cat link-issues.txt
+          exit 1
+        else
+          echo "✅ All internal links valid"
+        fi
+    
+    - name: Performance Analysis
+      run: |
+        echo "⚡ Analyzing performance characteristics..."
+        # Measure build time
+        start_time=$(date +%s)
+        if command -v make >/dev/null 2>&1; then
+          timeout 300 make build || echo "Build timed out or failed"
+        else
+          echo "Make not available, skipping build"
+        fi
+        end_time=$(date +%s)
+        build_time=$((end_time - start_time))
+        
+        echo "Build time: ${build_time}s" | tee build-performance.txt
+        
+        # Check for large files
+        echo "📁 Large file analysis:"
+        find . -type f -size +500k -not -path "./.git/*" -not -path "./target/*" | while read file; do
+          size=$(ls -lh "$file" | awk '{print $5}')
+          echo "Large file: $file ($size)"
+        done | tee large-files.txt
+    
+    - name: Security Analysis
+      run: |
+        echo "🔒 Security analysis..."
+        # Look for potential secrets in markdown files
+        grep -r -i "password\|secret\|key\|token" src/ --include="*.md" || echo "No obvious secrets found"
+        
+        # Check for suspicious patterns
+        grep -r "TODO.*security\|FIXME.*security\|HACK.*security" src/ --include="*.md" || echo "No security TODOs found"
+    
+    - name: Generate Trend Analysis
+      if: github.event_name == 'schedule'
+      run: |
+        echo "📈 Generating trend analysis..."
+        # Compare with previous runs (if cache exists)
+        if [ -f ./pmat-cache/previous-complexity.json ]; then
+          echo "Comparing with previous analysis..."
+          # Simple diff of complexity metrics
+          diff ./pmat-cache/previous-complexity.json complexity-report.json || echo "Complexity metrics changed"
+        fi
+        
+        # Store current results for next comparison
+        mkdir -p ./pmat-cache
+        cp complexity-report.json ./pmat-cache/previous-complexity.json
+    
+    - name: Upload Analysis Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: pmat-analysis-results
+        path: |
+          *-report.json
+          quality-summary.md
+          build-performance.txt
+          large-files.txt
+          link-issues.txt
+        retention-days: 30
+    
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let comment = '## 📊 PMAT Analysis Results\n\n';
+          
+          try {
+            // Add complexity summary
+            const complexity = fs.readFileSync('complexity-report.json', 'utf8');
+            const complexityLines = complexity.split('\n').slice(0, 15).join('\n');
+            comment += '### Complexity Analysis\n```\n' + complexityLines + '\n```\n\n';
+            
+            // Add any link issues
+            if (fs.existsSync('link-issues.txt')) {
+              const linkIssues = fs.readFileSync('link-issues.txt', 'utf8');
+              comment += '### ❌ Link Issues Found\n```\n' + linkIssues + '\n```\n\n';
+            } else {
+              comment += '### ✅ No Link Issues Found\n\n';
+            }
+            
+            // Add build performance
+            if (fs.existsSync('build-performance.txt')) {
+              const buildPerf = fs.readFileSync('build-performance.txt', 'utf8');
+              comment += '### ⚡ Build Performance\n```\n' + buildPerf + '\n```\n\n';
+            }
+            
+            comment += '*Analysis powered by PMAT ' + process.env.PMAT_VERSION + '*';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('Could not post comment:', error);
+          }
+
+  roadmap-tracking:
+    name: Roadmap Progress Tracking  
+    runs-on: ubuntu-latest
+    needs: pmat-analysis
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    
+    - name: Install PMAT
+      run: cargo install pmat --version ${{ env.PMAT_VERSION }}
+    
+    - name: Generate Roadmap Status
+      run: |
+        echo "🗺️ Generating roadmap status..."
+        
+        # Create roadmap status report
+        cat > roadmap-status.md << 'EOF'
+        # PMAT Book Roadmap Status
+        
+        **Generated**: $(date -u)
+        **Commit**: ${{ github.sha }}
+        **Branch**: ${{ github.ref_name }}
+        
+        ## Progress Metrics
+        
+        ### Chapter Completion
+        - Total chapters planned: 25
+        - Chapters with files: $(find src -name "ch*.md" | wc -l)
+        - Chapters with tests: $(find tests -name "test_*.sh" | wc -l)
+        
+        ### Quality Metrics
+        $(pmat analyze complexity --path . 2>/dev/null | head -10 || echo "Complexity analysis not available")
+        
+        ### Test Status  
+        $(make test 2>/dev/null | tail -5 || echo "Test results not available")
+        
+        ## Next Actions
+        - Review BOOK_ROADMAP.md for detailed tasks
+        - Address any complexity hotspots identified
+        - Ensure all chapter tests pass
+        
+        EOF
+        
+        echo "✅ Roadmap status generated"
+    
+    - name: Update Progress Tracking
+      run: |
+        echo "📊 Updating progress metrics..."
+        
+        # Count completion metrics
+        TOTAL_CHAPTERS=$(grep -c "Chapter [0-9]" src/SUMMARY.md || echo "0")
+        EXISTING_FILES=$(find src -name "ch[0-9]*.md" | wc -l)
+        TEST_FILES=$(find tests -name "test_*.sh" | wc -l)
+        
+        echo "Progress: $EXISTING_FILES/$TOTAL_CHAPTERS chapters ($TEST_FILES test suites)"
+        
+        # Calculate completion percentage
+        if [ $TOTAL_CHAPTERS -gt 0 ]; then
+          COMPLETION_PERCENT=$((EXISTING_FILES * 100 / TOTAL_CHAPTERS))
+          echo "Completion: $COMPLETION_PERCENT%"
+          
+          if [ $COMPLETION_PERCENT -ge 90 ]; then
+            echo "🎉 Book is nearly complete!"
+          elif [ $COMPLETION_PERCENT -ge 70 ]; then
+            echo "🚀 Good progress on book completion"
+          else
+            echo "📝 More chapters needed for completion"
+          fi
+        fi
+    
+    - name: Upload Roadmap Status
+      uses: actions/upload-artifact@v3
+      with:
+        name: roadmap-status
+        path: roadmap-status.md
+        retention-days: 90
+
+  quality-gate:
+    name: Quality Gate Enforcement
+    runs-on: ubuntu-latest
+    needs: pmat-analysis
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    
+    - name: Download Analysis Results
+      uses: actions/download-artifact@v3
+      with:
+        name: pmat-analysis-results
+    
+    - name: Enforce Quality Standards
+      run: |
+        echo "🚧 Enforcing quality gates..."
+        
+        QUALITY_PASSED=true
+        
+        # Check for broken links
+        if [ -f link-issues.txt ]; then
+          echo "❌ Quality gate failed: Broken links found"
+          QUALITY_PASSED=false
+        fi
+        
+        # Check complexity metrics
+        if grep -q "Max Cyclomatic.*[2-9][0-9]" complexity-report.json; then
+          echo "⚠️ Warning: High complexity functions detected"
+          # Don't fail for complexity, just warn
+        fi
+        
+        # Check build performance
+        if [ -f build-performance.txt ]; then
+          BUILD_TIME=$(grep "Build time:" build-performance.txt | grep -o "[0-9]*" | head -1)
+          if [ "$BUILD_TIME" -gt 300 ]; then
+            echo "⚠️ Warning: Build time over 5 minutes ($BUILD_TIME seconds)"
+          fi
+        fi
+        
+        # Final quality gate decision
+        if [ "$QUALITY_PASSED" = true ]; then
+          echo "✅ All quality gates passed!"
+          exit 0
+        else
+          echo "❌ Quality gates failed - please fix issues before merging"
+          exit 1
+        fi

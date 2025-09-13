@@ -48,6 +48,45 @@
 |---------|-------------|---------|
 | `pmat security scan` | Security scan | `pmat security scan --severity=critical` |
 | `pmat dependencies` | Dependency check | `pmat dependencies --check-vulnerabilities` |
+
+## API Server & Roadmap
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat serve` | Start API server | `pmat serve --port 8080` |
+| `pmat serve --metrics` | Server with metrics | `pmat serve --metrics --verbose` |
+| `pmat roadmap init` | Initialize sprint | `pmat roadmap init --sprint v1.0` |
+| `pmat roadmap todos` | Generate todos | `pmat roadmap todos --format markdown` |
+| `pmat roadmap start` | Start task | `pmat roadmap start PMAT-001` |
+| `pmat roadmap complete` | Complete task | `pmat roadmap complete PMAT-001 --quality-check` |
+| `pmat roadmap status` | Sprint status | `pmat roadmap status --format json` |
+| `pmat roadmap validate` | Validate release | `pmat roadmap validate` |
+| `pmat roadmap quality-check` | Quality validation | `pmat roadmap quality-check PMAT-001` |
+
+## Agent Management
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat agent start` | Start background agent | `pmat agent start --project-path .` |
+| `pmat agent stop` | Stop agent daemon | `pmat agent stop` |
+| `pmat agent status` | Show agent status | `pmat agent status --verbose` |
+| `pmat agent health` | Health check | `pmat agent health` |
+| `pmat agent monitor` | Monitor project | `pmat agent monitor --project-id main` |
+| `pmat agent unmonitor` | Stop monitoring | `pmat agent unmonitor --project-id main` |
+| `pmat agent reload` | Reload configuration | `pmat agent reload` |
+| `pmat agent quality-gate` | Quality gate via agent | `pmat agent quality-gate --strict` |
+| `pmat agent mcp-server` | Start MCP server | `pmat agent mcp-server --debug` |
+
+## AI-Powered Refactoring
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat refactor auto` | Automated refactoring | `pmat refactor auto --quality-profile extreme` |
+| `pmat refactor interactive` | Interactive refactoring | `pmat refactor interactive --target-complexity 8` |
+| `pmat refactor serve` | Batch processing server | `pmat refactor serve --port 8080` |
+| `pmat refactor status` | Refactoring status | `pmat refactor status` |
+| `pmat refactor resume` | Resume from checkpoint | `pmat refactor resume --checkpoint state.json` |
+| `pmat refactor docs` | Documentation cleanup | `pmat refactor docs --dry-run` |
 | `pmat secrets` | Secret detection | `pmat secrets scan --all-history` |
 | `pmat compliance` | Compliance check | `pmat compliance --standard=SOC2` |
 | `pmat audit` | Security audit | `pmat audit --comprehensive` |
@@ -104,7 +143,7 @@
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat api serve` | Start API server | `pmat api serve --port=8080` |
+| `pmat serve` | Start HTTP API server | `pmat serve --port=8080 --cors` |
 | `pmat webhook` | Manage webhooks | `pmat webhook create` |
 | `pmat notify` | Send notifications | `pmat notify slack --channel=#alerts` |
 | `pmat pipeline` | Pipeline integration | `pmat pipeline validate` |

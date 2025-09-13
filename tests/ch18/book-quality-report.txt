@@ -1,0 +1,20 @@
+error: unexpected argument found
+
+EXAMPLES:
+# Analyze code complexity
+pmat analyze complexity --project-path .
+
+# Find technical debt
+pmat analyze satd --path .
+
+# Find dead code
+pmat analyze dead-code --path .
+
+# Generate project context
+pmat context
+
+# Run quality gates
+pmat quality-gate --strict
+
+# Start agent daemon
+pmat agent start
