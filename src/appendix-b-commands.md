@@ -113,6 +113,19 @@
 | `pmat diagnose --troubleshoot` | Troubleshooting mode | `pmat diagnose --troubleshoot` |
 | `pmat diagnose --repair-cache` | Repair cache | `pmat diagnose --repair-cache` |
 | `pmat diagnose --serve` | Start diagnostic server | `pmat diagnose --serve --port 8090` |
+
+## Performance Testing
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat test performance` | Run performance tests | `pmat test performance --verbose` |
+| `pmat test property` | Property-based testing | `pmat test property --cases 10000` |
+| `pmat test memory` | Memory usage testing | `pmat test memory --detect-leaks` |
+| `pmat test throughput` | Throughput testing | `pmat test throughput --rps 1000` |
+| `pmat test regression` | Regression detection | `pmat test regression --threshold 5` |
+| `pmat test integration` | Integration tests | `pmat test integration --full-stack` |
+| `pmat test all` | Run all test suites | `pmat test all --timeout 300` |
+| `pmat test --baseline` | Create baseline | `pmat test performance --baseline` |
 | `pmat secrets` | Secret detection | `pmat secrets scan --all-history` |
 | `pmat compliance` | Compliance check | `pmat compliance --standard=SOC2` |
 | `pmat audit` | Security audit | `pmat audit --comprehensive` |
