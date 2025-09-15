@@ -46,7 +46,8 @@
 - [Chapter 21: Template Generation and Project Scaffolding](ch21-00-templates.md)
 - [Chapter 22: System Diagnostics and Health Monitoring](ch22-00-diagnostics.md)
 - [Chapter 23: Performance Testing Suite](ch23-00-testing.md)
-- [Chapter 24: Quality-Driven Development (QDD)](ch14-00-qdd.md)
+- [Chapter 24: Memory and Cache Management](ch24-00-memory.md)
+- [Chapter 25: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 
 ## Conclusion
 

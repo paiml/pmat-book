@@ -34,13 +34,25 @@
 | `pmat config export` | Export config | `pmat config export > config.toml` |
 | `pmat config import` | Import config | `pmat config import config.toml` |
 
+## Memory Management
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat memory stats` | Memory statistics | `pmat memory stats --verbose` |
+| `pmat memory cleanup` | Clean up memory | `pmat memory cleanup --force-gc` |
+| `pmat memory configure` | Configure limits | `pmat memory configure --max-heap 500` |
+| `pmat memory pools` | Pool statistics | `pmat memory pools` |
+| `pmat memory pressure` | Memory pressure | `pmat memory pressure` |
+
 ## Cache Management
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat cache status` | Cache status | `pmat cache status` |
+| `pmat cache stats` | Cache statistics | `pmat cache stats --verbose` |
 | `pmat cache clear` | Clear cache | `pmat cache clear --all` |
 | `pmat cache optimize` | Optimize cache | `pmat cache optimize` |
+| `pmat cache warmup` | Warmup cache | `pmat cache warmup` |
+| `pmat cache configure` | Configure cache | `pmat cache configure --eviction lru` |
 
 ## Security
 
