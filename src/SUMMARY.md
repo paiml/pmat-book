@@ -48,7 +48,8 @@
 - [Chapter 23: Performance Testing Suite](ch23-00-testing.md)
 - [Chapter 24: Memory and Cache Management](ch24-00-memory.md)
 - [Chapter 25: Sub-Agents and Claude Code Integration](ch25-00-sub-agents.md)
-- [Chapter 26: Quality-Driven Development (QDD)](ch14-00-qdd.md)
+- [Chapter 26: Graph Statistics and Network Analysis](ch26-00-graph-statistics.md)
+- [Chapter 27: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 
 ## Conclusion
 
