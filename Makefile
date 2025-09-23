@@ -21,6 +21,7 @@ help:
 	@echo "  make test-ch02         - Test Chapter 2 examples"
 	@echo "  make test-ch03         - Test Chapter 3 examples"
 	@echo "  make test-ch04         - Test Chapter 4 examples"
+	@echo "  make test-ch25         - Test Chapter 25 Sub-Agents"
 	@echo "  make test-all-chapters - Run ALL chapter tests"
 	@echo ""
 	@echo "🎨 CODE QUALITY:"
@@ -207,6 +208,14 @@ test-ch18:
 	@tests/ch14/test_qdd.sh > test-results/ch18/test_qdd.log 2>&1 || { cat test-results/ch18/test_qdd.log; exit 1; }
 	@echo "✅ Chapter 18 QDD tests passed"
 
+test-ch25:
+	@echo "🧪 Testing Chapter 25: Sub-Agents and Claude Code Integration..."
+	@mkdir -p test-results/ch25
+	@chmod +x tests/ch25/test_sub_agents.sh
+	@echo "Running Chapter 25 Sub-Agents tests..."
+	@tests/ch25/test_sub_agents.sh > test-results/ch25/test_sub_agents.log 2>&1 || { cat test-results/ch25/test_sub_agents.log; exit 1; }
+	@echo "✅ Chapter 25 tests passed"
+
 # Removed duplicate definitions - using ch17 and ch18 above
 
 test-ch19:
@@ -227,7 +236,7 @@ test-ch21:
 	@tests/ch19/test_ai.sh > test-results/ch21/test_ai.log 2>&1 || { cat test-results/ch21/test_ai.log; exit 1; }
 	@echo "✅ Chapter 21 tests passed"
 
-test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18
+test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch25
 
 # Lint code examples
 lint:
