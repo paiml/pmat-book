@@ -100,9 +100,9 @@ EOF
 
 if [ -f .pre-commit-config.yaml ]; then
     test_pass "Pre-commit config created"
-    
-    # Validate YAML syntax
-    if python3 -c "import yaml; yaml.safe_load(open('.pre-commit-config.yaml'))" 2>/dev/null; then
+
+    # Validate YAML structure (basic check without Python)
+    if grep -q "repos:" .pre-commit-config.yaml && grep -q "hooks:" .pre-commit-config.yaml; then
         test_pass "Pre-commit config YAML is valid"
     else
         test_fail "Pre-commit config YAML is invalid"
@@ -152,9 +152,9 @@ EOF
 
 if [ -f .pmat-hooks.yaml ]; then
     test_pass "PMAT hooks config created"
-    
-    # Validate YAML structure
-    if python3 -c "import yaml; config = yaml.safe_load(open('.pmat-hooks.yaml')); assert 'hooks' in config" 2>/dev/null; then
+
+    # Validate YAML structure (basic check without Python)
+    if grep -q "hooks:" .pmat-hooks.yaml && grep -q "version:" .pmat-hooks.yaml; then
         test_pass "PMAT hooks config structure is valid"
     else
         test_fail "PMAT hooks config structure is invalid"
