@@ -4,7 +4,7 @@
 **Chapter Status**: ✅ 100% Working (10/10 examples)
 *Test-Driven: All examples validated in `tests/ch30/test_01_pmatignore.sh`*
 *EXTREME TDD Quality Gates*: Unit tests (10/10), Real-world validation ✅
-*Version*: PMAT v2.161.0+
+*Version*: PMAT v2.163.0+
 <!-- DOC_STATUS_END -->
 
 ## Introduction
@@ -592,7 +592,7 @@ cache/**
 # Must be in project root
 ls -la .pmatignore
 
-# Check PMAT version (v2.161.0+ required)
+# Check PMAT version (v2.163.0+ required)
 pmat --version
 ```
 
@@ -650,6 +650,6 @@ File exclusions in PMAT provide:
 
 ---
 
-**Chapter Validation**: ✅ All 10 examples tested and verified in v2.161.0
+**Chapter Validation**: ✅ All 10 examples tested and verified in v2.163.0
 **Quality Gate**: 🟢 EXTREME TDD validated, NASA-style quality assurance
 **Test Script**: `tests/ch30/test_01_pmatignore.sh` (10/10 passing)

@@ -1,17 +1,17 @@
 # Chapter 13: Multi-Language Project Examples
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (8/8 examples)
+**Chapter Status**: 🟡 PARTIALLY VALIDATED - Tests need PMAT command validation
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 8 | Python, JavaScript, Rust, Java, Go, TypeScript, Polyglot, Config |
-| ⚠️ Not Implemented | 0 | All languages documented and tested |
-| ❌ Broken | 0 | No known issues |
-| 📋 Planned | 0 | Coverage complete for supported languages |
+| ✅ Full AST Support | 8 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM |
+| ⚠️ Pattern-Based | 4 | Go, Java, C#, Shell (regex/lexical, not full AST) |
+| ❌ Aspirational (DELETED) | 2 | Ruby, PHP removed - not implemented |
+| 📋 Tests Status | 0% | All 3 test files need rewrite with actual PMAT commands |
 
-*Last updated: 2024-12-09*  
-*PMAT version: pmat 0.1.0*
+*Last updated: 2025-10-18 (Sprint 32)*
+*PMAT version: v2.163.0*
 <!-- DOC_STATUS_END -->
 
 ## The Problem
@@ -32,18 +32,29 @@ PMAT provides comprehensive analysis across 10+ programming languages with:
 
 ### Supported Languages
 
+**Full AST Analysis (Tree-Sitter Parsers):**
+
 | Language | Extensions | Analysis Features |
 |----------|------------|------------------|
-| **Python** | `.py` | Functions, classes, complexity, PEP compliance |
-| **JavaScript** | `.js`, `.jsx` | ES6+ patterns, async code, modern practices |
-| **TypeScript** | `.ts`, `.tsx` | Type safety, React components, interface usage |
-| **Rust** | `.rs` | Memory safety, ownership, cargo integration |
-| **Java** | `.java` | Enterprise patterns, deprecation, complexity |
-| **Go** | `.go` | Error handling, concurrency, modules |
-| **PHP** | `.php` | Web patterns, security issues |
-| **C/C++** | `.c`, `.cpp` | Memory management, pointer usage |
-| **Ruby** | `.rb` | Rails patterns, metaprogramming |
-| **Shell** | `.sh`, `.bash` | Script quality, error handling |
+| **Rust** | `.rs` | Memory safety, ownership, cargo integration, full AST |
+| **Python** | `.py` | Functions, classes, complexity, PEP compliance, full AST |
+| **TypeScript** | `.ts`, `.tsx` | Type safety, React components, interface usage, full AST |
+| **JavaScript** | `.js`, `.jsx` | ES6+ patterns, async code, modern practices, full AST |
+| **C** | `.c` | Memory management, pointer usage, full AST |
+| **C++** | `.cpp`, `.hpp` | Memory management, classes, templates, full AST |
+| **Kotlin** | `.kt` | JVM interop, null safety, coroutines, full AST |
+| **WASM** | `.wasm`, `.wat` | Binary/text analysis, instruction-level inspection |
+
+**Pattern-Based Analysis (Regex/Lexical Parsing):**
+
+| Language | Extensions | Analysis Features | Limitations |
+|----------|------------|------------------|-------------|
+| **Go** | `.go` | Error handling, concurrency, modules | Pattern-based (not full AST) |
+| **Java** | `.java` | Enterprise patterns, deprecation, complexity | Pattern-based (not full AST) |
+| **C#** | `.cs` | .NET patterns, LINQ, async/await | Pattern-based (not full AST) |
+| **Shell** | `.sh`, `.bash` | Script quality, error handling | Lexical analysis only |
+
+> **Note**: Pattern-based analyzers use regex and lexical analysis instead of full AST parsing. They can detect functions, classes, and basic patterns but may miss complex language constructs.
 
 ### Configuration & Markup Support
 
