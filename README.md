@@ -3,9 +3,11 @@
 [![Deploy Book](https://github.com/paiml/pmat-book/actions/workflows/pages.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/pages.yml)
 [![Test Examples](https://github.com/paiml/pmat-book/actions/workflows/test.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/test.yml)
 
-📚 **[Read the Book Online](https://paiml.github.io/pmat-book/)** | [GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
+📚 **[Read the Book Online](https://paiml.github.io/pmat-book/)** | [PMAT GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
 
-Official documentation for [PMAT (PAIML MCP Agent Toolkit)](https://github.com/paiml/paiml-mcp-agent-toolkit) - Zero-configuration AI context generation with extreme quality enforcement.
+**Official comprehensive documentation** for [PMAT (PAIML MCP Agent Toolkit)](https://github.com/paiml/paiml-mcp-agent-toolkit) - Zero-configuration AI context generation with extreme quality enforcement.
+
+> This book is the **official user-facing documentation** for PMAT, featuring 28 chapters with TDD-validated examples, real-world tutorials, and complete command reference. For technical/architectural documentation, see the [PMAT repository docs/](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/docs).
 
 ## About
 
