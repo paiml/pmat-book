@@ -382,6 +382,7 @@ fi
 
 # Test 8: CI/CD integration example
 echo "Test 8: CI/CD integration with hooks"
+mkdir -p .github/workflows
 cat > .github/workflows/quality.yml << 'EOF'
 name: PMAT Quality Checks
 
