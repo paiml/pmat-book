@@ -8,12 +8,12 @@ FAIL_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
-    ((PASS_COUNT++))
+    PASS_COUNT=$((PASS_COUNT + 1))
 }
 
 test_fail() {
     echo "❌ FAIL: $1"
-    ((FAIL_COUNT++))
+    FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
 echo "=== Testing Chapter 17: WASM Analysis (Minimal) ==="

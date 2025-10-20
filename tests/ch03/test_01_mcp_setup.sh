@@ -14,12 +14,12 @@ MCP_PORT=3334  # Use non-standard port for testing
 
 test_pass() {
     echo "✅ PASS: $1"
-    ((PASS_COUNT++))
+    PASS_COUNT=$((PASS_COUNT + 1))
 }
 
 test_fail() {
     echo "❌ FAIL: $1"
-    ((FAIL_COUNT++))
+    FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
 cleanup() {
