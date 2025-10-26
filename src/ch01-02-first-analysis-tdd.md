@@ -10,8 +10,8 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-08*  
-*PMAT version: pmat 2.63.0*  
+*Last updated: 2025-10-26*  
+*PMAT version: pmat 2.173.0*  
 *Test-Driven: All examples validated in `tests/ch01/test_02_first_analysis.sh`*
 <!-- DOC_STATUS_END -->
 

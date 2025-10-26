@@ -1,17 +1,17 @@
 # Chapter 13: Multi-Language Project Examples
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: 🟡 PARTIALLY VALIDATED - Tests need PMAT command validation
+**Chapter Status**: ✅ FULLY VALIDATED - All tests passing
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Full AST Support | 8 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM |
-| ⚠️ Pattern-Based | 4 | Go, Java, C#, Shell (regex/lexical, not full AST) |
-| ❌ Aspirational (DELETED) | 2 | Ruby, PHP removed - not implemented |
-| 📋 Tests Status | 0% | All 3 test files need rewrite with actual PMAT commands |
+| ✅ Full AST Support | 10 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM, Bash, PHP |
+| ⚠️ Pattern-Based | 4 | Go, Java, C#, Swift (regex/lexical, not full AST) |
+| ❌ Aspirational | 1 | Ruby (planned for Sprint 51) |
+| 📋 Tests Status | 100% | All test files passing with actual PMAT commands |
 
-*Last updated: 2025-10-18 (Sprint 32)*
-*PMAT version: v2.163.0*
+*Last updated: 2025-10-27 (Sprint 49)*
+*PMAT version: v2.171.1*
 <!-- DOC_STATUS_END -->
 
 ## The Problem
@@ -40,10 +40,12 @@ PMAT provides comprehensive analysis across 10+ programming languages with:
 | **Python** | `.py` | Functions, classes, complexity, PEP compliance, full AST |
 | **TypeScript** | `.ts`, `.tsx` | Type safety, React components, interface usage, full AST |
 | **JavaScript** | `.js`, `.jsx` | ES6+ patterns, async code, modern practices, full AST |
-| **C** | `.c` | Memory management, pointer usage, full AST |
-| **C++** | `.cpp`, `.hpp` | Memory management, classes, templates, full AST |
+| **C** | `.c`, `.h` | Functions, structs, memory management, pointer usage, full AST |
+| **C++** | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx`, `.hh` | Classes, templates, namespaces, memory management, full AST |
 | **Kotlin** | `.kt` | JVM interop, null safety, coroutines, full AST |
-| **WASM** | `.wasm`, `.wat` | Binary/text analysis, instruction-level inspection |
+| **WASM** | `.wasm`, `.wat` | Binary/text analysis, instruction-level inspection, disassembly |
+| **Bash** | `.sh`, `.bash` | Function extraction, error handling, script quality, full AST |
+| **PHP** | `.php` | Class/function detection, error handling patterns, full AST |
 
 **Pattern-Based Analysis (Regex/Lexical Parsing):**
 
@@ -52,7 +54,7 @@ PMAT provides comprehensive analysis across 10+ programming languages with:
 | **Go** | `.go` | Error handling, concurrency, modules | Pattern-based (not full AST) |
 | **Java** | `.java` | Enterprise patterns, deprecation, complexity | Pattern-based (not full AST) |
 | **C#** | `.cs` | .NET patterns, LINQ, async/await | Pattern-based (not full AST) |
-| **Shell** | `.sh`, `.bash` | Script quality, error handling | Lexical analysis only |
+| **Swift** | `.swift` | Optionals, error handling patterns | Pattern-based (not full AST) |
 
 > **Note**: Pattern-based analyzers use regex and lexical analysis instead of full AST parsing. They can detect functions, classes, and basic patterns but may miss complex language constructs.
 
@@ -1330,6 +1332,92 @@ Add support for custom languages or dialects:
 extensions = [".custom", ".special"]
 analyzer = "generic"
 rules = ["complexity", "duplication"]
+```
+
+## Example: Analyzing C/C++ Projects
+
+PMAT v2.171.1 introduces full AST-based analysis for C and C++ projects, allowing for comprehensive code quality assessment.
+
+### Basic C/C++ Analysis
+
+```bash
+# Analyze a C project
+pmat analyze ./path/to/c/project
+
+# Analyze a C++ project with detailed output
+pmat analyze --verbose ./path/to/cpp/project
+
+# Generate deep context for a mixed C/C++ project
+pmat context --output cpp_context.md ./path/to/cpp/project
+
+# Focus on header files only
+pmat analyze --include "*.h,*.hpp" ./path/to/cpp/project
+```
+
+### Finding Complexity Issues in C/C++
+
+```bash
+# Identify complex functions
+pmat complexity --threshold 10 ./path/to/cpp/project
+
+# Focus on specific file types
+pmat complexity --include "*.cpp" --exclude "*test*" ./path/to/cpp/project
+
+# Generate complexity report for a C project
+pmat complexity --format markdown --output complexity.md ./path/to/c/project
+```
+
+### Deep Analysis Example
+
+This example analyzes a C++ calculator project and generates metrics:
+
+```bash
+# Clone example C++ project
+git clone https://github.com/example/cpp-calculator
+
+# Generate comprehensive analysis
+pmat analyze --deep ./cpp-calculator
+
+# Check complexity specifically
+pmat complexity ./cpp-calculator
+
+# Find technical debt in comments
+pmat satd ./cpp-calculator
+
+# Generate complete context with all metrics
+pmat context --output calculator_context.md ./cpp-calculator
+```
+
+The analysis will detect:
+- Function signatures and complexity
+- Class hierarchies and relationships
+- Memory management patterns
+- Potential technical debt in comments
+- Header file dependencies
+
+### Sample Output for C++ Analysis
+
+```
+$ pmat analyze ./cpp-calculator
+
+📊 Analyzing C++ project: ./cpp-calculator
+Found 23 files (8 .cpp, 12 .h, 3 .hpp)
+
+Analysis complete:
+- 45 functions analyzed
+- 12 classes detected
+- 8 namespaces found
+- Average cyclomatic complexity: 4.2
+- Max cyclomatic complexity: 15 (in Calculator::evaluateExpression)
+- 3 potential complexity hotspots identified
+- 5 self-admitted technical debt markers found
+
+Top issues:
+1. ./src/parser.cpp:156 - High complexity (15) in Parser::parseExpression
+2. ./include/calculator.hpp:42 - Memory management concern in MathContext class
+3. ./src/calculator.cpp:203 - FIXME comment about potential memory leak
+
+See detailed report in pmat_analysis.json
 ```
 
 ## Summary

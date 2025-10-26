@@ -10,8 +10,8 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-08*  
-*PMAT version: pmat 2.63.0*
+*Last updated: 2025-10-26*  
+*PMAT version: pmat 2.173.0*
 <!-- DOC_STATUS_END -->
 
 ## Output Formats
@@ -28,8 +28,8 @@ pmat analyze . --format json
 
 ```json
 {
-  "timestamp": "2025-09-08T10:30:00Z",
-  "version": "2.63.0",
+  "timestamp": "2025-10-26T10:30:00Z",
+  "version": "2.173.0",
   "repository": {
     "path": "/workspace/project",
     "vcs": "git",
@@ -72,9 +72,9 @@ pmat analyze . --format markdown
 ```markdown
 # Repository Analysis Report
 
-**Date**: 2025-09-08  
-**Repository**: /workspace/project  
-**PMAT Version**: 2.63.0
+**Date**: 2025-10-26
+**Repository**: /workspace/project
+**PMAT Version**: 2.173.0
 
 ## Summary
 - **Total Files**: 156

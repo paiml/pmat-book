@@ -10,7 +10,7 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-08*  
+*Last updated: 2025-10-26*  
 *PMAT version: pmat 2.69.0*  
 *Test-Driven: All examples validated in `tests/ch14/test_qdd.sh`*
 <!-- DOC_STATUS_END -->
@@ -476,7 +476,7 @@ pmat qdd validate . --format json
   "status": "passed",
   "profile": "standard",
   "path": ".",
-  "validation_time": "2025-09-08T12:00:00Z",
+  "validation_time": "2025-10-26T12:00:00Z",
   "thresholds": {
     "max_complexity": 10,
     "min_coverage": 80,
@@ -524,7 +524,7 @@ pmat qdd validate . --format markdown
 **Status:** ✅ PASSED  
 **Profile:** Standard  
 **Path:** .  
-**Date:** 2025-09-08 12:00:00 UTC
+**Date:** 2025-10-26 12:00:00 UTC
 
 ## Quality Metrics
 
@@ -835,9 +835,9 @@ QDD maintains rollback points for safe operations:
 pmat qdd rollback --list src/refactored_module.py
 
 Rollback Points for src/refactored_module.py:
-1. 2025-09-08T10:15:00Z - Before complexity reduction
-2. 2025-09-08T10:20:00Z - After function extraction  
-3. 2025-09-08T10:25:00Z - After type annotation addition
+1. 2025-10-26T10:15:00Z - Before complexity reduction
+2. 2025-10-26T10:20:00Z - After function extraction  
+3. 2025-10-26T10:25:00Z - After type annotation addition
 
 # Rollback to specific checkpoint
 pmat qdd rollback src/refactored_module.py --to-checkpoint 2

@@ -10,7 +10,7 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-08*  
+*Last updated: 2025-10-26*  
 *PMAT version: pmat 2.64.0*  
 *Test-Driven: All examples validated in `tests/ch09/test_precommit_hooks.sh`*
 <!-- DOC_STATUS_END -->

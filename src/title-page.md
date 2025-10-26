@@ -4,7 +4,7 @@
 
 *Zero-configuration AI context generation with extreme quality enforcement*
 
-**Version 2.63.0**
+**Version 2.173.0**
 
 ---
 
