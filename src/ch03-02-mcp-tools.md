@@ -1,13 +1,13 @@
 # MCP Tools
 
-**Chapter Status**: ✅ 100% Working (19/19 tools documented)
+**Chapter Status**: ✅ 100% Working (21/21 tools documented)
 
-*Last updated: 2025-10-19*
-*PMAT version: pmat 2.164.0*
+*Last updated: 2025-10-26*
+*PMAT version: pmat 2.173.0*
 
 ## Overview
 
-PMAT provides 19 MCP tools across 6 categories for comprehensive code analysis, quality assessment, and AI-assisted development. All tools use standardized JSON-RPC 2.0 protocol.
+PMAT provides 21 MCP tools across 7 categories for comprehensive code analysis, quality assessment, and AI-assisted development. All tools use standardized JSON-RPC 2.0 protocol.
 
 ## Tool Categories
 
@@ -339,6 +339,104 @@ Topic analysis and extraction.
   "num_topics": 10
 }
 ```
+
+### JVM Language Analysis (2 tools)
+
+Full AST-based analysis for Java and Scala (Sprint 51).
+
+#### `analyze_java`
+
+Analyze Java source code with full AST parsing for complexity, structure, and quality metrics.
+
+**Input Schema:**
+```json
+{
+  "path": "src/main/java/",
+  "max_depth": 3,
+  "include_metrics": true,
+  "include_ast": false
+}
+```
+
+**Output:**
+```json
+{
+  "summary": {
+    "total_files": 45,
+    "total_classes": 38,
+    "total_methods": 287,
+    "avg_complexity": 3.2,
+    "max_complexity": 15
+  },
+  "files": [
+    {
+      "path": "src/main/java/com/example/Service.java",
+      "classes": 2,
+      "methods": 18,
+      "lines": 342,
+      "complexity": {
+        "cyclomatic": 5.2,
+        "cognitive": 4.1
+      }
+    }
+  ]
+}
+```
+
+**Use Cases:**
+- Analyze Java enterprise applications
+- Track complexity trends in Spring/Jakarta EE projects
+- Identify refactoring opportunities in JVM codebases
+- Generate quality reports for Java microservices
+
+#### `analyze_scala`
+
+Analyze Scala source code with full AST parsing for complexity, structure, and quality metrics.
+
+**Input Schema:**
+```json
+{
+  "path": "src/main/scala/",
+  "max_depth": 3,
+  "include_metrics": true,
+  "include_ast": false
+}
+```
+
+**Output:**
+```json
+{
+  "summary": {
+    "total_files": 28,
+    "total_classes": 15,
+    "total_case_classes": 22,
+    "total_objects": 12,
+    "total_traits": 8,
+    "total_methods": 156,
+    "avg_complexity": 2.8,
+    "max_complexity": 12
+  },
+  "files": [
+    {
+      "path": "src/main/scala/com/example/Service.scala",
+      "case_classes": 3,
+      "objects": 1,
+      "methods": 14,
+      "lines": 287,
+      "complexity": {
+        "cyclomatic": 3.8,
+        "cognitive": 3.2
+      }
+    }
+  ]
+}
+```
+
+**Use Cases:**
+- Analyze Scala functional codebases
+- Track quality in Akka/Play Framework applications
+- Identify complex pattern matching expressions
+- Generate reports for Scala microservices
 
 ### Testing (1 tool)
 
