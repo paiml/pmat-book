@@ -78,7 +78,27 @@ docker run -v $(pwd):/workspace paiml/pmat analyze /workspace
 alias pmat='docker run -v $(pwd):/workspace paiml/pmat'
 ```
 
-### Method 5: Binary Download
+### Method 5: Debian Package (Ubuntu/Debian)
+
+Install via Debian package (recommended for Ubuntu/Debian users):
+
+```bash
+# Download the .deb package
+wget https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v2.173.0/pmat_2.173.0_amd64.deb
+
+# Install
+sudo dpkg -i pmat_2.173.0_amd64.deb
+
+# Verify installation
+pmat --version
+```
+
+**Dependencies** (automatically installed):
+- libc6 (>= 2.34)
+- libgcc-s1 (>= 4.2)
+- libssl3 (>= 3.0.0)
+
+### Method 6: Binary Download
 
 Download pre-compiled binaries from GitHub:
 
@@ -97,7 +117,7 @@ sudo mv pmat /usr/local/bin/
 # Download pmat-windows-x86_64.exe from releases page
 ```
 
-### Method 6: Build from Source
+### Method 7: Build from Source
 
 For latest development version:
 
@@ -108,7 +128,7 @@ cargo build --release
 sudo cp target/release/pmat /usr/local/bin/
 ```
 
-### Method 7: Package Managers (Platform Specific)
+### Method 8: Package Managers (Platform Specific)
 
 #### Windows - Chocolatey
 ```powershell
