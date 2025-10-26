@@ -5,13 +5,13 @@
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Full AST Support | 10 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM, Bash, PHP |
-| ⚠️ Pattern-Based | 4 | Go, Java, C#, Swift (regex/lexical, not full AST) |
-| ❌ Aspirational | 1 | Ruby (planned for Sprint 51) |
+| ✅ Full AST Support | 12 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM, Bash, PHP, Java, Scala |
+| ⚠️ Pattern-Based | 3 | Go, C#, Swift (regex/lexical, not full AST) |
+| ❌ Aspirational | 1 | Ruby (planned for future sprint) |
 | 📋 Tests Status | 100% | All test files passing with actual PMAT commands |
 
-*Last updated: 2025-10-27 (Sprint 49)*
-*PMAT version: v2.171.1*
+*Last updated: 2025-10-26 (Sprint 52)*
+*PMAT version: pmat 2.173.0*
 <!-- DOC_STATUS_END -->
 
 ## The Problem
@@ -46,13 +46,14 @@ PMAT provides comprehensive analysis across 10+ programming languages with:
 | **WASM** | `.wasm`, `.wat` | Binary/text analysis, instruction-level inspection, disassembly |
 | **Bash** | `.sh`, `.bash` | Function extraction, error handling, script quality, full AST |
 | **PHP** | `.php` | Class/function detection, error handling patterns, full AST |
+| **Java** | `.java` | Classes, methods, packages, annotations, full AST (Sprint 51) |
+| **Scala** | `.scala` | Case classes, traits, objects, pattern matching, full AST (Sprint 51) |
 
 **Pattern-Based Analysis (Regex/Lexical Parsing):**
 
 | Language | Extensions | Analysis Features | Limitations |
 |----------|------------|------------------|-------------|
 | **Go** | `.go` | Error handling, concurrency, modules | Pattern-based (not full AST) |
-| **Java** | `.java` | Enterprise patterns, deprecation, complexity | Pattern-based (not full AST) |
 | **C#** | `.cs` | .NET patterns, LINQ, async/await | Pattern-based (not full AST) |
 | **Swift** | `.swift` | Optionals, error handling patterns | Pattern-based (not full AST) |
 
