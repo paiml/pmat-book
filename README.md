@@ -30,6 +30,13 @@ This book provides comprehensive documentation for PMAT, covering:
 ### Quick Start
 
 ```bash
+# Clone the repository
+git clone https://github.com/paiml/pmat-book.git
+cd pmat-book
+
+# Install git hooks (RECOMMENDED to prevent 404 issues)
+bash scripts/install-hooks.sh
+
 # Install dependencies
 make install-deps
 
@@ -41,6 +48,8 @@ make serve
 ```
 
 The book will be available at http://localhost:3000
+
+**Important**: The git hook warns you about unpushed commits that would cause the live book at https://paiml.github.io/pmat-book/ to be out of date. Always push your commits after committing!
 
 ### Available Commands
 
