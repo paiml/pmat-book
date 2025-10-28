@@ -1,18 +1,19 @@
 # Chapter 4.1: Technical Debt Grading (TDG)
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (8/8 examples)
+**Chapter Status**: ✅ 100% Working (9/9 examples)
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 8 | All TDG features tested |
+| ✅ Working | 9 | All TDG features tested including git-commit correlation |
 | ⚠️ Not Implemented | 0 | Planned for future versions |
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-10-26*  
-*PMAT version: pmat 2.68.0*  
+*Last updated: 2025-10-28*
+*PMAT version: pmat 2.179.0*
 *Test-Driven: All examples validated in `tests/ch04/test_tdg.sh`*
+*New in v2.179.0: Git-commit correlation for quality archaeology*
 <!-- DOC_STATUS_END -->
 
 ## Understanding Technical Debt Grading
@@ -516,6 +517,247 @@ min_grade_for_release = "B+"
 - Use incremental analysis: `--incremental`
 - Enable parallel processing: `--parallel`
 - Limit scope: `--top-files 20`
+
+## Git-Commit Correlation (v2.179.0+)
+
+Track TDG scores at specific git commits for "quality archaeology" workflows. Discover which commits affected code quality and track quality trends over time.
+
+### Basic Usage
+
+#### Analyze with Git Context
+
+```bash
+# Analyze file and store git metadata
+pmat tdg src/lib.rs --with-git-context
+
+# Analysis output shows TDG score
+# Git context stored in ~/.pmat/ for history queries
+```
+
+#### Query TDG History
+
+```bash
+# Query specific commit (by SHA or tag)
+pmat tdg history --commit abc123
+pmat tdg history --commit v2.178.0
+
+# History since reference
+pmat tdg history --since HEAD~10
+pmat tdg history --since v2.177.0
+
+# Commit range
+pmat tdg history --range HEAD~10..HEAD
+pmat tdg history --range v2.177.0..v2.178.0
+
+# Filter by file path
+pmat tdg history --path src/lib.rs --since HEAD~5
+```
+
+### Output Formats
+
+#### Table Format (Default)
+
+```bash
+pmat tdg history --commit HEAD
+```
+
+Output:
+```
+╭──────────────────────────────────────────────────────────────────────────╮
+│  TDG History                                                             │
+├──────────────────────────────────────────────────────────────────────────┤
+│  📝 f0fb3af - A+ (95.5)                                                  │
+│  ├─ Branch:  main                                                        │
+│  ├─ Author:  Alice Developer                                             │
+│  ├─ Date:    2025-10-28 18:43                                            │
+│  └─ File:    src/lib.rs                                                  │
+│                                                                          │
+╰──────────────────────────────────────────────────────────────────────────╯
+```
+
+#### JSON Format (For Automation)
+
+```bash
+pmat tdg history --commit HEAD --format json | jq .
+```
+
+Output:
+```json
+{
+  "history": [
+    {
+      "file_path": "src/lib.rs",
+      "score": {
+        "total": 95.5,
+        "grade": "A+",
+        "structural_complexity": 12.5,
+        "semantic_complexity": 8.3,
+        "duplication_ratio": 0.02,
+        "coupling_score": 15.0,
+        "doc_coverage": 92.0,
+        "consistency_score": 98.0,
+        "entropy_score": 7.2
+      },
+      "git_context": {
+        "commit_sha": "f0fb3af0469e620368b53cc1c560cc4b46bd4075",
+        "commit_sha_short": "f0fb3af",
+        "branch": "main",
+        "author_name": "Alice Developer",
+        "author_email": "alice@example.com",
+        "commit_timestamp": "2025-10-28T18:43:27Z",
+        "commit_message": "Refactor authentication module",
+        "tags": ["v2.1.0"]
+      }
+    }
+  ]
+}
+```
+
+### Quality Archaeology Workflows
+
+#### Find Quality Regressions
+
+```bash
+# Find commits where quality dropped below B+
+pmat tdg history --since HEAD~50 --format json | \
+  jq '.history[] | select(.score.grade | test("C|D|F"))'
+```
+
+#### Compare Quality Between Releases
+
+```bash
+# Quality delta between releases
+pmat tdg history --range v2.177.0..v2.178.0
+
+# Focus on specific file
+pmat tdg history --path src/auth.rs --range v1.0.0..v2.0.0
+```
+
+#### Track Per-File Quality Trends
+
+```bash
+# See how a file's quality evolved
+pmat tdg history --path src/database.rs --since HEAD~20
+
+# Export for visualization
+pmat tdg history --path src/api.rs --since HEAD~50 --format json > quality-trend.json
+```
+
+#### CI/CD Quality Gates
+
+```bash
+#!/bin/bash
+# quality-gate.sh - Block commits that degrade quality
+
+# Analyze current commit
+pmat tdg src/ --with-git-context
+
+# Get previous commit's quality
+PREV_GRADE=$(pmat tdg history --commit HEAD~1 --format json | jq -r '.history[0].score.grade')
+
+# Get current quality
+CURR_GRADE=$(pmat tdg history --commit HEAD --format json | jq -r '.history[0].score.grade')
+
+if [[ "$CURR_GRADE" < "$PREV_GRADE" ]]; then
+  echo "❌ Quality regression detected: $PREV_GRADE → $CURR_GRADE"
+  exit 1
+fi
+
+echo "✅ Quality maintained or improved"
+```
+
+### Use Cases
+
+#### 1. Quality Attribution
+Track which developer commits affected code quality:
+
+```bash
+# Find author of quality regression
+pmat tdg history --since HEAD~20 --format json | \
+  jq '.history[] | select(.score.total < 80) | .git_context.author_name'
+```
+
+#### 2. Release Quality Reports
+Generate quality reports for releases:
+
+```bash
+# Quality summary between releases
+pmat tdg history --range v2.0.0..v2.1.0 --format json | \
+  jq '{
+    files: .history | length,
+    avg_score: (.history | map(.score.total) | add / length),
+    grades: (.history | group_by(.score.grade) |
+      map({grade: .[0].score.grade, count: length}))
+  }'
+```
+
+#### 3. Hotspot Analysis
+Identify files with frequent quality issues:
+
+```bash
+# Files with most quality fluctuation
+pmat tdg history --since HEAD~100 --format json | \
+  jq -r '.history[] | .file_path' | sort | uniq -c | sort -rn | head -10
+```
+
+### Best Practices
+
+**1. Regular Analysis**
+```bash
+# Analyze on every commit (git hook)
+cat > .git/hooks/post-commit << 'EOF'
+#!/bin/bash
+pmat tdg . --with-git-context
+EOF
+chmod +x .git/hooks/post-commit
+```
+
+**2. Baseline Establishment**
+```bash
+# Create baseline at release
+git tag v1.0.0
+pmat tdg . --with-git-context
+
+# Compare future changes
+pmat tdg history --range v1.0.0..HEAD
+```
+
+**3. Storage Location**
+- Git context stored in `~/.pmat/tdg-warm/` (recent)
+- Archived to `~/.pmat/tdg-cold/` after 30 days
+- Use `--storage-path` to customize location
+
+### Limitations
+
+- Git context only stored when using `--with-git-context` flag
+- History queries only show files analyzed with git context
+- Storage grows with analysis frequency (~100 bytes per file per commit)
+- Requires git repository (returns None for non-git directories)
+
+### MCP Integration
+
+Git-commit correlation works seamlessly with MCP:
+
+```json
+{
+  "tool": "analyze.tdg",
+  "arguments": {
+    "paths": ["src/lib.rs"],
+    "with_git_context": true
+  }
+}
+```
+
+Query history via MCP:
+```json
+{
+  "tool": "tdg.history",
+  "arguments": {
+    "commit": "HEAD",
+    "format": "json"
+  }
+}
+```
 
 ## Summary
 
