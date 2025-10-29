@@ -21,6 +21,7 @@
   - [Claude Code Integration](ch03-03-claude-integration.md)
 
 - [Chapter 4: Technical Debt Grading (TDG)](ch04-01-tdg.md)
+  - [TDG Enforcement System](ch04-02-tdg-enforcement.md)
 
 ## Part III: Core PMAT Commands
 
