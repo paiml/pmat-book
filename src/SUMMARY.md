@@ -52,6 +52,11 @@
 - [Chapter 26: Graph Statistics and Network Analysis](ch26-00-graph-statistics.md)
 - [Chapter 27: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 - [Chapter 28: Mutation Testing](ch28-00-mutation-testing.md)
+- [Chapter 29: Time-Travel Debugging](ch29-00-time-travel-debugging.md)
+  - [Recording Execution](ch29-01-recording.md)
+  - [Timeline Playback](ch29-02-timeline.md)
+  - [Comparing Executions](ch29-03-comparison.md)
+  - [TDD Examples](ch29-04-tdd-examples.md)
 - [Chapter 30: File Exclusions (.pmatignore)](ch30-00-file-exclusions.md)
 
 ## Conclusion
