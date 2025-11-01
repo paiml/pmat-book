@@ -499,6 +499,178 @@ print(f"Grade Distribution: {data['summary']['grade_distribution']}")
 - `check_quality_gate_file`: Detailed file-level analysis with metric breakdown and penalties
 - `quality_gate_summary`: High-level aggregated view for dashboards and reporting
 
+#### quality_gate_baseline
+
+**Purpose**: Create TDG baseline snapshots with Blake3 content hashing for quality tracking
+**Use Cases**: Quality trend tracking, regression detection, baseline establishment
+
+**Request Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "batch4-1",
+  "method": "tools/call",
+  "params": {
+    "name": "quality_gate_baseline",
+    "arguments": {
+      "paths": ["."],
+      "output": "/tmp/baseline.json"
+    }
+  }
+}
+```
+
+**Response Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "batch4-1",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"status\": \"completed\", \"message\": \"Quality gate baseline created successfully\", \"baseline\": {\"file_path\": \"/tmp/baseline.json\", \"timestamp\": \"2025-11-01T00:00:00Z\", \"summary\": {\"total_files\": 5, \"average_score\": 87.5, \"average_grade\": \"A\"}, \"git_context\": {\"branch\": \"master\", \"commit_sha_short\": \"abc123d\"}}}"
+      }
+    ]
+  }
+}
+```
+
+**CLI Usage:**
+```bash
+# Create baseline for current project
+pmat mcp call quality_gate_baseline --paths "." --output "/tmp/baseline_v1.json"
+
+# Create baseline for multiple directories
+pmat mcp call quality_gate_baseline --paths "src,tests" --output "/tmp/baseline.json"
+```
+
+**Python Client Usage:**
+```python
+result = client.quality_gate_baseline(
+    paths=["."],
+    output="/tmp/baseline_v1.json"
+)
+print(f"Baseline file: {result['baseline']['file_path']}")
+print(f"Average score: {result['baseline']['summary']['average_score']}")
+```
+
+#### quality_gate_compare
+
+**Purpose**: Compare TDG baselines to detect quality regressions and improvements
+**Use Cases**: Quality regression detection, continuous monitoring, trend analysis
+
+**Request Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "batch4-2",
+  "method": "tools/call",
+  "params": {
+    "name": "quality_gate_compare",
+    "arguments": {
+      "baseline": "/tmp/baseline_v1.json",
+      "paths": ["."]
+    }
+  }
+}
+```
+
+**Response Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "batch4-2",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"status\": \"completed\", \"message\": \"Quality gate comparison completed successfully\", \"comparison\": {\"improved\": 2, \"regressed\": 1, \"unchanged\": 2, \"added\": 0, \"removed\": 0, \"has_regressions\": true, \"total_changes\": 3, \"regressed_files\": [{\"file\": \"src/complex.rs\", \"old_score\": 85.0, \"new_score\": 78.5, \"delta\": -6.5, \"old_grade\": \"A\", \"new_grade\": \"B\"}]}}"
+      }
+    ]
+  }
+}
+```
+
+**CLI Usage:**
+```bash
+# Compare current state to baseline
+pmat mcp call quality_gate_compare --baseline "/tmp/baseline_v1.json" --paths "."
+
+# Compare specific directory to baseline
+pmat mcp call quality_gate_compare --baseline "/tmp/baseline.json" --paths "src"
+```
+
+**Python Client Usage:**
+```python
+comparison = client.quality_gate_compare(
+    baseline="/tmp/baseline_v1.json",
+    paths=["."]
+)
+print(f"Has regressions: {comparison['comparison']['has_regressions']}")
+print(f"Regressed files: {comparison['comparison']['regressed']}")
+print(f"Improved files: {comparison['comparison']['improved']}")
+```
+
+#### git_status
+
+**Purpose**: Extract git repository status and metadata (commit, branch, author, tags)
+**Use Cases**: Release tracking, commit validation, git integration, audit trails
+
+**Request Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "batch4-3",
+  "method": "tools/call",
+  "params": {
+    "name": "git_status",
+    "arguments": {
+      "path": "."
+    }
+  }
+}
+```
+
+**Response Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "batch4-3",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"status\": \"completed\", \"message\": \"Git status retrieved successfully\", \"git_status\": {\"commit_sha\": \"abc123def456789...\", \"commit_sha_short\": \"abc123d\", \"branch\": \"master\", \"author_name\": \"John Doe\", \"author_email\": \"john@example.com\", \"commit_timestamp\": \"2025-11-01T00:00:00Z\", \"commit_message\": \"feat: Add new feature\", \"tags\": [\"v1.0.0\"], \"is_clean\": true, \"uncommitted_files\": 0, \"remote_url\": \"git@github.com:org/repo.git\"}}"
+      }
+    ]
+  }
+}
+```
+
+**CLI Usage:**
+```bash
+# Get git status for current directory
+pmat mcp call git_status --path "."
+
+# Get git status for specific repository
+pmat mcp call git_status --path "/path/to/repo"
+```
+
+**Python Client Usage:**
+```python
+git_status = client.git_status(path=".")
+print(f"Branch: {git_status['git_status']['branch']}")
+print(f"Commit: {git_status['git_status']['commit_sha_short']}")
+print(f"Author: {git_status['git_status']['author_name']}")
+print(f"Is clean: {git_status['git_status']['is_clean']}")
+```
+
+**Comparison of Quality Tracking Functions:**
+- `quality_gate_baseline`: Create quality snapshots with content hashing and git context
+- `quality_gate_compare`: Compare baselines to detect quality regressions/improvements
+- `git_status`: Extract git repository metadata for audit trails and release tracking
+
 #### generate_comprehensive_report
 
 **Purpose**: Multi-format reporting with charts, graphs, and executive summaries  
