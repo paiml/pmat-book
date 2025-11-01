@@ -43,7 +43,7 @@ PMAT implements MCP as a flexible server that can run in multiple modes:
 
 ## Complete MCP Tools Inventory
 
-### 📊 Analysis Tools (8 Tools)
+### 📊 Analysis Tools (11 Tools)
 
 Core analysis capabilities for code quality, complexity, and technical debt assessment.
 
@@ -175,8 +175,110 @@ Core analysis capabilities for code quality, complexity, and technical debt asse
 
 #### analyze_performance
 
-**Purpose**: Performance hotspot identification and optimization recommendations  
+**Purpose**: Performance hotspot identification and optimization recommendations
 **Use Cases**: Performance tuning, bottleneck identification, scalability planning
+
+#### analyze_lint_hotspots
+
+**Purpose**: Identifies quality hotspots using TDG (Technical Debt Grading) analysis to find files with the lowest quality scores
+**Use Cases**: Quality-driven refactoring prioritization, technical debt reduction, code health assessment
+
+**Key Features**:
+- TDG-based quality scoring (0-100 scale with letter grades)
+- Sorts files by quality score (lowest = worst = hotspot)
+- Includes violation counts, SATD annotations, and complexity metrics
+- Configurable number of top hotspots to return
+
+**Example Response**:
+```json
+{
+  "status": "completed",
+  "message": "Lint hotspot analysis completed (3 hotspots found)",
+  "results": {
+    "hotspots": [
+      {
+        "file": "src/legacy_module.rs",
+        "score": 45.5,
+        "grade": "F",
+        "violation_count": 12,
+        "complexity": 22.0,
+        "satd_count": 3,
+        "total_penalty": 25.0
+      }
+    ],
+    "total_files_analyzed": 89,
+    "top_files_limit": 10
+  }
+}
+```
+
+#### analyze_coupling
+
+**Purpose**: Detects structural coupling using afferent/efferent coupling metrics and instability calculation
+**Use Cases**: Architecture assessment, dependency management, module decoupling strategies
+
+**Key Features**:
+- Afferent coupling (incoming dependencies) tracking
+- Efferent coupling (outgoing dependencies) tracking
+- Instability metric calculation (E/(A+E))
+- Configurable instability threshold filtering
+- Project-level aggregated metrics
+
+**Example Response**:
+```json
+{
+  "status": "completed",
+  "message": "Coupling analysis completed (45 files analyzed)",
+  "results": {
+    "couplings": [
+      {
+        "file": "src/core/engine.rs",
+        "afferent_coupling": 8,
+        "efferent_coupling": 3,
+        "instability": 0.27,
+        "strength": 11
+      }
+    ],
+    "total_files": 45,
+    "threshold": 0.5,
+    "project_metrics": {
+      "avg_afferent": 2.3,
+      "avg_efferent": 1.8,
+      "max_afferent": 12,
+      "max_efferent": 8
+    }
+  }
+}
+```
+
+#### analyze_context
+
+**Purpose**: Multi-type context analysis using DeepContext for comprehensive code understanding
+**Use Cases**: AI assistant context preparation, codebase exploration, architecture documentation
+
+**Key Features**:
+- Structure analysis (file counts, function counts)
+- Dependency analysis (import/use statement tracking)
+- Flexible analysis type selection
+- DeepContext-powered comprehensive scanning
+
+**Example Response**:
+```json
+{
+  "status": "completed",
+  "message": "Context analysis completed using DeepContextAnalyzer",
+  "analyses": {
+    "structure": {
+      "total_files": 89,
+      "total_functions": 423
+    },
+    "dependencies": {
+      "total_imports": 156
+    }
+  },
+  "context": "Analyzed 89 files"
+}
+```
 
 ### 🔄 Context Generation (2 Tools)
 
