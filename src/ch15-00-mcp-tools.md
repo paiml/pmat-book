@@ -178,7 +178,7 @@ Core analysis capabilities for code quality, complexity, and technical debt asse
 **Purpose**: Performance hotspot identification and optimization recommendations  
 **Use Cases**: Performance tuning, bottleneck identification, scalability planning
 
-### 🔄 Context Generation (1 Tool)
+### 🔄 Context Generation (2 Tools)
 
 Essential for AI-assisted development workflows.
 
@@ -222,6 +222,54 @@ Essential for AI-assisted development workflows.
   }
 }
 ```
+
+#### generate_deep_context
+
+**Purpose**: Comprehensive project analysis with quality scorecard and deep insights
+**Use Cases**: Full project assessment, quality metrics dashboard, technical debt evaluation
+
+**Request Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "4b",
+  "method": "tools/call",
+  "params": {
+    "name": "generate_deep_context",
+    "arguments": {
+      "paths": ["/path/to/project"],
+      "format": null
+    }
+  }
+}
+```
+
+**Response Example:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "4b",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"status\": \"completed\",\n  \"message\": \"Deep context generation completed\",\n  \"context\": {\n    \"metadata\": {\n      \"project_root\": \"/path/to/project\",\n      \"tool_version\": \"pmat 2.183.0\",\n      \"generated_at\": \"2025-01-01T12:00:00Z\",\n      \"analysis_duration_ms\": 2450\n    },\n    \"quality_scorecard\": {\n      \"overall_health\": 85.0,\n      \"complexity_score\": 92.3,\n      \"maintainability_index\": 78.5,\n      \"modularity_score\": 88.0,\n      \"technical_debt_hours\": 42.5\n    },\n    \"file_count\": 127,\n    \"total_lines\": 15430,\n    \"languages\": {\n      \"rust\": 45,\n      \"python\": 32,\n      \"javascript\": 28,\n      \"typescript\": 15,\n      \"markdown\": 7\n    }\n  }\n}"
+      }
+    ]
+  }
+}
+```
+
+**Key Features:**
+- **Quality Scorecard**: Comprehensive project health metrics including complexity, maintainability, modularity
+- **Technical Debt Estimation**: Calculated in hours based on complexity, SATD comments, and code issues
+- **Multi-Language Support**: Analyzes projects with multiple programming languages
+- **Performance Metrics**: Analysis duration tracking for large projects
+- **Metadata Enrichment**: Project root, tool version, and generation timestamp
+
+**Comparison with generate_context:**
+- `generate_context`: File-level AST analysis, focuses on code structure and dependencies
+- `generate_deep_context`: Project-level quality analysis, focuses on health metrics and technical debt
 
 ### ⚖️ Quality & Metrics (3 Tools)
 
