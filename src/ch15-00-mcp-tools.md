@@ -320,10 +320,184 @@ Comprehensive quality assessment and reporting capabilities.
 }
 ```
 
-#### quality_gate
+#### check_quality_gates
 
-**Purpose**: Automated quality gate enforcement with configurable thresholds  
-**Use Cases**: CI/CD integration, release validation, team quality standards
+**Purpose**: Project-level quality gate validation with configurable strict/standard modes
+**Use Cases**: CI/CD quality enforcement, release readiness validation, team quality standards
+
+**Request Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5a",
+  "method": "tools/call",
+  "params": {
+    "name": "check_quality_gates",
+    "arguments": {
+      "paths": ["/path/to/project"],
+      "strict": false
+    }
+  }
+}
+```
+
+**Arguments:**
+- `paths` (array): Project or file paths to analyze
+- `strict` (boolean): Threshold mode
+  - `false` (standard): score >= 50.0, grade >= D
+  - `true` (strict): score >= 70.0, grade >= B
+
+**Response Example:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5a",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"status\": \"completed\",\n  \"message\": \"Quality gate check completed (standard mode)\",\n  \"passed\": true,\n  \"score\": 85.5,\n  \"grade\": \"A\",\n  \"threshold\": 50.0,\n  \"files_analyzed\": 15,\n  \"violations\": [\n    {\n      \"file\": \"src/complex.rs\",\n      \"score\": 45.2,\n      \"grade\": \"D\",\n      \"issues\": [\"Deep nesting: 7 levels\", \"SATD detected: 3 annotations\"]\n    }\n  ]\n}"
+      }
+    ]
+  }
+}
+```
+
+**Quality Modes:**
+- **Standard Mode** (`strict: false`): Lenient thresholds for development, score >= 50.0, grade >= D
+- **Strict Mode** (`strict: true`): Production-ready thresholds, score >= 70.0, grade >= B
+
+**CI/CD Integration:**
+```yaml
+# .github/workflows/quality-gate.yml
+- name: Quality Gate Check
+  run: |
+    pmat mcp call check_quality_gates --paths . --strict true
+    if [ $? -ne 0 ]; then
+      echo "Quality gate failed - blocking merge"
+      exit 1
+    fi
+```
+
+#### check_quality_gate_file
+
+**Purpose**: File-level quality gate validation with detailed metrics and violation reporting
+**Use Cases**: Pre-commit hooks, file-specific quality enforcement, targeted refactoring
+
+**Request Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5b",
+  "method": "tools/call",
+  "params": {
+    "name": "check_quality_gate_file",
+    "arguments": {
+      "file_path": "/path/to/file.rs",
+      "strict": false
+    }
+  }
+}
+```
+
+**Arguments:**
+- `file_path` (string): Path to file to analyze
+- `strict` (boolean): Threshold mode (same as check_quality_gates)
+
+**Response Example:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5b",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"status\": \"completed\",\n  \"message\": \"Quality gate check completed for file (standard mode)\",\n  \"file\": \"src/main.rs\",\n  \"passed\": true,\n  \"score\": 90.5,\n  \"grade\": \"A\",\n  \"threshold\": 50.0,\n  \"violations\": [\n    {\n      \"category\": \"SemanticComplexity\",\n      \"penalty\": -3.0,\n      \"description\": \"Deep nesting: 5 levels\"\n    }\n  ],\n  \"metrics\": {\n    \"structural_complexity\": 25.0,\n    \"semantic_complexity\": 20.0,\n    \"duplication_ratio\": 20.0,\n    \"coupling_score\": 15.0,\n    \"doc_coverage\": 10.5,\n    \"consistency_score\": 10.0\n  }\n}"
+      }
+    ]
+  }
+}
+```
+
+**Metrics Breakdown:**
+- **structural_complexity**: Cyclomatic complexity, nesting depth, function length
+- **semantic_complexity**: Cognitive load, abstraction levels, naming clarity
+- **duplication_ratio**: Code duplication percentage
+- **coupling_score**: Module coupling and dependency metrics
+- **doc_coverage**: Documentation completeness
+- **consistency_score**: Code style and pattern consistency
+
+**Pre-commit Hook Example:**
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+for file in $(git diff --cached --name-only | grep '\.rs$'); do
+  pmat mcp call check_quality_gate_file --file-path "$file" --strict true
+  if [ $? -ne 0 ]; then
+    echo "Quality gate failed for $file"
+    exit 1
+  fi
+done
+```
+
+#### quality_gate_summary
+
+**Purpose**: Aggregated quality metrics summary with grade distribution and language breakdown
+**Use Cases**: Team dashboards, quality trends, technical debt reporting
+
+**Request Schema:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5c",
+  "method": "tools/call",
+  "params": {
+    "name": "quality_gate_summary",
+    "arguments": {
+      "paths": ["/path/to/project"]
+    }
+  }
+}
+```
+
+**Arguments:**
+- `paths` (array): Project or file paths to analyze
+
+**Response Example:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5c",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"status\": \"completed\",\n  \"message\": \"Quality gate summary generated\",\n  \"summary\": {\n    \"total_files\": 50,\n    \"passed_files\": 42,\n    \"failed_files\": 8,\n    \"average_score\": 75.3,\n    \"average_grade\": \"B\",\n    \"threshold_score\": 50.0,\n    \"grade_distribution\": {\n      \"A\": 15,\n      \"B\": 20,\n      \"C\": 10,\n      \"D\": 5\n    },\n    \"language_distribution\": {\n      \"Rust\": 35,\n      \"Python\": 10,\n      \"JavaScript\": 5\n    }\n  }\n}"
+      }
+    ]
+  }
+}
+```
+
+**Dashboard Integration:**
+```python
+# quality_dashboard.py
+import pmat_mcp_client
+
+client = PMATMCPClient()
+summary = client.quality_gate_summary(["."])
+data = json.loads(summary['result']['content'][0]['text'])
+
+print(f"Project Health: {data['summary']['average_score']:.1f} ({data['summary']['average_grade']})")
+print(f"Pass Rate: {data['summary']['passed_files']}/{data['summary']['total_files']}")
+print(f"Grade Distribution: {data['summary']['grade_distribution']}")
+```
+
+**Comparison of Quality Gate Functions:**
+- `check_quality_gates`: Project-wide pass/fail validation with configurable thresholds
+- `check_quality_gate_file`: Detailed file-level analysis with metric breakdown and penalties
+- `quality_gate_summary`: High-level aggregated view for dashboards and reporting
 
 #### generate_comprehensive_report
 
