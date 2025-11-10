@@ -178,6 +178,7 @@
 | Command | Description | Example |
 |---------|-------------|---------|
 | `pmat quality-gate` | Check quality gates | `pmat quality-gate --min-grade=B+` |
+| `pmat repo-score` | Repository health score | `pmat repo-score . --format json` |
 | `pmat validate` | Validate project | `pmat validate --strict` |
 | `pmat check` | Run all checks | `pmat check --all` |
 
