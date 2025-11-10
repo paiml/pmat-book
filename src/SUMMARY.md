@@ -30,6 +30,7 @@
 - [Chapter 7: Quality Gates](ch07-00-quality-gate.md)
 - [Chapter 8: Interactive Demo and Reporting](ch08-00-demo.md)
 - [Chapter 9: Enhanced Analysis Reports](ch09-00-report.md)
+  - [Workflow Prompts Command](ch09-01-prompt-command.md)
 
 ## Part IV: Advanced PMAT Tools
 
