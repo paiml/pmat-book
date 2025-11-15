@@ -1,22 +1,36 @@
-# Workflow Prompts Command
+# AI Prompt Generation Command
 
-The `pmat prompt` command provides pre-configured workflow prompts that enforce EXTREME TDD and Toyota Way quality principles. These prompts are designed to be used with AI assistants like Claude Code, or as reference documentation for development teams.
+The `pmat prompt` command provides intelligent AI prompt generation with organizational intelligence integration. It supports multiple workflows including defect-aware prompts, ticket-based TDD workflows, specification-based implementation, and new repository scaffolding.
 
 ## Overview
 
 ```bash
-pmat prompt --list                    # List all available prompts
-pmat prompt code-coverage             # Show coverage workflow
-pmat prompt debug --format json       # Get debugging workflow as JSON
-pmat p --list                         # Short alias
+pmat prompt show --list                      # List all workflow prompts (legacy)
+pmat prompt generate --task "Fix auth bug"   # Generate defect-aware prompt
+pmat prompt ticket ticket-123.md             # EXTREME TDD ticket workflow
+pmat prompt implement docs/spec.md           # Spec-based implementation
+pmat prompt scaffold-new-repo docs/spec.md   # New repo with PMAT/bashrs
+pmat p show --list                           # Short alias
 ```
 
-## Quick Start
+## Subcommands
 
-### List All Prompts
+### `pmat prompt show` - Workflow Prompts (Legacy)
+
+View pre-configured workflow prompts that enforce EXTREME TDD and Toyota Way quality principles.
+
+**Usage:**
+```bash
+pmat prompt show code-coverage               # Show coverage workflow
+pmat prompt show debug --format json         # Get debugging workflow as JSON
+pmat prompt show --list                      # List all available prompts
+```
+
+**Quick Start:**
 
 ```bash
-$ pmat prompt --list
+# List all prompts
+$ pmat prompt show --list
 Available Prompts:
 
   code-coverage - Enforce 85%+ coverage using EXTREME TDD [critical]
@@ -32,12 +46,9 @@ Available Prompts:
 
   clean-repo-cruft - Remove temporary files [medium]
   documentation - Update and validate docs [medium]
-```
 
-### View a Prompt
-
-```bash
-$ pmat prompt code-coverage
+# View a prompt
+$ pmat prompt show code-coverage
 name: code-coverage
 description: Ensure code coverage >85% using EXTREME TDD
 category: quality
@@ -47,486 +58,703 @@ prompt: |
   recommended step using EXTREME TDD...
 ```
 
-## Output Formats
+**Output Formats:**
 
-### YAML Format (Default)
+- `yaml` (default): Full metadata and prompt text
+- `json`: Programmatic integration
+- `text`: Just the prompt text (ideal for piping to AI)
 
-```bash
-pmat prompt code-coverage
-```
+**Variable Substitution:**
 
-Returns the full prompt with all metadata in YAML format.
-
-### JSON Format
+Override default Rust commands for other languages:
 
 ```bash
-pmat prompt code-coverage --format json
-```
-
-Perfect for programmatic use or CI/CD integration:
-
-```json
-{
-  "name": "code-coverage",
-  "description": "Ensure code coverage >85% using EXTREME TDD",
-  "category": "quality",
-  "priority": "critical",
-  "coverage_target": 85,
-  "methodology": "EXTREME TDD"
-}
-```
-
-### Text Format
-
-```bash
-pmat prompt code-coverage --format text
-```
-
-Returns just the prompt text, ideal for piping to AI assistants:
-
-```
-All code coverage must be greater than 85%. Continue next best
-recommended step using EXTREME TDD...
-```
-
-## Available Prompts
-
-### CRITICAL Priority Prompts
-
-#### code-coverage
-
-Ensures all code coverage is greater than 85% using EXTREME TDD methodology.
-
-**Usage:**
-```bash
-pmat prompt code-coverage --format text | pbcopy
-# Paste into Claude Code or your AI assistant
-```
-
-**Key Features:**
-- Enforces 85%+ coverage target
-- Time constraints: `make coverage <10min`, `make test-fast <5min`
-- Heuristics: uncovered code first, low coverage with low TDG
-- Testing approaches: mutation, property-based, cargo examples
-
-#### debug
-
-Five Whys root cause analysis for debugging issues.
-
-**Usage:**
-```bash
-pmat prompt debug --format text
-```
-
-**Process:**
-1. Why did this problem occur? [Surface symptom]
-2. Why did that happen? [Immediate cause]
-3. Why did that happen? [Underlying cause]
-4. Why did that happen? [Systemic issue]
-5. Why did that happen? [ROOT CAUSE]
-
-#### quality-enforcement
-
-Runs all quality gates and enforces extreme quality standards.
-
-**Quality Gates:**
-1. Compilation: `cargo build --all-features`
-2. Linting: `cargo clippy -- -D warnings`
-3. Formatting: `cargo fmt -- --check`
-4. Tests: `make test-fast` (100% passing)
-5. Coverage: `make coverage` (>85%)
-6. Mutation: `pmat mutate` (score >80%)
-7. Complexity: `pmat analyze` (max <15)
-8. TDG: `pmat tdg` (average >60)
-9. Documentation: `pmat validate-docs`
-10. README: `pmat validate-readme`
-11. Book: `make validate-book`
-12. Bash: `bashrs lint`
-
-#### security-audit
-
-Security analysis and vulnerability fixes using EXTREME TDD.
-
-**Checks:**
-- `cargo audit` for known vulnerabilities
-- `bashrs lint` for shell injection
-- SQL injection points
-- Command injection
-- Path traversal
-- Unvalidated input
-
-### HIGH Priority Prompts
-
-#### continue
-
-Continue next best recommended step using EXTREME TDD.
-
-**Workflow:**
-1. Run `pmat analyze` to identify issues
-2. Run `pmat tdg` to find highest debt
-3. Prioritize using heuristics
-4. Implement fix using RED-GREEN-REFACTOR
-5. Verify all quality gates pass
-6. Commit with descriptive message
-
-#### mutation-testing
-
-Run mutation testing on high-complexity or low-coverage code.
-
-**Target Files:**
-- Complexity >10
-- Coverage <85%
-- TDG score <50
-
-**Mutation Score Target:** 80%
-
-#### performance-optimization
-
-Speed up compilation and test execution using Five Whys.
-
-**Targets:**
-- `make coverage`: <10 minutes
-- `make test-fast`: <5 minutes (ideally <3)
-- Pre-commit test: <30 seconds
-
-**Common Optimizations:**
-- Exclude slow tests from test-fast
-- Enable mold linker
-- Use cargo-nextest
-- Feature flags for heavy dependencies
-
-#### refactor-hotspots
-
-Refactor high-TDG/low-coverage code using EXTREME TDD.
-
-**Hotspot Criteria:**
-- TDG score >80
-- Complexity >15
-- Coverage <85%
-
-**Improvement Goals:**
-- TDG improvement: +20 points
-- Complexity reduction: -30%
-- Coverage target: >85%
-
-### MEDIUM Priority Prompts
-
-#### clean-repo-cruft
-
-Remove all temporary files from repository root.
-
-**Patterns to Clean:**
-- `defect-report-*.txt`
-- `defect-report-*.json`
-- `*.tmp`
-- `.DS_Store`
-
-#### documentation
-
-Update all documentation and verify accuracy.
-
-**Steps:**
-1. Update README.md
-2. Update CHANGELOG.md
-3. Update docs/ specifications
-4. Update pmat-book if CLI changed
-5. Run `pmat validate-docs`
-6. Run `pmat validate-readme`
-7. Push pmat-book changes FIRST
-
-## Variable Substitution
-
-Prompts support variable substitution for non-Rust projects.
-
-### Rust Projects (Default)
-
-```bash
-pmat prompt code-coverage
-# Uses: cargo test, cargo clippy, cargo llvm-cov
-```
-
-### Python Projects
-
-```bash
-pmat prompt code-coverage \
+# Python
+pmat prompt show code-coverage \
   --set TEST_CMD="pytest" \
-  --set COVERAGE_CMD="pytest --cov" \
-  --set LINT_CMD="pylint"
-```
+  --set COVERAGE_CMD="pytest --cov"
 
-### JavaScript Projects
-
-```bash
-pmat prompt code-coverage \
+# JavaScript
+pmat prompt show code-coverage \
   --set TEST_CMD="npm test" \
-  --set COVERAGE_CMD="jest --coverage" \
-  --set LINT_CMD="eslint"
-```
+  --set COVERAGE_CMD="jest --coverage"
 
-### Go Projects
-
-```bash
-pmat prompt code-coverage \
+# Go
+pmat prompt show code-coverage \
   --set TEST_CMD="go test ./..." \
-  --set COVERAGE_CMD="go test -coverprofile=coverage.out" \
-  --set LINT_CMD="golint"
+  --set COVERAGE_CMD="go test -coverprofile=coverage.out"
 ```
 
-### View Available Variables
+**Options:**
+- `--list`: List all available prompts
+- `--format <FORMAT>`: Output format (yaml, json, text)
+- `--show-variables`: Show available variables
+- `--set VAR=value`: Override prompt variables
+- `-o, --output <FILE>`: Write output to file
+
+### `pmat prompt generate` - Defect-Aware Prompts
+
+Generate AI prompts enriched with organizational defect patterns from GitHub organization analysis.
+
+**Usage:**
+```bash
+pmat prompt generate \
+  --task "Implement authentication system" \
+  --context "Express.js REST API with JWT tokens" \
+  --summary org_summary.yaml \
+  --output auth_prompt.md
+```
+
+**Example:**
 
 ```bash
-pmat prompt code-coverage --show-variables
-Variables:
-  ${TEST_CMD}
-  ${COVERAGE_CMD}
-  ${LINT_CMD}
+# Step 1: Analyze GitHub organization (see Chapter 32)
+pmat org analyze --org mycompany \
+  --output org_report.yaml \
+  --summarize --strip-pii
+
+# Step 2: Generate defect-aware prompt
+pmat prompt generate \
+  --task "Add user registration endpoint" \
+  --context "Node.js Express API with MongoDB" \
+  --summary org_report.summary.yaml
+
+# Output: AI prompt enriched with organizational defect patterns
 ```
 
-## Toyota Way Principles
+**Generated Prompt Structure:**
 
-All prompts enforce these principles:
+```markdown
+# Task
+Add user registration endpoint
 
-### Jidoka (Built-in Quality)
+# Context
+Node.js Express API with MongoDB
 
-Every prompt includes quality gates and verification steps.
+# Organizational Intelligence (3 repositories, 450 commits analyzed)
 
-### Andon Cord (Stop the Line)
+## Critical Defect Patterns to Avoid
 
-All prompts include "STOP THE LINE" language for quality issues:
+### Integration (35% of defects)
+- Missing API endpoint error handling
+- Uncaught promise rejections
+- Database connection failures
 
-> If you spot a defect due to unimplemented or partially implemented functionality, STOP THE LINE and implement using EXTREME TDD. The concept of "pre-existing failure" is irrelevant, fix.
+### Testing (28% of defects)
+- Missing integration tests
+- No error case coverage
+- Async test timeouts
 
-### Five Whys (Root Cause Analysis)
+## Implementation Checklist
+- [ ] Add comprehensive error handling
+- [ ] Write integration tests FIRST (EXTREME TDD)
+- [ ] Handle all async errors
+- [ ] Validate database connection
+```
 
-The `debug` and `performance-optimization` prompts explicitly use Five Whys methodology.
+**Why This Matters:**
 
-### Genchi Genbutsu (Go and See)
+Traditional AI prompts are generic. Defect-aware prompts are informed by YOUR organization's actual failure patterns from hundreds of commits, dramatically reducing the likelihood of repeating past mistakes.
 
-Prompts encourage verification of actual state:
-- Run actual commands
-- Check actual metrics
-- Verify actual quality gates
+**Options:**
+- `--task <STRING>`: Implementation task description (required)
+- `--context <STRING>`: Additional context (tech stack, constraints)
+- `--summary <FILE>`: Organizational intelligence summary (from `pmat org analyze`)
+- `-o, --output <FILE>`: Write prompt to file
 
-### Kaizen (Continuous Improvement)
+### `pmat prompt ticket` - EXTREME TDD Ticket Workflow
 
-The `continue` prompt enables iterative improvement workflow.
+Generate structured workflow prompt for fixing a ticket using EXTREME TDD methodology.
 
-### PDCA Cycle (Plan-Do-Check-Act)
+**Usage:**
+```bash
+pmat prompt ticket ticket-123.md \
+  --summary org_summary.yaml \
+  --output workflow.md
+```
 
-All prompts follow:
-1. **Plan**: Identify issues via analysis
-2. **Do**: Implement fixes using TDD
-3. **Check**: Run quality gates
-4. **Act**: Commit and iterate
+**Example Ticket File (ticket-123.md):**
+
+```markdown
+# Bug: Authentication fails on password reset
+
+## Description
+Users cannot reset passwords - getting 500 error
+
+## Reproduction Steps
+1. Click "Forgot Password"
+2. Enter email
+3. Submit form
+4. Error: "Internal Server Error"
+
+## Expected
+Password reset email sent successfully
+
+## Logs
+```
+Error: SMTP connection timeout
+  at sendEmail (mail.js:45)
+```
+
+**Generated Workflow:**
+
+```markdown
+# EXTREME TDD: Fix Ticket
+
+## Ticket
+[Full ticket content]
+
+## Workflow
+
+### 1. RED - Write Failing Test
+Write a test that reproduces the issue:
+- Test password reset flow
+- Assert email is sent
+- Assert no 500 error
+
+### 2. GREEN - Minimal Fix
+Implement minimal fix to make test pass:
+- Add SMTP timeout handling
+- Add connection retry logic
+- Add proper error responses
+
+### 3. REFACTOR - Clean Up
+Improve code while keeping tests green:
+- Extract email service
+- Add configuration
+- Improve error messages
+
+### 4. VERIFY - Quality Gates
+Run all quality gates:
+- ✅ make test-fast (all tests pass)
+- ✅ make coverage (>85%)
+- ✅ cargo clippy (no warnings)
+- ✅ pmat tdg (score improved)
+
+### 5. COMMIT - Only if Green
+Only commit if ALL gates pass.
+
+## Organizational Intelligence (if --summary provided)
+
+### Similar Past Issues
+- Email service timeouts (12 occurrences)
+- Missing async error handling (8 occurrences)
+- No retry logic (5 occurrences)
+
+### Prevention Checklist
+- [ ] Add timeout configuration
+- [ ] Add retry with exponential backoff
+- [ ] Add error handling tests
+- [ ] Add integration tests
+```
+
+**Options:**
+- `--summary <FILE>`: Optional organizational intelligence summary
+- `-o, --output <FILE>`: Write workflow to file
+
+### `pmat prompt implement` - Specification-Based Implementation
+
+Generate implementation prompt from a technical specification document.
+
+**Usage:**
+```bash
+pmat prompt implement docs/specifications/api-versioning.md \
+  --summary org_summary.yaml \
+  --output implementation_plan.md
+```
+
+**Example Specification (api-versioning.md):**
+
+```markdown
+# API Versioning Specification
+
+## Overview
+Implement API versioning using URL path versioning (e.g., /v1/users, /v2/users)
+
+## Requirements
+1. Support multiple API versions simultaneously
+2. Route requests to correct version handler
+3. Deprecation warnings for old versions
+4. Version header in responses
+
+## Acceptance Criteria
+- [ ] /v1/* routes to v1 handlers
+- [ ] /v2/* routes to v2 handlers
+- [ ] X-API-Version header in all responses
+- [ ] 85%+ test coverage
+```
+
+**Generated Implementation Prompt:**
+
+```markdown
+# Implementation: API Versioning Specification
+
+## Specification
+[Full spec content from api-versioning.md]
+
+## EXTREME TDD Implementation Steps
+
+### Phase 1: RED (Write Tests)
+```typescript
+// tests/api-versioning.test.ts
+describe('API Versioning', () => {
+  test('v1 endpoint returns X-API-Version: 1.0', async () => {
+    const response = await request(app).get('/v1/users');
+    expect(response.headers['x-api-version']).toBe('1.0');
+  });
+
+  test('v2 endpoint returns X-API-Version: 2.0', async () => {
+    const response = await request(app).get('/v2/users');
+    expect(response.headers['x-api-version']).toBe('2.0');
+  });
+});
+```
+
+### Phase 2: GREEN (Implement)
+1. Add version routing middleware
+2. Add version header middleware
+3. Create v1 and v2 route handlers
+4. Add deprecation warnings
+
+### Phase 3: REFACTOR
+1. Extract version logic to module
+2. Add configuration for versions
+3. Improve error handling
+
+## Organizational Intelligence
+
+### Common Pitfalls (from your organization's history)
+- Missing backward compatibility tests (15 occurrences)
+- Breaking changes without deprecation warnings (12 occurrences)
+- Version routing bugs (8 occurrences)
+
+### Quality Checklist
+- [ ] Write tests for ALL version combinations
+- [ ] Test backward compatibility
+- [ ] Document breaking changes
+- [ ] Add deprecation timeline
+- [ ] Verify >85% coverage
+```
+
+**Options:**
+- `--summary <FILE>`: Optional organizational intelligence summary
+- `-o, --output <FILE>`: Write implementation plan to file
+
+### `pmat prompt scaffold-new-repo` - New Repository Setup
+
+Generate comprehensive setup prompt for a new repository with PMAT tools, bashrs, roadmapping, and quality infrastructure.
+
+**Usage:**
+```bash
+pmat prompt scaffold-new-repo docs/specifications/new-service.md \
+  --include-pmat \
+  --include-bashrs \
+  --include-roadmap \
+  --output setup_plan.md
+```
+
+**Example Specification (new-service.md):**
+
+```markdown
+# New Microservice: User Notification Service
+
+## Tech Stack
+- Language: Rust
+- Framework: Actix-web
+- Database: PostgreSQL
+- Message Queue: RabbitMQ
+
+## Purpose
+Send notifications (email, SMS, push) to users
+```
+
+**Generated Setup Prompt:**
+
+```markdown
+# New Repository Setup: User Notification Service
+
+## Specification
+[Full spec from new-service.md]
+
+## Repository Setup Checklist
+
+### 1. Initialize Repository
+```bash
+cargo init user-notification-service --bin
+cd user-notification-service
+git init
+```
+
+### 2. PMAT Tools Integration
+```bash
+# Add PMAT as dev dependency
+cargo add --dev pmat
+
+# Install TDG enforcement hooks
+pmat hooks install --tdg-enforcement
+
+# Create .pmatignore
+cat > .pmatignore <<EOF
+target/
+.git/
+*.log
+EOF
+
+# Configure quality gates in CI/CD
+cat > .github/workflows/quality.yml <<EOF
+name: Quality Gates
+on: [push, pull_request]
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: cargo build --all-features
+      - run: cargo clippy -- -D warnings
+      - run: cargo test
+      - run: pmat quality-gate --fail-on-violation
+EOF
+```
+
+### 3. bashrs Integration
+```bash
+# Install bashrs for shell safety
+cargo install bashrs
+
+# Lint all shell scripts
+bashrs lint Makefile
+bashrs lint scripts/*.sh
+
+# Add bashrs to pre-commit hook (already included in pmat hooks)
+```
+
+### 4. Roadmap Management
+```bash
+# Create roadmap
+mkdir -p docs/roadmap
+pmat maintain roadmap --create
+
+# Initial roadmap structure:
+docs/roadmap/
+├── 2025-Q1-notifications.md
+├── 2025-Q2-scaling.md
+└── backlog.md
+```
+
+### 5. Quality Infrastructure
+```bash
+# Makefile with quality targets
+cat > Makefile <<EOF
+.PHONY: test coverage lint quality-gate
+
+test:
+	cargo test
+
+test-fast:
+	cargo test --lib
+
+coverage:
+	cargo llvm-cov --all-features --lcov --output-path lcov.info
+
+lint:
+	cargo clippy --all-targets --all-features -- -D warnings
+	cargo fmt -- --check
+	bashrs lint Makefile scripts/*.sh
+
+quality-gate:
+	pmat quality-gate --fail-on-violation
+	pmat tdg --threshold 60
+	make coverage
+	make lint
+EOF
+
+# Run initial quality check
+make quality-gate
+```
+
+### 6. Documentation
+```bash
+# README.md
+cat > README.md <<EOF
+# User Notification Service
+
+[Spec description]
+
+## Quick Start
+\`\`\`bash
+cargo build
+cargo test
+make quality-gate
+\`\`\`
+
+## Quality Standards
+- 85%+ test coverage (enforced by PMAT)
+- TDG score >60 (enforced by hooks)
+- Zero clippy warnings
+- All bash scripts pass bashrs linting
+EOF
+
+# Create docs structure
+mkdir -p docs/{specifications,architecture,roadmap}
+```
+
+### 7. Testing Infrastructure
+```bash
+# Add test dependencies
+cargo add --dev proptest tokio-test
+
+# Create tests structure
+mkdir -p tests/{integration,property}
+
+# Property-based testing example
+cat > tests/property/notification_tests.rs <<EOF
+use proptest::prelude::*;
+
+proptest! {
+    #[test]
+    fn email_validation_never_panics(email in ".*") {
+        let _ = validate_email(&email);
+    }
+}
+EOF
+```
+
+## Organizational Intelligence
+
+### Repository Setup Pitfalls (from your organization)
+- Missing CI/CD quality gates (20 occurrences)
+- No test coverage tracking (18 occurrences)
+- Shell scripts without linting (15 occurrances)
+- No roadmap planning (12 occurrences)
+
+### Quality Checklist
+- [ ] PMAT hooks installed and tested
+- [ ] bashrs linting all shell scripts
+- [ ] CI/CD quality gates configured
+- [ ] Initial test coverage >85%
+- [ ] Roadmap created and documented
+- [ ] README with quality standards
+- [ ] Property-based tests for core logic
+
+## Next Steps
+1. Run `make quality-gate` to verify setup
+2. Create first feature branch
+3. Implement MVP using EXTREME TDD
+4. Verify all quality gates pass
+5. Deploy to staging
+```
+
+**Options:**
+- `--include-pmat`: Include PMAT tools integration (default: true)
+- `--include-bashrs`: Include bashrs shell linting (default: true)
+- `--include-roadmap`: Include roadmap management setup (default: true)
+- `-o, --output <FILE>`: Write setup plan to file
 
 ## Practical Use Cases
 
-### 1. Pipe to AI Assistant
+### 1. Pipe Defect-Aware Prompts to AI
 
 ```bash
-# Copy to clipboard
-pmat prompt debug --format text | pbcopy
+# Generate defect-aware prompt and copy to clipboard
+pmat prompt generate \
+  --task "Add user authentication" \
+  --context "Express.js REST API" \
+  --summary org_summary.yaml \
+  --format text | pbcopy
 
 # Paste into Claude Code, ChatGPT, or Cursor
 ```
 
-### 2. Generate Team Workflow Documentation
+### 2. Ticket Workflow for Team
 
 ```bash
-pmat prompt quality-enforcement --format text > docs/QUALITY_GATES.md
+# Generate workflow for team member
+pmat prompt ticket jira-1234.md \
+  --summary org_summary.yaml \
+  --output workflow.md
+
+# Share workflow.md with team member
 ```
 
-### 3. CI/CD Integration
+### 3. Implementation Planning
 
 ```bash
-# Generate JSON for programmatic use
-pmat prompt continue --format json > .pmat/workflow.json
+# Generate implementation plan from spec
+pmat prompt implement docs/specifications/caching.md \
+  --summary org_summary.yaml \
+  --output implementation_plan.md
+
+# Use plan for sprint planning
 ```
 
-### 4. Project-Specific Workflow
+### 4. New Microservice Setup
 
 ```bash
-# Customize for Python project
-pmat prompt code-coverage \
-  --set TEST_CMD="pytest" \
-  -o .github/COVERAGE_WORKFLOW.md
+# Generate comprehensive setup guide
+pmat prompt scaffold-new-repo docs/specifications/analytics-service.md \
+  --include-pmat \
+  --include-bashrs \
+  --include-roadmap \
+  --output setup_guide.md
+
+# Follow setup_guide.md step-by-step
 ```
 
-### 5. Quick Reference
+### 5. Legacy Workflow Prompts
 
 ```bash
-# List all prompts for team reference
-pmat prompt --list > docs/WORKFLOWS.md
+# Still available for backward compatibility
+pmat prompt show code-coverage --format text | pbcopy
+pmat prompt show debug --format text > docs/DEBUGGING.md
 ```
 
-## Command Options
+## MCP Integration
 
-### `--list`
+All prompt generation is available as MCP tools for AI assistants:
 
-List all available prompts with descriptions and priorities.
+```json
+// Claude Desktop config.json
+{
+  "mcpServers": {
+    "pmat": {
+      "command": "pmat",
+      "args": ["serve", "--mcp"]
+    }
+  }
+}
+```
+
+**Available MCP Tools:**
+- `generate_defect_aware_prompt`: Generate defect-aware AI prompts
+- `analyze_organization`: Analyze GitHub organization for defect patterns
+- (See Chapter 15 for complete MCP tools reference)
+
+## Toyota Way Principles
+
+All prompt subcommands enforce these principles:
+
+### Jidoka (Built-in Quality)
+- Every prompt includes quality gates and verification steps
+- Organizational intelligence prevents past defects
+
+### Andon Cord (Stop the Line)
+- All prompts include "STOP THE LINE" language for quality issues
+- RED-GREEN-REFACTOR enforces stopping on test failures
+
+### Five Whys (Root Cause Analysis)
+- `ticket` workflow encourages root cause analysis
+- Organizational intelligence reveals systemic patterns
+
+### Genchi Genbutsu (Go and See)
+- Prompts based on ACTUAL organizational defect patterns
+- Data-driven from real commit history
+
+### Kaizen (Continuous Improvement)
+- Organizational intelligence improves over time
+- More commits analyzed = better defect prevention
+
+## Best Practices
+
+### 1. Always Use Organizational Intelligence
+
+Run `pmat org analyze` periodically (monthly recommended) to keep defect patterns current:
 
 ```bash
-pmat prompt --list
+pmat org analyze --org mycompany \
+  --output org_report.yaml \
+  --summarize --strip-pii
 ```
 
-### `--format <FORMAT>`
+### 2. Use Text Format for AI Assistants
 
-Output format: `yaml` (default), `json`, or `text`.
+Always use `--format text` when piping to AI:
 
 ```bash
-pmat prompt code-coverage --format json
+pmat prompt generate --task "..." --context "..." --format text | pbcopy
 ```
 
-### `--show-variables`
+### 3. Save Generated Prompts
 
-Show available variables that can be customized.
+Save prompts for team documentation and repeatability:
 
 ```bash
-pmat prompt code-coverage --show-variables
+pmat prompt ticket ticket-123.md --output workflow.md
+pmat prompt implement spec.md --output implementation_plan.md
 ```
 
-### `--set VAR=value`
+### 4. PII Stripping for Public Repos
 
-Override prompt variables (can be repeated).
+Always use `--strip-pii` when analyzing organizations:
 
 ```bash
-pmat prompt code-coverage \
-  --set TEST_CMD="pytest" \
-  --set COVERAGE_CMD="pytest --cov"
+pmat org analyze --org mycompany --summarize --strip-pii
 ```
 
-### `-o, --output <FILE>`
+### 5. Combine with Deep Context
 
-Write output to file instead of stdout.
+For maximum effectiveness, combine with `pmat context`:
 
 ```bash
-pmat prompt quality-enforcement -o workflow.yaml
+# Generate deep context
+pmat context --output deep_context.md
+
+# Generate defect-aware prompt with context
+pmat prompt generate \
+  --task "Add caching layer" \
+  --context "$(cat deep_context.md)" \
+  --summary org_summary.yaml
 ```
+
+## Command Options Reference
+
+### Global Options
+- `-o, --output <FILE>`: Write output to file instead of stdout
+
+### `show` Subcommand
+- `--list`: List all available prompts
+- `--format <FORMAT>`: Output format (yaml, json, text)
+- `--show-variables`: Show available variables
+- `--set VAR=value`: Override prompt variables (can be repeated)
+
+### `generate` Subcommand
+- `--task <STRING>`: Implementation task description (required)
+- `--context <STRING>`: Additional context (tech stack, constraints)
+- `--summary <FILE>`: Organizational intelligence summary
+
+### `ticket` Subcommand
+- `--summary <FILE>`: Optional organizational intelligence summary
+
+### `implement` Subcommand
+- `--summary <FILE>`: Optional organizational intelligence summary
+
+### `scaffold-new-repo` Subcommand
+- `--include-pmat`: Include PMAT tools integration (default: true)
+- `--include-bashrs`: Include bashrs shell linting (default: true)
+- `--include-roadmap`: Include roadmap management setup (default: true)
 
 ## Short Alias
 
 Use `pmat p` as a shorthand:
 
 ```bash
-pmat p --list                    # Same as pmat prompt --list
-pmat p code-coverage             # Same as pmat prompt code-coverage
-pmat p debug --format text       # Same as pmat prompt debug --format text
-```
-
-## Examples
-
-### Example 1: Coverage Workflow
-
-```bash
-$ pmat prompt code-coverage --format text
-All code coverage must be greater than 85%. Continue next best
-recommended step or roadmap using EXTREME TDD (mutation/property/
-cargo run --example, pmat tdg enhanced testing) that respects
-(make coverage <10min, make test-fast under <5 min, and
-pre-commit test < 30 seconds).
-
-Use Heuristic:
-1. Uncovered code
-2. Low coverage with low TDG score
-
-If you spot a defect due to unimplemented or partially implemented
-functionality, STOP THE LINE and implement using EXTREME TDD. The
-concept of "pre-existing failure" is irrelevant, fix.
-```
-
-### Example 2: Debug with Five Whys
-
-```bash
-$ pmat prompt debug --format text | head -20
-Debug this issue using Five Whys root cause analysis and a
-permanent fix that solves root cause using EXTREME TDD...
-
-Five Whys Process:
-1. Why did this problem occur? [Surface symptom]
-2. Why did that happen? [Immediate cause]
-3. Why did that happen? [Underlying cause]
-4. Why did that happen? [Systemic issue]
-5. Why did that happen? [ROOT CAUSE]
-```
-
-### Example 3: All Quality Gates
-
-```bash
-$ pmat prompt quality-enforcement --format text | grep "Quality Gates:" -A 12
-Quality Gates:
-1. Compilation: cargo build --all-features
-2. Linting: cargo clippy --all-targets --all-features -- -D warnings
-3. Formatting: cargo fmt -- --check
-4. Tests: make test-fast (must pass 100%)
-5. Coverage: make coverage (must be >85%)
-6. Mutation: pmat mutate (score >80%)
-7. Complexity: pmat analyze (max complexity <15)
-8. TDG: pmat tdg (average score >60%)
-9. Documentation: pmat validate-docs (no broken links)
-10. README: pmat validate-readme (no hallucinations)
-11. Book: make validate-book (all tests pass)
-12. Bash: bashrs lint Makefile scripts/*.sh
-```
-
-## Best Practices
-
-### 1. Use Text Format for AI Assistants
-
-Always use `--format text` when piping to AI assistants:
-
-```bash
-pmat prompt continue --format text | pbcopy
-```
-
-### 2. Save Team Workflows
-
-Generate workflow documentation for your team:
-
-```bash
-pmat prompt quality-enforcement --format text > docs/QUALITY.md
-pmat prompt code-coverage --format text > docs/COVERAGE.md
-pmat prompt debug --format text > docs/DEBUGGING.md
-```
-
-### 3. Customize for Your Stack
-
-Override variables for non-Rust projects:
-
-```bash
-# Python
-pmat prompt code-coverage --set TEST_CMD="pytest"
-
-# JavaScript
-pmat prompt code-coverage --set TEST_CMD="npm test"
-
-# Go
-pmat prompt code-coverage --set TEST_CMD="go test ./..."
-```
-
-### 4. Use JSON for Automation
-
-Use JSON format for CI/CD or programmatic use:
-
-```bash
-pmat prompt continue --format json > .pmat/workflow.json
-```
-
-### 5. List Before Using
-
-Always check available prompts first:
-
-```bash
-pmat prompt --list
+pmat p show --list                          # Same as pmat prompt show --list
+pmat p generate --task "..." --context "..." # Same as pmat prompt generate...
+pmat p ticket ticket-123.md                  # Same as pmat prompt ticket...
 ```
 
 ## Summary
 
-The `pmat prompt` command provides 11 pre-configured workflow prompts that enforce EXTREME TDD and Toyota Way principles. These prompts can be:
+The `pmat prompt` command provides intelligent AI prompt generation with organizational intelligence integration:
 
-- Viewed in multiple formats (YAML, JSON, text)
-- Customized with variable substitution
-- Piped to AI assistants
-- Saved as team documentation
-- Integrated into CI/CD workflows
+- **`show`**: Legacy workflow prompts with variable substitution
+- **`generate`**: Defect-aware prompts informed by organizational patterns
+- **`ticket`**: EXTREME TDD ticket workflow generation
+- **`implement`**: Specification-based implementation planning
+- **`scaffold-new-repo`**: New repository setup with PMAT/bashrs/roadmapping
 
-All prompts enforce quality gates, time constraints, and zero-tolerance policies, making them ideal for maintaining high-quality codebases.
+All subcommands can optionally accept `--summary` to enrich prompts with your organization's actual defect patterns, dramatically reducing the likelihood of repeating past mistakes.
+
+**Next Steps:**
+- See [Chapter 32: Organizational Intelligence](ch32-00-organizational-intelligence.md) for `pmat org analyze`
+- See [Chapter 15: MCP Tools Reference](ch15-00-mcp-tools.md) for AI assistant integration
+- See [Chapter 4: TDG Enforcement](ch04-02-tdg-enforcement.md) for quality gates

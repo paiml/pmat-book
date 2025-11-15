@@ -217,6 +217,24 @@
 | `pmat ai refactor` | AI refactoring | `pmat ai refactor --preview` |
 | `pmat ai review` | AI code review | `pmat ai review-pr --number=123` |
 
+## AI Prompt Generation (Phase 4)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat prompt show` | View workflow prompts | `pmat prompt show code-coverage` |
+| `pmat prompt show --list` | List all prompts | `pmat prompt show --list` |
+| `pmat prompt generate` | Generate defect-aware prompt | `pmat prompt generate --task "Add auth" --summary org.yaml` |
+| `pmat prompt ticket` | EXTREME TDD ticket workflow | `pmat prompt ticket ticket-123.md --summary org.yaml` |
+| `pmat prompt implement` | Spec-based implementation | `pmat prompt implement docs/spec.md` |
+| `pmat prompt scaffold-new-repo` | New repo setup | `pmat prompt scaffold-new-repo docs/spec.md --include-pmat` |
+
+## Organizational Intelligence (Phase 4)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat org analyze` | Analyze GitHub organization | `pmat org analyze --org mycompany --output report.yaml` |
+| `pmat org analyze --summarize` | Analyze and summarize | `pmat org analyze --org mycompany --summarize --strip-pii` |
+
 ## Utilities
 
 | Command | Description | Example |

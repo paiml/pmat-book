@@ -60,6 +60,7 @@
   - [TDD Examples](ch29-04-tdd-examples.md)
 - [Chapter 30: File Exclusions (.pmatignore)](ch30-00-file-exclusions.md)
 - [Chapter 31: Repository Health Scoring](ch31-00-repo-score.md)
+- [Chapter 32: Organizational Intelligence](ch32-00-organizational-intelligence.md)
 
 ## Conclusion
 
