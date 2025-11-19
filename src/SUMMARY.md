@@ -62,6 +62,7 @@
 - [Chapter 31: Repository Health Scoring](ch31-00-repo-score.md)
 - [Chapter 32: Organizational Intelligence](ch32-00-organizational-intelligence.md)
 - [Chapter 33: Rust Project Score](ch33-00-rust-project-score.md)
+- [Chapter 34: Unified GitHub/YAML Workflow Management](ch34-00-workflow-management.md)
 
 ## Conclusion
 
