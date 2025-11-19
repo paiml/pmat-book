@@ -61,6 +61,7 @@
 - [Chapter 30: File Exclusions (.pmatignore)](ch30-00-file-exclusions.md)
 - [Chapter 31: Repository Health Scoring](ch31-00-repo-score.md)
 - [Chapter 32: Organizational Intelligence](ch32-00-organizational-intelligence.md)
+- [Chapter 33: Rust Project Score](ch33-00-rust-project-score.md)
 
 ## Conclusion
 
