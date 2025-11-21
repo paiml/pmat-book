@@ -257,6 +257,162 @@ XXX (3):
 - Oldest SATD: 8 months (src/legacy/adapter.py:45)
 ```
 
+## Defects Analysis (Known Defects v2.1)
+
+**NEW in PMAT v2.200.0**: Detect production-breaking defect patterns with zero-tolerance enforcement.
+
+Identify critical defects that cause production failures:
+
+```bash
+# Scan all Rust files for critical defects
+pmat analyze defects
+
+# Scan specific directory
+pmat analyze defects src/
+
+# Scan single file
+pmat analyze defects --file src/main.rs
+
+# Filter by severity
+pmat analyze defects --severity Critical
+pmat analyze defects --severity High
+
+# Output formats
+pmat analyze defects --format text      # Colored terminal (default)
+pmat analyze defects --format json      # CI/CD integration
+pmat analyze defects --format junit     # Test framework integration
+```
+
+### Exit Codes
+
+- **0**: No critical defects found
+- **1**: Critical defects detected (triggers CI/CD failures)
+
+### Defect Report Example
+
+```
+🛡️ Known Defects Report - v2.1
+══════════════════════════════
+
+📊 Summary:
+Total Defects: 249
+Critical: 8
+High: 42
+Medium: 123
+Low: 76
+
+Affected Files: 37/152 (24.3%)
+
+🔴 CRITICAL DEFECTS (8)
+
+Pattern: .unwrap() calls
+Severity: Critical
+Evidence: Cloudflare outage 2025-11-18 (3+ hour global disruption)
+Fix: Use .expect() with descriptive messages or ? operator
+
+Instances:
+  1. src/services/api.rs:142:18
+     Code: let result = operation().unwrap();
+
+  2. src/handlers/auth.rs:89:25
+     Code: let token = parse_jwt(raw).unwrap();
+
+  3. src/utils/config.rs:56:32
+     Code: let config = load_config().unwrap();
+
+Fix Recommendation:
+Replace .unwrap() with explicit error handling:
+
+  // ❌ BEFORE - Causes panic
+  let result = operation().unwrap();
+
+  // ✅ AFTER - Descriptive error
+  let result = operation()
+      .expect("Bot feature file must be valid");
+
+  // ✅ AFTER - Propagate error
+  let result = operation()?;
+```
+
+### JSON Output (CI/CD Integration)
+
+```json
+{
+  "summary": {
+    "total_defects": 249,
+    "critical": 8,
+    "high": 42,
+    "medium": 123,
+    "low": 76,
+    "affected_files": 37,
+    "total_files": 152
+  },
+  "patterns": [
+    {
+      "id": "RUST-UNWRAP-001",
+      "name": ".unwrap() calls",
+      "severity": "Critical",
+      "fix_recommendation": "Use .expect() or ? operator",
+      "evidence": {
+        "description": "Cloudflare outage 2025-11-18",
+        "url": "https://blog.cloudflare.com/2025-01-18-outage"
+      },
+      "instances": [
+        {
+          "file": "src/services/api.rs",
+          "line": 142,
+          "column": 18,
+          "snippet": "let result = operation().unwrap();"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### JUnit XML Output (Test Integration)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Known Defects Report" tests="1" failures="8">
+  <testsuite name="RUST-UNWRAP-001" tests="8" failures="8">
+    <testcase name="src/services/api.rs:142" classname="defects.critical">
+      <failure message=".unwrap() call detected (Critical severity)">
+File: src/services/api.rs
+Line: 142
+Column: 18
+Code: let result = operation().unwrap();
+
+Fix: Use .expect() with descriptive messages or ? operator
+Evidence: Cloudflare outage 2025-11-18
+      </failure>
+    </testcase>
+  </testsuite>
+</testsuites>
+```
+
+### Test Code Exclusion
+
+Defect detection **automatically excludes** test code:
+- `tests/` directory
+- `benches/` directory
+- `#[cfg(test)]` modules
+
+Production code standards apply only to production code.
+
+### Integration with TDG
+
+Critical defects trigger **TDG auto-fail**:
+- Score: 0.0/100
+- Grade: F
+- Exit code: 1
+
+See Chapter 4.1: Known Defects v2.1 for TDG integration details.
+
+### Integration with rust-project-score
+
+Defects contribute to the "Known Defects" category scoring in `pmat rust-project-score`.
+
 ## Code Similarity Detection
 
 Find duplicate and similar code blocks:

@@ -46,6 +46,56 @@ These components combine to produce both a numerical score and a letter grade (A
 | 2.5 - 3.0 | Critical | D | Immediate attention |
 | 3.0 - 5.0 | Severe | F | Emergency refactoring |
 
+### Known Defects v2.1: Critical Defects Auto-Fail
+
+Starting in PMAT v2.200.0, TDG implements **Critical Defects Auto-Fail** - a zero-tolerance policy for production-breaking defect patterns.
+
+**Auto-Fail Behavior:**
+- If a file contains **critical defects**, TDG automatically assigns:
+  - **Score**: 0.0/100
+  - **Grade**: F
+  - **Exit Code**: 1 (for CI/CD integration)
+
+**Critical Defect Patterns:**
+
+1. **`.unwrap()` Calls** (Severity: Critical)
+   - **Why Critical**: Causes immediate panic in production
+   - **Evidence**: Cloudflare outage 2025-11-18 (3+ hours of global network disruption)
+   - **Fix**: Use `.expect()` with descriptive messages or proper error handling with `?`
+
+   ```rust
+   // ❌ CRITICAL DEFECT - Auto-fails TDG
+   let result = some_operation().unwrap();
+
+   // ✅ CORRECT - Descriptive error handling
+   let result = some_operation()
+       .expect("Bot feature file must be valid");
+
+   // ✅ CORRECT - Propagate errors
+   let result = some_operation()?;
+   ```
+
+**Example TDG Output with Critical Defects:**
+
+```
+🔴 CRITICAL DEFECTS DETECTED
+===========================
+
+Critical Defects: 2
+Status: AUTO-FAIL (Score: 0.0, Grade: F)
+
+Run 'pmat analyze defects' for detailed defect report.
+```
+
+**Test Code Exclusion:**
+- Defects in test code (`tests/`, `benches/`, `#[cfg(test)]`) are **not flagged**
+- Production code standards apply only to production code
+
+**See Also:**
+- `pmat analyze defects` - Detailed defect report with multiple output formats
+- Chapter 5: Analyze Suite - Full documentation of defect detection
+- rust-project-score - Known Defects category scoring
+
 ### The Five Components Explained
 
 #### 1. Complexity Factor (30%)
