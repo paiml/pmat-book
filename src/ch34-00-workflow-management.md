@@ -594,7 +594,188 @@ pmat work complete feature-name
 # ✅ Checks clippy warnings
 ```
 
-## Future Enhancements (Planned)
+## Multi-Agent Concurrency Safety
+
+**Version**: Added in PMAT v2.201.0
+**Technology**: Cross-platform file locking via `fs2` crate
+
+The workflow system implements production-grade concurrency safety to support multiple AI sub-agents working simultaneously on the same roadmap. This is essential for agentic workflows where several agents may be updating work items concurrently.
+
+### The Problem: Race Conditions
+
+Without file locking, concurrent writes cause data loss:
+
+```
+Agent A: Load roadmap (2 items)
+Agent B: Load roadmap (2 items)      ← Same data
+Agent A: Add item C (3 items)
+Agent B: Add item D (3 items)        ← Different item
+Agent A: Save roadmap (items: A, B, C)
+Agent B: Save roadmap (items: A, B, D)  ← OVERWRITES Agent A's work!
+Result: Item C is LOST ❌
+```
+
+### The Solution: Atomic Operations with File Locking
+
+PMAT uses the `fs2` crate for cross-platform file locking:
+
+**Lock File**: `roadmap.yaml.lock` (created automatically alongside `roadmap.yaml`)
+
+**Lock Types**:
+- **Shared Locks** (Read operations): Multiple concurrent readers allowed
+  - `load()`, `find_item()`, `status` commands
+- **Exclusive Locks** (Write operations): Blocks all other readers and writers
+  - `save()`, `upsert_item()`, `start`, `continue`, `complete` commands
+
+**Atomic Read-Modify-Write**:
+```
+Agent A: Acquire EXCLUSIVE lock 🔒
+Agent A: Load roadmap (2 items)
+Agent B: Try to acquire lock → WAITS ⏳
+Agent A: Add item C (3 items)
+Agent A: Save roadmap
+Agent A: Release lock 🔓
+Agent B: Acquire lock ✅
+Agent B: Load roadmap (3 items)    ← Sees Agent A's changes
+Agent B: Add item D (4 items)
+Agent B: Save roadmap
+Agent B: Release lock 🔓
+Result: Both items preserved ✅
+```
+
+### Concurrency Guarantees
+
+✅ **Zero Data Loss**: All concurrent writes succeed, no overwrites
+✅ **Cross-Process Safety**: Works across multiple `pmat` processes
+✅ **Cross-Platform**: Linux, macOS, Windows via `fs2` crate
+✅ **Deadlock-Free**: RAII pattern ensures locks always released
+✅ **Graceful Blocking**: Agents wait for lock, don't fail
+
+### Performance Characteristics
+
+**Lock Contention**: Sequential bottleneck by design
+- **Write time**: ~1-5ms (YAML serialize + disk write)
+- **10 agents**: ~50ms total (sequential, not parallel)
+- **Trade-off**: Correctness > Performance (appropriate for CLI tool)
+
+**Read Performance**: Concurrent reads have no contention (shared locks)
+
+### Testing Validation
+
+The concurrent safety is validated with comprehensive tests:
+
+```bash
+# Test 10 threads writing simultaneously
+cargo test test_concurrent_operations
+
+# Result: ✅ All 10 items present (no overwrites)
+```
+
+**Test Code** (`server/src/services/roadmap_service.rs`):
+```rust
+#[test]
+fn test_concurrent_operations() {
+    // Spawn 10 threads writing simultaneously
+    for i in 0..10 {
+        thread::spawn(|| {
+            service.upsert_item(item_i).unwrap();
+        });
+    }
+
+    // ✅ All 10 items present
+    assert_eq!(roadmap.roadmap.len(), 10);
+}
+```
+
+### Automatic and Transparent
+
+**No user action required**:
+- File locking happens automatically
+- Lock files are created/cleaned up automatically
+- Agents seamlessly coordinate via filesystem
+
+**Typical Usage** (unchanged):
+```bash
+# Agent 1
+pmat work start feature-a
+
+# Agent 2 (simultaneously)
+pmat work start feature-b
+
+# Both succeed, no conflicts ✅
+```
+
+### When Locks Are Held
+
+**Read Operations** (Shared Lock):
+- `pmat work status` - Very brief (< 1ms)
+- `pmat work continue` - Very brief (< 1ms)
+
+**Write Operations** (Exclusive Lock):
+- `pmat work start` - Brief (~1-5ms)
+- `pmat work complete` - Brief (~1-5ms)
+
+**Lock Duration**: Microseconds to milliseconds - users won't notice blocking
+
+### Implementation Details
+
+**Lock File Management**:
+- Lock file: `docs/roadmaps/roadmap.yaml.lock`
+- Created automatically on first use
+- Never manually deleted (safe to leave)
+- Size: 0 bytes (empty file, only used for locking)
+
+**RAII Pattern**:
+```rust
+fn upsert_item(&self, item: RoadmapItem) -> Result<()> {
+    let _lock = self.acquire_write_lock()?;  // 🔒 Lock acquired
+
+    // ... read, modify, write ...
+
+    Ok(())
+    // 🔓 Lock automatically released when _lock drops
+}
+```
+
+### Comparison with Other Approaches
+
+| Approach | Data Safety | Performance | Complexity |
+|----------|-------------|-------------|------------|
+| **No Locking** | ❌ Data loss | ⚡ Fast | ✅ Simple |
+| **Optimistic Locking** | ⚠️ Retry needed | ⚡ Fast | ⚠️ Medium |
+| **File Locking (PMAT)** | ✅ Guaranteed | ✅ Adequate | ✅ Simple |
+| **Database** | ✅ Guaranteed | ⚡ Fast | ❌ Complex |
+
+**Why File Locking**: Best balance of safety, simplicity, and performance for a CLI tool.
+
+### Multi-Agent Workflow Example
+
+**Scenario**: 5 AI sub-agents working on different features simultaneously
+
+```bash
+# Terminal 1 - Agent working on authentication
+pmat work start auth-system --with-spec
+# 🔒 Lock acquired, item created, lock released
+
+# Terminal 2 - Agent working on database (simultaneous)
+pmat work start database-layer --with-spec
+# ⏳ Waits for Terminal 1's lock
+# 🔒 Lock acquired, item created, lock released
+
+# Terminal 3 - Agent checking status (simultaneous)
+pmat work status
+# 🔒 Shared lock acquired (doesn't block)
+# 📋 Shows: auth-system, database-layer
+# 🔓 Shared lock released
+
+# Terminal 4 & 5 - More agents (simultaneous)
+pmat work start api-endpoints --with-spec
+pmat work start testing-framework --with-spec
+
+# Result: ✅ All 5 items created successfully, no data loss
+```
+
+### Future Enhancements (Planned)
 
 ### Pre-commit Hooks (Phase 6)
 Automatically validate commit messages reference work items:
@@ -649,6 +830,7 @@ The `pmat work` command suite provides a powerful, flexible workflow management 
 - ✅ Tracks progress automatically
 - ✅ Generates specification templates
 - ✅ Provides beautiful CLI output
+- ✅ **Multi-agent concurrency safety** (v2.201.0+) - Multiple AI sub-agents can work simultaneously without data loss
 
 **Next Steps:**
 - Run `pmat work init` to get started
