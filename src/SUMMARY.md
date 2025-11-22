@@ -51,6 +51,7 @@
 - [Chapter 24: Memory and Cache Management](ch24-00-memory.md)
 - [Chapter 25: Sub-Agents and Claude Code Integration](ch25-00-sub-agents.md)
 - [Chapter 26: Graph Statistics and Network Analysis](ch26-00-graph-statistics.md)
+  - [Hybrid Storage Architecture](ch26-01-hybrid-storage.md)
 - [Chapter 27: Quality-Driven Development (QDD)](ch14-00-qdd.md)
 - [Chapter 28: Mutation Testing](ch28-00-mutation-testing.md)
 - [Chapter 29: Time-Travel Debugging](ch29-00-time-travel-debugging.md)
