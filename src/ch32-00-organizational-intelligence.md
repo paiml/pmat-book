@@ -730,6 +730,258 @@ The `pmat org` command provides organizational intelligence by analyzing GitHub 
 - See [Chapter 4: TDG Enforcement](ch04-02-tdg-enforcement.md) for quality gates
 
 **Related Commands:**
+- `pmat org localize` - Fault localization using Tarantula SBFL
 - `pmat prompt generate` - Generate defect-aware AI prompts
 - `pmat context` - Generate deep context for AI assistants
 - `pmat quality-gate` - Run quality gates with organizational intelligence
+
+---
+
+## Fault Localization (Tarantula)
+
+The `pmat org localize` command provides Spectrum-Based Fault Localization (SBFL) using the Tarantula algorithm and related techniques. This helps identify suspicious code locations when tests fail.
+
+### Quick Start
+
+```bash
+# Basic fault localization
+pmat org localize \
+  --passed-coverage passed.lcov \
+  --failed-coverage failed.lcov \
+  --passed-count 95 \
+  --failed-count 5
+
+# With ensemble model (Phase 6)
+pmat org localize \
+  --passed-coverage passed.lcov \
+  --failed-coverage failed.lcov \
+  --passed-count 95 \
+  --failed-count 5 \
+  --ensemble
+
+# With calibrated prediction (Phase 7)
+pmat org localize \
+  --passed-coverage passed.lcov \
+  --failed-coverage failed.lcov \
+  --passed-count 95 \
+  --failed-count 5 \
+  --calibrated \
+  --confidence-threshold 0.5
+```
+
+### SBFL Formulas
+
+Three formulas are supported:
+
+| Formula    | Best For                    | Formula                                           |
+|------------|-----------------------------|----------------------------------------------------|
+| Tarantula  | Balanced suspiciousness     | `(failed/totalFailed) / ((passed/totalPassed) + (failed/totalFailed))` |
+| Ochiai     | Binary coverage data        | `failed / sqrt(totalFailed × (failed + passed))`  |
+| DStar      | High precision localization | `failed^* / (passed + (totalFailed - failed))`    |
+
+```bash
+# Use specific formula
+pmat org localize --formula ochiai ...
+pmat org localize --formula dstar ...
+pmat org localize --formula tarantula ...  # default
+```
+
+### Command Options
+
+```bash
+pmat org localize [OPTIONS]
+
+Required:
+  --passed-coverage <FILE>   LCOV coverage from passing tests
+  --failed-coverage <FILE>   LCOV coverage from failing tests
+  --passed-count <N>         Number of passing tests
+  --failed-count <N>         Number of failing tests
+
+Optional:
+  --formula <FORMULA>        SBFL formula: tarantula|ochiai|dstar (default: tarantula)
+  --top-n <N>                Number of suspicious locations (default: 10)
+  --output <FILE>            Output report file (YAML)
+  --ensemble                 Use weighted ensemble model (Phase 6)
+  --calibrated               Use calibrated defect prediction (Phase 7)
+  --confidence-threshold <F> Confidence threshold for calibrated mode (default: 0.5)
+  --enrich-tdg               Enrich with Technical Debt Grade
+  --repo <PATH>              Repository path for TDG enrichment (default: .)
+```
+
+### Example Output
+
+```
+🔍 Tarantula Fault Localization (via OIP)
+   Formula: tarantula
+   Passed tests: 95
+   Failed tests: 5
+   Top-N: 10
+
+Suspicious Locations:
+  #1 src/parser.rs:50       0.923  [██████████████████░░] 92%
+  #2 src/parser.rs:55       0.812  [████████████████░░░░] 81%
+  #3 src/handler.rs:100     0.654  [█████████████░░░░░░░] 65%
+  #4 src/util.rs:30         0.421  [████████░░░░░░░░░░░░] 42%
+  #5 src/config.rs:15       0.312  [██████░░░░░░░░░░░░░░] 31%
+```
+
+### Weighted Ensemble Model (Phase 6)
+
+The ensemble model combines multiple signals using weak supervision:
+
+```bash
+pmat org localize \
+  --passed-coverage passed.lcov \
+  --failed-coverage failed.lcov \
+  --passed-count 95 \
+  --failed-count 5 \
+  --ensemble \
+  --enrich-tdg \
+  --repo .
+```
+
+**Signals combined:**
+- SBFL suspiciousness (Tarantula/Ochiai/DStar)
+- Technical Debt Grade (TDG)
+- Code churn (recent changes)
+- Cyclomatic complexity
+
+**Output with ensemble:**
+```
+Learned Signal Weights:
+  SBFL         ████████████████████ 45.2%
+  TDG          ████████░░░░░░░░░░░░ 22.1%
+  Churn        ██████░░░░░░░░░░░░░░ 18.3%
+  Complexity   █████░░░░░░░░░░░░░░░ 14.4%
+
+Ensemble Risk Predictions:
+  #1 src/parser.rs     ███████████████████░ Risk: 89.2%
+  #2 src/handler.rs    █████████████░░░░░░░ Risk: 67.4%
+  #3 src/util.rs       █████████░░░░░░░░░░░ Risk: 45.1%
+```
+
+### Calibrated Defect Prediction (Phase 7)
+
+Calibrated mode provides confidence intervals and contributing factors:
+
+```bash
+pmat org localize \
+  --passed-coverage passed.lcov \
+  --failed-coverage failed.lcov \
+  --passed-count 95 \
+  --failed-count 5 \
+  --calibrated \
+  --confidence-threshold 0.5
+```
+
+**Output with calibration:**
+```
+Calibrated Predictions with Confidence Intervals:
+
+  [HIGH]   src/parser.rs    - P(defect) = 87% ± 8%
+      ├─ SBFL: 42.3%
+      ├─ TDG: 28.1%
+      ├─ Churn: 18.2%
+      └─ Complexity: 11.4%
+
+  [MEDIUM] src/handler.rs   - P(defect) = 62% ± 12%
+      ├─ SBFL: 35.1%
+      ├─ TDG: 31.2%
+      ├─ Churn: 22.1%
+      └─ Complexity: 11.6%
+
+  [LOW]    src/config.rs    - P(defect) = 28% (below threshold)
+
+  Confidence threshold: 50%
+  Files above threshold get full analysis
+```
+
+### Generating Coverage Files
+
+To use fault localization, you need LCOV coverage files from passing and failing tests:
+
+**Rust with cargo-llvm-cov:**
+```bash
+# Run passing tests with coverage
+cargo llvm-cov --lcov --output-path passed.lcov test -- --include-ignored passing_test
+
+# Run failing tests with coverage
+cargo llvm-cov --lcov --output-path failed.lcov test -- failing_test || true
+```
+
+**Python with pytest-cov:**
+```bash
+# Run passing tests
+pytest --cov=. --cov-report=lcov:passed.lcov tests/passing/
+
+# Run failing tests
+pytest --cov=. --cov-report=lcov:failed.lcov tests/failing/ || true
+```
+
+**JavaScript with nyc:**
+```bash
+# Run passing tests
+nyc --reporter=lcov npm test -- --grep "passing"
+mv coverage/lcov.info passed.lcov
+
+# Run failing tests
+nyc --reporter=lcov npm test -- --grep "failing" || true
+mv coverage/lcov.info failed.lcov
+```
+
+### Integration with CI/CD
+
+```yaml
+# .github/workflows/fault-localization.yml
+name: Fault Localization
+
+on:
+  pull_request:
+
+jobs:
+  localize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests with coverage
+        run: |
+          cargo llvm-cov --lcov --output-path all.lcov test 2>&1 | tee test-output.txt
+
+      - name: Split coverage by test result
+        run: |
+          # Extract passing/failing test coverage
+          ./scripts/split-coverage.sh test-output.txt
+
+      - name: Run fault localization
+        if: failure()
+        run: |
+          pmat org localize \
+            --passed-coverage passed.lcov \
+            --failed-coverage failed.lcov \
+            --passed-count $(grep -c "ok" test-output.txt) \
+            --failed-count $(grep -c "FAILED" test-output.txt) \
+            --ensemble \
+            --output fault-report.yaml
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fault-localization-report
+          path: fault-report.yaml
+```
+
+### Toyota Way: Genchi Genbutsu
+
+Fault localization embodies "go and see" by:
+- Analyzing ACTUAL test coverage data
+- Ranking code by REAL suspiciousness scores
+- Providing data-driven bug hunting
+- Reducing guesswork in debugging
+
+### See Also
+
+- [OIP Fault Localization Documentation](https://docs.rs/organizational-intelligence-plugin)
+- [Chapter 4: TDG Enforcement](ch04-02-tdg-enforcement.md) for Technical Debt Grading
+- [Chapter 27: QDD](ch14-00-qdd.md) for Quality-Driven Development
