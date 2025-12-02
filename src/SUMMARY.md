@@ -64,6 +64,7 @@
 - [Chapter 32: Organizational Intelligence](ch32-00-organizational-intelligence.md)
 - [Chapter 33: Rust Project Score](ch33-00-rust-project-score.md)
 - [Chapter 34: Unified GitHub/YAML Workflow Management](ch34-00-workflow-management.md)
+- [Chapter 35: Semantic Search and Code Clustering](ch35-00-semantic-search.md)
 
 ## Conclusion
 
