@@ -88,7 +88,31 @@ pmat analyze complexity src/services/
 # Output in different formats
 pmat analyze complexity --format json
 pmat analyze complexity --format csv
+
+# ML-based scoring (GH-97) - Uses aprender LinearRegression
+pmat analyze complexity --ml
+
+# Combined with thresholds and CI/CD mode
+pmat analyze complexity --ml --max-cyclomatic 15 --fail-on-violation
 ```
+
+### ML-Based Quality Scoring (GH-97)
+
+The `--ml` flag enables machine learning-based quality scoring using the aprender LinearRegression model. This provides evidence-based predictions trained on real codebase quality data:
+
+```bash
+# Enable ML scoring
+pmat analyze complexity --ml
+
+# Combine with traditional metrics
+pmat analyze complexity --ml --max-cyclomatic 20 --format json
+```
+
+**Benefits:**
+- Evidence-based scoring trained on real quality data
+- Considers feature interactions (LOC × nesting, loops × conditionals)
+- Provides confidence scores for predictions
+- Identifies feature contributions to quality scores
 
 ### Understanding Complexity Metrics
 

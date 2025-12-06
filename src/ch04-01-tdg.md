@@ -154,6 +154,13 @@ pmat analyze tdg . --include-components
 
 # Limit to top 10 files
 pmat analyze tdg . --top-files 10
+
+# ML-based scoring (GH-97) - Uses aprender LinearRegression
+pmat analyze tdg . --ml
+pmat tdg . --ml  # Short form
+
+# Combined ML mode with other options
+pmat analyze tdg . --ml --include-components --format json
 ```
 
 ### Example Output
