@@ -1,17 +1,17 @@
 # Chapter 8: Interactive Demo and Reporting
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (8/8 examples)
+**Chapter Status**: ✅ 100% Working (9/9 examples)
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 8 | All demo features tested |
+| ✅ Working | 9 | All demo features tested + Pure WASM Dashboard |
 | ⚠️ Not Implemented | 0 | Planned for future versions |
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-09*  
-*PMAT version: pmat 2.69.0*  
+*Last updated: 2025-12-06*
+*PMAT version: pmat 2.208.0*
 *Test-Driven: All examples validated in `tests/ch08/test_demo.sh`*
 <!-- DOC_STATUS_END -->
 
@@ -376,6 +376,31 @@ pmat demo . --cli --debug --debug-output=debug-report.json
 
 ## Web Interface Features
 
+### Pure WASM Dashboard (v2.208.0+)
+
+Starting with v2.208.0, PMAT includes a **pure WebAssembly dashboard** built with the Presentar framework. This eliminates all JavaScript dependencies (3.1 MB of Mermaid.js, Grid.js, D3.js removed) and provides:
+
+- **60fps GPU-accelerated rendering** via WebGPU
+- **Type-safe Rust widgets** - no runtime JavaScript errors
+- **WCAG 2.1 AA accessibility** - built-in contrast validation
+- **~574 KB bundle size** (81% reduction from JavaScript version)
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────┐
+│         pmat-dashboard.wasm (~574 KB)       │
+│  ┌───────────────┐  ┌───────────────────┐  │
+│  │ HotspotTable  │  │   MetricsChart    │  │
+│  │ (Grid.js →)   │  │   (D3.js →)       │  │
+│  └───────────────┘  └───────────────────┘  │
+│  ┌───────────────┐  ┌───────────────────┐  │
+│  │  DagDiagram   │  │  DashboardButton  │  │
+│  │ (Mermaid →)   │  │   (Accessible)    │  │
+│  └───────────────┘  └───────────────────┘  │
+│            Presentar Core + trueno-viz      │
+└─────────────────────────────────────────────┘
+```
+
 ### Interactive Dashboard
 
 When running in HTTP mode, PMAT provides a rich web interface:
@@ -385,7 +410,7 @@ pmat demo . --port=3000
 ```
 
 **Web Features:**
-- **Real-time Analysis**: Live updates as analysis progresses
+- **Real-time Analysis**: Live updates via WebSocket (binary protocol)
 - **Interactive Graphs**: Clickable complexity and dependency visualizations
 - **Code Navigation**: Jump directly to problematic code sections
 - **Quality Trends**: Historical quality metrics and trends
