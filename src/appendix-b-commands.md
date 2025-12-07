@@ -368,6 +368,70 @@ watch -n 60 'pmat status --detailed'
 pmat analyze . || exit $?
 ```
 
+## Running Examples
+
+PMAT includes extensive runnable examples demonstrating various features. All examples are located in the `server/examples/` directory and can be run using Cargo.
+
+### Running Examples
+
+```bash
+# From the paiml-mcp-agent-toolkit directory
+cd server
+cargo run --example <example_name>
+```
+
+### Key Examples by Category
+
+| Category | Example | Description |
+|----------|---------|-------------|
+| **Quality Analysis** | `quality_gate` | Comprehensive quality gate demonstration |
+| | `analyze_complexity` | Complexity analysis with CI/CD integration |
+| | `analyze_dead_code` | Dead code detection with thresholds |
+| | `analyze_satd` | Self-Admitted Technical Debt detection |
+| | `quality_proxy_demo` | Quality Proxy for AI-generated code |
+| **MCP Integration** | `mcp_server_pmcp` | MCP server using pmcp SDK |
+| | `unified_mcp_demo` | Unified MCP server architecture |
+| | `pmcp_analyze_workflow` | MCP analyze workflow |
+| **Mutation Testing** | `rust_mutation_workflow` | Rust mutation testing |
+| | `typescript_mutation_workflow` | TypeScript mutation testing |
+| | `python_mutation_workflow` | Python mutation testing |
+| | `cargo_mutants_detect` | Cargo mutants integration |
+| **CI/CD** | `ci_integration` | Multi-platform CI/CD examples |
+| | `exit_codes` | Exit code behavior reference |
+| **Agent Scaffolding** | `scaffold_agent_basics` | Basic MCP agent setup |
+| | `scaffold_agent_hybrid` | Hybrid agent patterns |
+| | `scaffold_agent_interactive` | Interactive agents |
+| **GitHub Integration** | `analyze_github_repo` | Analyze GitHub repositories |
+| | `check_github_repo` | GitHub repository checks |
+| | `organizational_intelligence_integration` | Org-wide analysis |
+| **Semantic Search** | `semantic_search_demo` | Code semantic search |
+| | `similarity_demo` | Code similarity detection |
+| **Debugging** | `recording_capture_demo` | Time-travel debugging |
+| | `complexity_demo` | Complexity pattern testing |
+
+### Quick Start Examples
+
+```bash
+# Quality gate check
+cargo run --example quality_gate
+
+# Analyze complexity
+cargo run --example analyze_complexity
+
+# MCP server demo
+cargo run --example mcp_server_pmcp
+
+# GitHub repo analysis
+cargo run --example analyze_github_repo
+
+# Mutation testing workflow
+cargo run --example rust_mutation_workflow
+```
+
+### Full Example List
+
+Run `ls server/examples/*.rs` to see all 67+ available examples.
+
 ## Getting Help
 
 - `pmat help` - General help
