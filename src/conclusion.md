@@ -58,7 +58,7 @@ PMAT continues to evolve with:
 - **v2.14.0**: Technical debt elimination via TDD
 - **v2.10.0**: Claude Code agent mode
 
-### Coming Soon
+### Roadmap
 - Machine learning-based pattern recognition
 - Real-time collaborative analysis
 - Custom metric definitions

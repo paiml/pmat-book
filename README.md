@@ -1,13 +1,32 @@
+<div align="center">
+
 # The PMAT Book
 
 [![Deploy Book](https://github.com/paiml/pmat-book/actions/workflows/pages.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/pages.yml)
 [![Test Examples](https://github.com/paiml/pmat-book/actions/workflows/test.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-📚 **[Read the Book Online](https://paiml.github.io/pmat-book/)** | [PMAT GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
+**Official comprehensive documentation for PMAT**
 
-**Official comprehensive documentation** for [PMAT (PAIML MCP Agent Toolkit)](https://github.com/paiml/paiml-mcp-agent-toolkit) - Zero-configuration AI context generation with extreme quality enforcement.
+📚 **[Read the Book Online](https://paiml.github.io/pmat-book/)** | [PMAT Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
 
-> This book is the **official user-facing documentation** for PMAT, featuring 28 chapters with TDD-validated examples, real-world tutorials, and complete command reference. For technical/architectural documentation, see the [PMAT repository docs/](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/docs).
+</div>
+
+## Table of Contents
+
+- [Features](#features)
+- [About](#about)
+- [Quick Start](#building-the-book)
+- [Book Structure](#book-structure)
+- [Contributing](#contributing)
+- [Resources](#resources)
+
+## Features
+
+- **28 Chapters** - Comprehensive coverage from installation to advanced usage
+- **TDD-Validated Examples** - Every code example is tested and verified
+- **Real-World Tutorials** - Practical guides for actual use cases
+- **Complete CLI Reference** - Full documentation of all PMAT commands
 
 ## About
 

@@ -1205,7 +1205,6 @@ The TDG Enforcement System provides:
 
 ## Next Steps
 
-- [Chapter 4.3: TDG Dashboard](ch04-03-tdg-dashboard.md) (Coming Soon)
 - [Chapter 5: The Analyze Command Suite](ch05-00-analyze-suite.md)
 - [Chapter 7: Quality Gates](ch07-00-quality-gate.md)
 - [Chapter 9: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)

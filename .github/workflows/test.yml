@@ -9,9 +9,10 @@ on:
 
 jobs:
   test-examples:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
     
     steps:

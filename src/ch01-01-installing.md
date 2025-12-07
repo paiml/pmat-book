@@ -142,12 +142,13 @@ yay -S pmat
 paru -S pmat
 ```
 
-#### Ubuntu/Debian - APT (Coming Soon)
+#### Ubuntu/Debian - APT
+
+Native APT packages are planned. For now, use the cargo install method:
+
 ```bash
-# Add PPA
-sudo add-apt-repository ppa:paiml/pmat
-sudo apt update
-sudo apt install pmat
+# Install via cargo (recommended)
+cargo install pmat
 ```
 
 ## Verification
