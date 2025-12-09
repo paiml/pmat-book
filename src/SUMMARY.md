@@ -65,6 +65,9 @@
 - [Chapter 33: Rust Project Score](ch33-00-rust-project-score.md)
 - [Chapter 34: Unified GitHub/YAML Workflow Management](ch34-00-workflow-management.md)
 - [Chapter 35: Semantic Search and Code Clustering](ch35-00-semantic-search.md)
+- [Chapter 36: PMAT Oracle - Automated Quality Improvement](ch36-00-oracle.md)
+- [Chapter 37: Popper Falsifiability Score](ch37-00-popper-score.md)
+- [Chapter 38: Terminal Graph Visualization](ch38-00-graph-visualization.md)
 
 ## Conclusion
 
