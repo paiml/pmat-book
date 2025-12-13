@@ -163,6 +163,141 @@ pmat work status GH-75
       GitHub: #75
 ```
 
+### `pmat work validate`
+
+Validate your roadmap YAML for schema compliance and status value errors.
+
+```bash
+# Validate default roadmap
+pmat work validate
+
+# Validate specific roadmap file
+pmat work validate --path ./docs/roadmaps/my-roadmap.yaml
+```
+
+**Example Output (Success):**
+```
+✅ Roadmap validation passed
+
+📋 Summary:
+   Total items: 12
+   Valid statuses: 12
+
+✅ All status values are valid
+```
+
+**Example Output (Errors with Suggestions):**
+```
+❌ Roadmap validation failed
+
+📋 Errors found:
+
+   Item 'GH-75':
+     ❌ Unknown status 'inporgress'
+        💡 Did you mean 'inprogress'?
+
+   Item 'caching-layer':
+     ❌ Unknown status 'finsihed'
+        💡 Did you mean 'finished' (alias for 'completed')?
+
+✅ Valid status values:
+   completed, done, finished, closed
+   inprogress, wip, active, started, working
+   planned, todo, open, pending, new
+   blocked, stuck, waiting, onhold
+   review, reviewing, pr, pendingreview
+   cancelled, canceled, dropped, wontfix
+```
+
+The validator uses **Levenshtein distance** to suggest the most likely intended status when typos are detected.
+
+### `pmat work migrate`
+
+Migrate legacy status values to the canonical format.
+
+```bash
+# Preview migration (dry-run)
+pmat work migrate --dry-run
+
+# Apply migration
+pmat work migrate
+
+# Migrate specific roadmap
+pmat work migrate --path ./docs/roadmaps/my-roadmap.yaml
+```
+
+**Example Output (Dry Run):**
+```
+🔄 Migration preview (dry-run)
+
+📋 Status migrations to apply:
+
+   Item 'GH-75':
+     'wip' → 'inprogress'
+
+   Item 'caching-layer':
+     'done' → 'completed'
+
+   Item 'auth-system':
+     'todo' → 'planned'
+
+📊 Summary: 3 items would be migrated
+
+Run without --dry-run to apply changes.
+```
+
+**Example Output (Applied):**
+```
+✅ Migration complete
+
+📋 Migrated statuses:
+
+   Item 'GH-75': wip → inprogress
+   Item 'caching-layer': done → completed
+   Item 'auth-system': todo → planned
+
+📊 Summary: 3 items migrated
+```
+
+### `pmat work list-statuses`
+
+Display all valid status values with their aliases.
+
+```bash
+pmat work list-statuses
+```
+
+**Output:**
+```
+📋 Valid Status Values
+
+   completed:
+     Primary: completed
+     Aliases: done, finished, closed
+
+   inprogress:
+     Primary: inprogress
+     Aliases: wip, active, started, working
+
+   planned:
+     Primary: planned
+     Aliases: todo, open, pending, new
+
+   blocked:
+     Primary: blocked
+     Aliases: stuck, waiting, onhold
+
+   review:
+     Primary: review
+     Aliases: reviewing, pr, pendingreview
+
+   cancelled:
+     Primary: cancelled
+     Aliases: canceled, dropped, wontfix
+
+💡 All aliases are normalized on save to their primary form.
+```
+
 ### `pmat work sync`
 
 Synchronize GitHub and YAML (planned for Phase 6).
@@ -819,6 +954,144 @@ pmat work start 100 --epic
 #    - GH-103: Testing
 ```
 
+## Specification Quality Assurance
+
+### `pmat qa spec`
+
+Validate specification documents with a 100-point Popperian falsifiability scoring system. This ensures specifications follow scientific standards for verifiable, testable claims.
+
+```bash
+# Validate a specification file
+pmat qa spec enhance-pmat-work
+
+# Full validation with detailed output
+pmat qa spec enhance-pmat-work --full
+
+# JSON output for CI/CD
+pmat qa spec enhance-pmat-work --format json --output qa-report.json
+
+# Custom threshold (default: 60)
+pmat qa spec enhance-pmat-work --threshold 80
+```
+
+**Aliases:** `spec`, `popper`
+
+### 100-Point Popperian Scoring Framework
+
+The scoring system evaluates specifications across 5 categories:
+
+| Category | Points | Description |
+|----------|--------|-------------|
+| **Falsifiability** | 25 | Testable claims that can be proven false |
+| **Implementation** | 25 | Concrete, executable requirements |
+| **Testing** | 20 | Comprehensive test coverage |
+| **Documentation** | 15 | Clear explanations and examples |
+| **Integration** | 15 | External system considerations |
+
+### Gateway Check: Falsifiability
+
+**CRITICAL**: The Falsifiability category serves as a **gateway check**:
+
+- If Falsifiability score < 60% (15 pts), **total score = 0**
+- This enforces scientific standards—specifications must be testable
+
+**Example Gateway Failure:**
+```
+❌ Specification QA: FAIL
+
+📊 Popperian Quality Score: 0/100 (F)
+
+⚠️  GATEWAY CHECK FAILED
+    Falsifiability score: 40% (10/25 pts)
+    Required: ≥60% (15 pts)
+
+    Specifications must contain testable, falsifiable claims.
+    Claims that cannot be proven false are not scientific.
+
+📋 Category Breakdown:
+   Falsifiability:   10/25 pts (40%) ❌ GATEWAY FAIL
+   Implementation:   20/25 pts (80%) ✓
+   Testing:          15/20 pts (75%) ✓
+   Documentation:    12/15 pts (80%) ✓
+   Integration:      10/15 pts (67%) ✓
+
+💡 Recommendations:
+   1. Add testable acceptance criteria with specific metrics
+   2. Include falsifiable claims like "Response time < 100ms"
+   3. Remove vague claims like "should be fast"
+```
+
+### Example Output (Passing)
+
+```
+✅ Specification QA: PASS
+
+📊 Popperian Quality Score: 87/100 (A)
+
+📋 Category Breakdown:
+   Falsifiability:   22/25 pts (88%) ✓ GATEWAY PASSED
+   Implementation:   23/25 pts (92%) ✓
+   Testing:          18/20 pts (90%) ✓
+   Documentation:    13/15 pts (87%) ✓
+   Integration:      11/15 pts (73%) ✓
+
+📈 Claim Analysis:
+   Total claims: 47
+   Validated: 42 (89%)
+   Code examples: 12
+   Acceptance criteria: 23
+
+✅ Specification meets Popperian quality standards
+```
+
+### Popperian Principles Applied
+
+The scoring system applies Karl Popper's philosophy of science:
+
+1. **Falsifiability**: A claim is scientific only if it can be proven false
+   - ✅ "Response time must be < 100ms" (testable)
+   - ❌ "Should be performant" (unfalsifiable)
+
+2. **Specificity**: Concrete, measurable criteria
+   - ✅ "Coverage must be ≥85%" (specific)
+   - ❌ "Should have good coverage" (vague)
+
+3. **Evidence-Based**: Grounded in observable facts
+   - ✅ "Uses serde for parsing" (verifiable)
+   - ❌ "Best-in-class implementation" (subjective)
+
+### Claim Categories
+
+The parser extracts and categorizes claims from specifications:
+
+| Category | Example Claims |
+|----------|---------------|
+| **Falsifiability** | "Test coverage must be ≥85%", "Response < 100ms" |
+| **Implementation** | "Uses serde for YAML parsing", "Implements trait X" |
+| **Testing** | "Includes unit tests for all functions" |
+| **Documentation** | "API documented with rustdoc" |
+| **Integration** | "Integrates with GitHub API" |
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/qa.yml
+- name: Validate Specification Quality
+  run: |
+    pmat qa spec my-feature --format json --output qa.json
+    SCORE=$(jq '.total_score' qa.json)
+    if (( $(echo "$SCORE < 70" | bc -l) )); then
+      echo "Specification score $SCORE below threshold"
+      exit 1
+    fi
+```
+
+### Related Commands
+
+- `pmat work start <id> --with-spec` - Create specification from template
+- `pmat popper-score` - Full Popper falsifiability analysis
+- `pmat quality-gate` - Comprehensive quality validation
+
 ## Summary
 
 The `pmat work` command suite provides a powerful, flexible workflow management system that:
@@ -831,6 +1104,9 @@ The `pmat work` command suite provides a powerful, flexible workflow management 
 - ✅ Generates specification templates
 - ✅ Provides beautiful CLI output
 - ✅ **Multi-agent concurrency safety** (v2.201.0+) - Multiple AI sub-agents can work simultaneously without data loss
+- ✅ **YAML validation** (v2.211.0+) - Validate roadmap with Levenshtein-based typo suggestions
+- ✅ **Status migration** (v2.211.0+) - Migrate legacy status aliases to canonical format
+- ✅ **Specification QA** (v2.211.0+) - 100-point Popperian falsifiability scoring
 
 **Next Steps:**
 - Run `pmat work init` to get started
