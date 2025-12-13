@@ -179,8 +179,20 @@
 |---------|-------------|---------|
 | `pmat quality-gate` | Check quality gates | `pmat quality-gate --min-grade=B+` |
 | `pmat repo-score` | Repository health score | `pmat repo-score . --format json` |
+| `pmat rust-project-score` | Rust-specific quality score | `pmat rust-project-score --full` |
+| `pmat popper-score` | Popper falsifiability score | `pmat popper-score --verbose` |
+| `pmat perfection-score` | Unified 200-point quality score | `pmat perfection-score --fast --breakdown` |
 | `pmat validate` | Validate project | `pmat validate --strict` |
 | `pmat check` | Run all checks | `pmat check --all` |
+
+## Specification Management
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat spec score` | Popperian spec validation | `pmat spec score docs/spec.md --verbose` |
+| `pmat spec comply` | Auto-fix spec issues | `pmat spec comply docs/spec.md --dry-run` |
+| `pmat spec create` | Create specification template | `pmat spec create "Feature Name" --issue "#123"` |
+| `pmat spec list` | List all specifications | `pmat spec list docs/specifications/ --failing-only` |
 
 ## Team Collaboration
 
@@ -389,6 +401,8 @@ cargo run --example <example_name>
 | | `analyze_dead_code` | Dead code detection with thresholds |
 | | `analyze_satd` | Self-Admitted Technical Debt detection |
 | | `quality_proxy_demo` | Quality Proxy for AI-generated code |
+| | `perfection_score_demo` | Unified 200-point perfection score |
+| | `work_commands_demo` | Work management commands |
 | **MCP Integration** | `mcp_server_pmcp` | MCP server using pmcp SDK |
 | | `unified_mcp_demo` | Unified MCP server architecture |
 | | `pmcp_analyze_workflow` | MCP analyze workflow |
@@ -414,6 +428,9 @@ cargo run --example <example_name>
 ```bash
 # Quality gate check
 cargo run --example quality_gate
+
+# Perfection score demo (200-point scale)
+cargo run --example perfection_score_demo
 
 # Analyze complexity
 cargo run --example analyze_complexity

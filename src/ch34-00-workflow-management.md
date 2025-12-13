@@ -1092,6 +1092,155 @@ The parser extracts and categorizes claims from specifications:
 - `pmat popper-score` - Full Popper falsifiability analysis
 - `pmat quality-gate` - Comprehensive quality validation
 
+## 200-Point Perfection Score
+
+**Version**: Added in PMAT v2.211.1 (master-plan-pmat-work-system.md)
+
+The Perfection Score aggregates 8 quality metrics into a unified 200-point scale, providing a single "project health" number that answers: "Is this codebase ready for production?"
+
+### Quick Start
+
+```bash
+# Fast mode (default) - real metrics in ~30 seconds
+pmat perfection-score --fast --breakdown
+
+# Full analysis mode
+pmat perfection-score --breakdown
+
+# Target a specific score
+pmat perfection-score --target 180
+```
+
+### 200-Point Category Breakdown
+
+| Category | Max Points | Weight | Description |
+|----------|------------|--------|-------------|
+| **TDG (Technical Debt Grade)** | 40 | 20% | Code quality and debt metrics |
+| **Repository Health** | 30 | 15% | Repo hygiene (CI, docs, hooks) |
+| **Rust Project Score** | 30 | 15% | Rust-specific quality (clippy, fmt) |
+| **Popperian Falsifiability** | 25 | 12.5% | Specification testability |
+| **Test Coverage** | 25 | 12.5% | Line and branch coverage |
+| **Mutation Testing** | 20 | 10% | Test effectiveness |
+| **Documentation** | 15 | 7.5% | API docs, README, CHANGELOG |
+| **Performance** | 15 | 7.5% | Benchmarks and profiling |
+| **TOTAL** | **200** | **100%** | |
+
+### Grade Thresholds (Maslow Hierarchy)
+
+| Score | Grade | Meaning |
+|-------|-------|---------|
+| 190-200 | S+ | Perfection - Publishing ready |
+| 180-189 | S | Excellent - Production ready |
+| 170-179 | A+ | Very Good - Release candidate |
+| 160-169 | A | Good - Feature complete |
+| 150-159 | B+ | Above Average - Beta quality |
+| 140-149 | B | Average - Alpha quality |
+| 120-139 | C | Below Average - Early development |
+| 100-119 | D | Poor - Needs work |
+| 0-99 | F | Failing - Critical issues |
+
+### Example Output
+
+```
+🏆 PMAT Perfection Score
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Total: 165.2/200 points
+  Grade: A
+
+📊 Category Breakdown
+═══════════════════════════════════════════════════════
+
+  Technical Debt Grade      [████████████████░░░░] 32.5/40 pts (A)
+  Repository Health         [██████████████░░░░░░] 21.8/30 pts (B)
+  Rust Project Quality      [███████████████████░] 28.2/30 pts (S)
+  Popperian Falsifiability  [█████████████████░░░] 21.0/25 pts (A+)
+  Test Coverage             [██████████████████░░] 22.5/25 pts (S)
+  Mutation Testing          [██████████████░░░░░░] 14.0/20 pts (B)
+  Documentation             [████████████████████] 15.0/15 pts (S+)
+  Performance               [████████████████░░░░] 10.2/15 pts (B+)
+
+💡 Recommendations
+───────────────────────────────────────────────────────
+  🟡 Repository Health needs attention (73%)
+  🟡 Mutation Testing needs attention (70%)
+  🟡 Performance needs attention (68%)
+```
+
+### Integration with Work Commands
+
+The Perfection Score integrates with the workflow system:
+
+```bash
+# Complete work only if perfection score meets threshold
+pmat work complete feature-123 --min-perfection 160
+
+# Enforce minimum perfection score via git hooks
+pmat comply enforce --min-perfection 140
+```
+
+### Fast vs Full Mode
+
+**Fast Mode** (default, `--fast`):
+- Time: ~30 seconds
+- Skips: Mutation testing (expensive), full clippy analysis
+- Uses: Cached metrics from `.pmat-metrics/`
+- Best for: CI checks, development feedback
+
+**Full Mode**:
+- Time: ~5-15 minutes (project dependent)
+- Runs: All checks comprehensively
+- Best for: Release validation, comprehensive audits
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/quality.yml
+- name: Check Perfection Score
+  run: |
+    pmat perfection-score --fast --format json --output score.json
+    SCORE=$(jq '.total_score' score.json)
+    GRADE=$(jq -r '.grade' score.json)
+    echo "Score: $SCORE ($GRADE)"
+    if (( $(echo "$SCORE < 140" | bc -l) )); then
+      echo "::error::Perfection score $SCORE below B threshold"
+      exit 1
+    fi
+```
+
+## Specification Management Commands
+
+**Version**: Added in PMAT v2.211.1
+
+Manage specification files with Popperian quality validation:
+
+```bash
+# Score a specification (95-point threshold)
+pmat spec score docs/specifications/my-spec.md --verbose
+
+# Auto-fix spec issues (dry-run first)
+pmat spec comply docs/specifications/my-spec.md --dry-run
+pmat spec comply docs/specifications/my-spec.md
+
+# Create new specification from template
+pmat spec create "My Feature" --issue "#123" --epic "PMAT-001"
+
+# List all specifications with scores
+pmat spec list docs/specifications/ --failing-only
+```
+
+### Spec Score Requirements (95-point minimum)
+
+| Requirement | Points | Description |
+|-------------|--------|-------------|
+| Issue refs | 10 | GitHub issue linkage |
+| Code examples | 20 | 5+ code examples (4 pts each) |
+| Acceptance criteria | 30 | 10+ criteria (3 pts each) |
+| Claims | 20 | Falsifiable claims |
+| Title | 5 | Descriptive title |
+| Test requirements | 15 | 5+ test specs (3 pts each) |
+| **Minimum to pass** | **95** | |
+
 ## Summary
 
 The `pmat work` command suite provides a powerful, flexible workflow management system that:
@@ -1107,6 +1256,8 @@ The `pmat work` command suite provides a powerful, flexible workflow management 
 - ✅ **YAML validation** (v2.211.0+) - Validate roadmap with Levenshtein-based typo suggestions
 - ✅ **Status migration** (v2.211.0+) - Migrate legacy status aliases to canonical format
 - ✅ **Specification QA** (v2.211.0+) - 100-point Popperian falsifiability scoring
+- ✅ **200-point Perfection Score** (v2.211.1+) - Unified quality metric aggregating 8 categories
+- ✅ **Spec management commands** (v2.211.1+) - Score, comply, create, list specifications
 
 **Next Steps:**
 - Run `pmat work init` to get started
