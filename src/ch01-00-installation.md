@@ -5,13 +5,13 @@
 
 | Status | Count | Description |
 |--------|-------|-------------|
-| ✅ Working | 7 | All installation methods verified |
+| ✅ Working | 8 | All installation methods + usage guide verified |
 | ⚠️ Not Implemented | 0 | Planned for future versions |
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-10-26*  
-*PMAT version: pmat 2.173.0*
+*Last updated: 2025-12-13*
+*PMAT version: pmat 2.212.0*
 <!-- DOC_STATUS_END -->
 
 ## Overview
@@ -47,3 +47,4 @@ The following sections dive deeper into:
 - [Installing PMAT](ch01-01-installing.md) - All installation methods
 - [First Analysis (TDD)](ch01-02-first-analysis-tdd.md) - Running your first analysis
 - [Understanding Output](ch01-03-output.md) - Interpreting the results
+- [Using PMAT Effectively](ch01-04-using-pmat.md) - CLI vs MCP, workflow tracking, finding documentation

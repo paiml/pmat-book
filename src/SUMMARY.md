@@ -10,6 +10,7 @@
   - [Installing PMAT](ch01-01-installing.md)
   - [First Analysis (TDD)](ch01-02-first-analysis-tdd.md)
   - [Understanding Output](ch01-03-output.md)
+  - [Using PMAT Effectively](ch01-04-using-pmat.md)
 
 - [Chapter 2: Getting Started with PMAT](ch02-00-getting-started.md)
 
