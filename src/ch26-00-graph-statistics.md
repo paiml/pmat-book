@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Future roadmap features |
 
 *Last updated: 2025-09-23*
-*PMAT version: pmat 2.95.0*
+*PMAT version: pmat 2.213.1*
 <!-- DOC_STATUS_END -->
 
 ## The Problem

@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Future roadmap features |
 
 *Last updated: 2025-10-26*  
-*PMAT version: pmat 2.64.0*  
+*PMAT version: pmat 2.213.1*  
 *Test-Driven: All examples validated in `tests/ch11/test_custom_rules.sh`*
 <!-- DOC_STATUS_END -->
 

@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | None |
 
 *Last updated: 2025-12-13*
-*PMAT version: pmat 2.212.0*
+*PMAT version: pmat 2.213.1*
 <!-- DOC_STATUS_END -->
 
 This section answers common questions about PMAT usage patterns, including CLI vs MCP mode, workflow tracking, and finding documentation.

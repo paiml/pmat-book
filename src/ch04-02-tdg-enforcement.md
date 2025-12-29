@@ -11,7 +11,7 @@
 | 📋 Planned | Module-specific thresholds | Future enhancement |
 
 *Last updated: 2025-10-29*
-*PMAT version: pmat 2.180.1*
+*PMAT version: pmat 2.213.1*
 *Test-Driven: Validated through Sprint 67 dogfooding on PMAT codebase*
 *New in v2.180.0: Zero-regression quality enforcement system*
 <!-- DOC_STATUS_END -->

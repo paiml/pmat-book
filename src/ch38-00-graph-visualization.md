@@ -11,7 +11,7 @@
 | Planned | 0 | N/A |
 
 *Last updated: 2025-12-09*
-*PMAT version: pmat 2.211.0*
+*PMAT version: pmat 2.213.1*
 *Test-Driven: All examples validated*
 *New in v2.211.0: trueno-viz integration for terminal graph rendering*
 <!-- DOC_STATUS_END -->

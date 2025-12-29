@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Future roadmap features |
 
 *Last updated: 2025-10-26*  
-*PMAT version: pmat 2.173.0*
+*PMAT version: pmat 2.213.1*
 <!-- DOC_STATUS_END -->
 
 ## Installation Methods
@@ -84,10 +84,10 @@ Install via Debian package (recommended for Ubuntu/Debian users):
 
 ```bash
 # Download the .deb package
-wget https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v2.173.0/pmat_2.173.0_amd64.deb
+wget https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v2.213.1/pmat_2.213.1_amd64.deb
 
 # Install
-sudo dpkg -i pmat_2.173.0_amd64.deb
+sudo dpkg -i pmat_2.213.1_amd64.deb
 
 # Verify installation
 pmat --version
@@ -158,7 +158,7 @@ After installation, verify PMAT is working:
 ```bash
 # Check version
 pmat --version
-# Output: pmat 2.173.0
+# Output: pmat 2.213.1
 
 # Show help
 pmat --help

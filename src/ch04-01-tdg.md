@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Future roadmap features |
 
 *Last updated: 2025-10-28*
-*PMAT version: pmat 2.179.0*
+*PMAT version: pmat 2.213.1*
 *Test-Driven: All examples validated in `tests/ch04/test_tdg.sh`*
 *New in v2.179.0: Git-commit correlation for quality archaeology*
 <!-- DOC_STATUS_END -->

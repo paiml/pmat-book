@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Core MCP features complete |
 
 *Last updated: 2025-10-19*
-*PMAT version: pmat 2.164.0*
+*PMAT version: pmat 2.213.1*
 *MCP version: v2024-11-05*
 <!-- DOC_STATUS_END -->
 

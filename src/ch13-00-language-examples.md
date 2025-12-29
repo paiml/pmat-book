@@ -11,7 +11,7 @@
 | 📋 Tests Status | 100% | All test files passing with actual PMAT commands |
 
 *Last updated: 2025-10-26 (Sprint 52)*
-*PMAT version: pmat 2.173.0*
+*PMAT version: pmat 2.213.1*
 <!-- DOC_STATUS_END -->
 
 ## The Problem

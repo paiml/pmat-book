@@ -3,7 +3,7 @@
 **Chapter Status**: ✅ 100% Working (21/21 tools documented)
 
 *Last updated: 2025-10-26*
-*PMAT version: pmat 2.173.0*
+*PMAT version: pmat 2.213.1*
 
 ## Overview
 

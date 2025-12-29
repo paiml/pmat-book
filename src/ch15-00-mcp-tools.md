@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Complete MCP coverage achieved |
 
 *Last updated: 2025-09-09*  
-*PMAT version: pmat 2.71.0*  
+*PMAT version: pmat 2.213.1*  
 *MCP version: pmcp 1.4.1*
 <!-- DOC_STATUS_END -->
 
@@ -355,7 +355,7 @@ Essential for AI-assisted development workflows.
     "content": [
       {
         "type": "text",
-        "text": "{\n  \"status\": \"completed\",\n  \"message\": \"Deep context generation completed\",\n  \"context\": {\n    \"metadata\": {\n      \"project_root\": \"/path/to/project\",\n      \"tool_version\": \"pmat 2.183.0\",\n      \"generated_at\": \"2025-01-01T12:00:00Z\",\n      \"analysis_duration_ms\": 2450\n    },\n    \"quality_scorecard\": {\n      \"overall_health\": 85.0,\n      \"complexity_score\": 92.3,\n      \"maintainability_index\": 78.5,\n      \"modularity_score\": 88.0,\n      \"technical_debt_hours\": 42.5\n    },\n    \"file_count\": 127,\n    \"total_lines\": 15430,\n    \"languages\": {\n      \"rust\": 45,\n      \"python\": 32,\n      \"javascript\": 28,\n      \"typescript\": 15,\n      \"markdown\": 7\n    }\n  }\n}"
+        "text": "{\n  \"status\": \"completed\",\n  \"message\": \"Deep context generation completed\",\n  \"context\": {\n    \"metadata\": {\n      \"project_root\": \"/path/to/project\",\n      \"tool_version\": \"pmat 2.213.1\",\n      \"generated_at\": \"2025-01-01T12:00:00Z\",\n      \"analysis_duration_ms\": 2450\n    },\n    \"quality_scorecard\": {\n      \"overall_health\": 85.0,\n      \"complexity_score\": 92.3,\n      \"maintainability_index\": 78.5,\n      \"modularity_score\": 88.0,\n      \"technical_debt_hours\": 42.5\n    },\n    \"file_count\": 127,\n    \"total_lines\": 15430,\n    \"languages\": {\n      \"rust\": 45,\n      \"python\": 32,\n      \"javascript\": 28,\n      \"typescript\": 15,\n      \"markdown\": 7\n    }\n  }\n}"
       }
     ]
   }
