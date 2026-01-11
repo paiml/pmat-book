@@ -71,6 +71,7 @@
 - [Chapter 38: Terminal Graph Visualization](ch38-00-graph-visualization.md)
 - [Chapter 39: Unified CLI/MCP Help Integration](ch39-00-unified-help.md)
 - [Chapter 40: Project Diagnostics](ch40-00-project-diagnostics.md)
+- [Chapter 41: Sovereign Stack Integration](ch41-00-sovereign-stack.md)
 
 ## Conclusion
 
