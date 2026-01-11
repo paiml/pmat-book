@@ -84,6 +84,64 @@ pmat analyze cluster --method hierarchical --k 5
      ... and 309 more
 ```
 
+## trueno-rag Integration (Sprint 76+)
+
+PMAT now uses **trueno-rag** for enhanced RAG pipeline performance:
+
+### BM25 Keyword Search
+
+True relevance scoring replacing RRF heuristics:
+
+```rust
+// Internally uses trueno-rag's BM25Index
+use trueno_rag::index::BM25Index;
+
+let mut index = BM25Index::new();
+index.add(chunk_id, &document_text);
+let results = index.search(&query, 10);
+```
+
+**Benefits over RRF:**
+- IDF-weighted term importance (rare terms score higher)
+- Term frequency saturation (BM25's k1 parameter)
+- True relevance vs rank-based fusion
+
+### SIMD Cosine Similarity
+
+4-way loop unrolling for LLVM auto-vectorization:
+
+```rust
+// 2-4x speedup on AVX2, 4-8x on AVX-512
+let similarity = TursoVectorDB::cosine_similarity_simd(&v1, &v2);
+```
+
+### RecursiveChunker
+
+Text chunking with overlap for RAG retrieval:
+
+```rust
+use trueno_rag::chunk::{Chunker, RecursiveChunker};
+
+let chunker = RecursiveChunker::new(512, 64)  // chunk_size, overlap
+    .with_separators(vec!["\n\n", "\n", ". ", " "]);
+let chunks = chunker.chunk(&document)?;
+```
+
+### LSH Index for Duplicate Detection
+
+O(1) approximate nearest neighbor lookup:
+
+```rust
+let mut lsh = LshIndex::new(20, 5);  // bands, rows_per_band
+lsh.insert(fragment_id, minhash_signature);
+let candidates = lsh.query(&query_signature);  // O(1) vs O(n)
+```
+
+**Collision Probability:** `P = 1 - (1 - s^r)^b`
+- s=0.9 → P≈1.0 (high similarity → always candidates)
+- s=0.5 → P≈0.47 (medium similarity)
+- s=0.2 → P≈0.04 (low similarity → rarely candidates)
+
 ## Algorithms
 
 ### TF-IDF Vectorization

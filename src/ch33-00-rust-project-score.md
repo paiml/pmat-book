@@ -1,6 +1,6 @@
 # Chapter 33: Rust Project Score
 
-The `pmat rust-project-score` command provides comprehensive quality scoring specifically for Rust projects, scoring them on a 0-114 scale across **7 quality categories** including formal verification.
+The `pmat rust-project-score` command provides comprehensive quality scoring specifically for Rust projects, scoring them on a 0-159 scale across **10 quality categories** including formal verification and build performance.
 
 ## Overview
 
@@ -9,16 +9,19 @@ Rust project scoring helps teams:
 - **Leverage Rust tooling** (clippy, rustfmt, cargo-audit, Miri, Kani)
 - **Track improvement** over time with consistent grading
 - **Enforce best practices** with automated quality gates
+- **Validate build configuration** with comprehensive diagnostics
 
 ## Version History
 
 - **v1.0** (Initial): 6 categories, 106 points
 - **v1.1** (Evidence-Based): Refined weights based on peer-reviewed research
-- **v1.2** (Formal Verification): **7th category** - Miri + Kani integration (114 points total)
+- **v1.2** (Formal Verification): 7th category - Miri + Kani integration (114 points total)
+- **v2.2** (Extended): 9 scorers, 144 points
+- **v2.3** (Build Performance): **10 scorers, 159 points** - NEW BuildPerfScorer + extended RustTooling
 
-## Score Categories (114 Total Points)
+## Score Categories (159 Total Points)
 
-### Category 1: Rust Tooling Compliance (25 points)
+### Category 1: Rust Tooling Compliance (37 points)
 
 **Clippy - Tiered Scoring (15 points)**
 - Correctness lints (9 points): Critical safety issues
@@ -35,17 +38,29 @@ Rust project scoring helps teams:
 **cargo-deny (2 points)**
 - Dependency policy enforcement
 
+**MSRV Defined (5 points)** - NEW in v2.3
+- Checks for `rust-version` field in Cargo.toml
+- Ensures minimum supported Rust version is documented
+- Important for compatibility guarantees
+
+**CI Configured (7 points)** - NEW in v2.3
+- Validates presence of CI/CD pipeline
+- Checks for `.github/workflows/*.yml`
+- Also checks `.gitlab-ci.yml` and `Jenkinsfile`
+
 **Example:**
 ```bash
 $ pmat rust-project-score .
 
-Rust Tooling Compliance: 25/25 (100%) - Grade: A
+Rust Tooling Compliance: 37/37 (100%) - Grade: A
 ├─ Clippy (correctness): 9/9
 ├─ Clippy (suspicious): 4/4
 ├─ Clippy (pedantic): 2/2
 ├─ rustfmt: 5/5
 ├─ cargo-audit: 3/3
-└─ cargo-deny: 2/2
+├─ cargo-deny: 2/2
+├─ MSRV Defined: 5/5 ✅
+└─ CI Configured: 7/7 ✅
 ```
 
 ### Category 2: Code Quality (26 points)
@@ -216,18 +231,76 @@ Formal Verification: 8/8 (100%) - Grade: A
 - **Genchi Genbutsu**: Go see for yourself - empirical evidence via formal methods
 - **Kaizen (改善)**: Continuous improvement through formal verification
 
+### Category 8: Build Performance (15 points) - NEW in v2.3
+
+This category validates build configuration for reproducible, optimized builds.
+
+**LTO Enabled (2 points)**
+- Checks for Link-Time Optimization in release profile
+- Validates `[profile.release] lto = true/thin/"fat"`
+- Smaller binaries, better runtime performance
+
+**Target Dir Size <= 10GB (2 points)**
+- Measures target/ directory size
+- Warns if exceeds 10GB (indicates build cache bloat)
+- Skipped if target/ doesn't exist
+
+**Cargo.lock Present (2 points)**
+- Ensures reproducible builds
+- Critical for applications and binary crates
+- 2 points if present, 0 if missing
+
+**.cargo/config.toml (2 points)**
+- Validates build configuration file exists
+- Enables project-specific build settings
+
+**Incremental Builds (2 points)**
+- Checks incremental compilation settings
+- Faster development iteration
+
+**Codegen Units (2 points)**
+- Validates `codegen-units = 1` for release
+- Maximum optimization at release time
+
+**Build System (3 points)**
+- Checks for build automation presence
+- Validates Makefile, justfile, or build.rs
+- 3 points for multiple, 2 for single, 0 for none
+
+**Example:**
+```bash
+$ pmat rust-project-score .
+
+Build Performance: 15/15 (100%) - Grade: A
+├─ LTO Enabled: 2/2 ✅ (lto = "thin")
+├─ Target Dir Size: 2/2 ✅ (2.3 GB)
+├─ Cargo.lock Present: 2/2 ✅
+├─ Cargo Config: 2/2 ✅
+├─ Incremental Builds: 2/2 ✅
+├─ Codegen Units: 2/2 ✅ (codegen-units = 1)
+└─ Build System: 3/3 ✅ (Makefile + build.rs)
+```
+
+**Relationship to project-diag:**
+The Build Performance scorer aligns with `pmat project-diag` checks, providing the same configuration validation integrated into the overall project score. For a quick standalone assessment, use:
+```bash
+pmat project-diag --category build
+```
+
 ## Grading System
 
-| Grade | Score Range | Description |
-|-------|-------------|-------------|
-| **A+** | 105-114 | Exceptional (includes formal verification) |
-| **A** | 95-104 | Excellent |
-| **A-** | 85-94 | PMAT standard (minimum for production) |
-| **B+** | 80-84 | Good |
-| **B** | 70-79 | Acceptable |
-| **C** | 60-69 | Needs improvement |
-| **D** | 50-59 | Poor |
-| **F** | 0-49 | Failing |
+| Grade | Score Range | Percentage | Description |
+|-------|-------------|------------|-------------|
+| **A+** | 147-159 | 92-100% | Exceptional (includes formal verification + build perf) |
+| **A** | 135-146 | 85-92% | Excellent |
+| **A-** | 127-134 | 80-85% | PMAT standard (minimum for production) |
+| **B+** | 119-126 | 75-80% | Good |
+| **B** | 111-118 | 70-75% | Acceptable |
+| **C** | 95-110 | 60-70% | Needs improvement |
+| **D** | 79-94 | 50-60% | Poor |
+| **F** | 0-78 | 0-50% | Failing |
+
+*Note: v2.3 increased max from 114 to 159 points with new BuildPerfScorer and extended RustTooling categories.*
 
 ## Usage
 
@@ -629,16 +702,28 @@ cargo mutants --file src/critical.rs
 
 The `pmat rust-project-score` command provides:
 - **Evidence-based scoring** from 15 peer-reviewed papers (2022-2025)
-- **Formal verification** integration (Miri + Kani) - NEW in v1.2
+- **Formal verification** integration (Miri + Kani)
+- **Build performance** validation (NEW in v2.3)
 - **Toyota Way principles** (Jidoka, Genchi Genbutsu, Kaizen)
 - **Fast & Full modes** for different use cases
 - **CI/CD integration** with JSON/YAML output
 
+**v2.3 Highlights:**
+- **10 scorers, 159 points** (up from 114 in v1.2)
+- **BuildPerfScorer** (15pts): LTO, Cargo.lock, target dir, incremental, codegen-units
+- **Extended RustTooling** (+12pts): MSRV defined, CI configured
+- **Aligned with project-diag**: Same configuration checks as `pmat project-diag`
+
 **Key Differentiators from `repo-score`:**
 - Rust-specific tooling (clippy, cargo-audit, Miri, Kani)
-- 114-point scale (vs 110 for repo-score)
+- 159-point scale (vs 110 for repo-score)
 - Formal verification category (unique to Rust)
+- Build performance validation
 - Evidence-based weight adjustments
+
+**Related Commands:**
+- `pmat project-diag` - Quick 20-check project health assessment (see Chapter 40)
+- `pmat comply check` - Compliance validation with PMAT best practices
 
 **Next Steps:**
 1. Run `pmat rust-project-score` on your Rust project
