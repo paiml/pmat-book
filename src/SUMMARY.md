@@ -72,6 +72,7 @@
 - [Chapter 39: Unified CLI/MCP Help Integration](ch39-00-unified-help.md)
 - [Chapter 40: Project Diagnostics](ch40-00-project-diagnostics.md)
 - [Chapter 41: Sovereign Stack Integration](ch41-00-sovereign-stack.md)
+- [Chapter 42: ComputeBrick Compliance](ch42-00-computebrick-compliance.md)
 
 ## Conclusion
 
