@@ -24,9 +24,123 @@ Pre-commit hooks are your first line of defense against technical debt. PMAT's l
 Traditional pre-commit hooks run simple checks. PMAT hooks provide:
 - **Deep Analysis**: Complexity, duplication, technical debt detection
 - **Quality Gates**: Enforce minimum code quality standards
-- **Smart Caching**: Only analyze changed files for speed
+- **O(1) Caching**: Instant decisions for unchanged code (PMAT-453)
 - **Team Consistency**: Same quality standards for everyone
 - **Zero Configuration**: Works out of the box with sensible defaults
+
+## O(1) Hooks Cache (PMAT-453)
+
+PMAT v2.213.8 introduces O(1) hooks - a revolutionary improvement that reduces hook check time from O(n) (full analysis) to O(1) (instant) when code hasn't changed.
+
+### The Problem
+
+Traditional hooks analyze all files on every commit:
+- **Time**: 30-60 seconds for large projects
+- **Scales**: O(n) with project size
+- **Waste**: Re-analyzes unchanged code
+
+### The Solution: Hash-Based Caching
+
+```
+If git_tree_hash == cached_hash:
+    return cached_result  # O(1) - 2ms
+else:
+    run_full_analysis()   # O(n) - only when needed
+    cache_result(git_tree_hash)
+```
+
+### Quick Start
+
+```bash
+# Initialize the cache (one-time setup)
+pmat hooks cache init
+
+# Run hooks with O(1) cache check (default)
+pmat hooks run
+
+# Check cache status
+pmat hooks cache status
+
+# View metrics (hit rate, timing)
+pmat hooks cache metrics
+```
+
+### Cache Commands
+
+| Command | Description |
+|---------|-------------|
+| `pmat hooks cache init` | Initialize cache directory structure |
+| `pmat hooks cache status` | Show cache status (HIT/MISS) |
+| `pmat hooks cache metrics` | Show detailed CB-031 metrics |
+| `pmat hooks cache clear` | Clear cache to force full re-run |
+
+### Performance Results
+
+| Scenario | Before | After | Improvement |
+|----------|--------|-------|-------------|
+| Unchanged code | 30-60s | ~2ms | **1000x faster** |
+| Changed code | 30-60s | 30-60s | Same (necessary) |
+| Config changed | 30-60s | 30-60s | Same (necessary) |
+
+### Cache Architecture
+
+The cache uses a 3-level hash hierarchy:
+
+```
+.pmat/hooks-cache/
+├── tree-hash.json      # Level 0: Git tree hash (whole repo)
+│   {
+│     "hash": "abc123",
+│     "result": "pass",
+│     "timestamp": "2024-01-14T10:00:00Z"
+│   }
+├── gates/              # Level 1: Per-gate cache
+│   ├── complexity.json
+│   ├── satd.json
+│   └── format.json
+├── files/              # Level 2: Per-file cache
+│   └── src_lib_rs.json
+└── metrics.json        # CB-031 health monitoring
+```
+
+### Compliance Checks
+
+The O(1) cache includes two compliance checks:
+
+- **CB-030**: O(1 Hooks Capable - verifies `.pmat/hooks-cache/` exists
+- **CB-031**: Cache Health - monitors hit rate >= 60%
+
+Check compliance:
+```bash
+pmat comply check
+
+# Output:
+  ✓ CB-030: O(1) Hooks: Hooks cache initialized - O(1) capable
+  ✓ CB-031: Cache Health: Cache hit rate 85.3% (target: ≥60%)
+```
+
+### Cache Miss Reasons
+
+| Reason | Description | Action |
+|--------|-------------|--------|
+| NoCacheFile | First run or cache cleared | Full analysis runs |
+| TreeHashChanged | Code changed | Full analysis runs |
+| ConfigHashChanged | Quality config updated | Full analysis runs |
+| VersionChanged | PMAT upgraded | Full analysis runs |
+| CacheStale | Cache > 7 days old | Full analysis runs |
+
+### Disabling Cache
+
+To run full analysis regardless of cache:
+
+```bash
+# Disable cache for single run
+pmat hooks run --no-cache
+
+# Or clear cache first
+pmat hooks cache clear
+pmat hooks run
+```
 
 ## Quick Start
 
