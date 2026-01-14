@@ -206,6 +206,57 @@ brew upgrade pmat
 npm update -g pmat-agent
 ```
 
+## Feature Flags (Optional)
+
+PMAT supports optional features that can be enabled at compile time. These features add additional functionality but also add dependencies.
+
+### Available Features
+
+| Feature | Description | Dependencies Added |
+|---------|-------------|-------------------|
+| `git-lib` | Use libgit2 for git operations (faster, more features) | ~67 deps |
+| `github-api` | GitHub API integration via octocrab | ~255 deps |
+| `analytics-simd` | SIMD-accelerated analytics | platform-specific |
+
+### Installing with Features
+
+```bash
+# Default installation (no optional features)
+cargo install pmat
+
+# With git-lib feature (recommended for heavy git operations)
+cargo install pmat --features git-lib
+
+# With GitHub API feature (for GitHub-specific operations)
+cargo install pmat --features github-api
+
+# With multiple features
+cargo install pmat --features "git-lib,github-api"
+
+# With all features
+cargo install pmat --all-features
+```
+
+### Feature Details
+
+#### git-lib
+
+The `git-lib` feature uses libgit2 instead of shell `git` commands for git operations. This provides:
+- Faster git operations (no process spawning)
+- Better error handling
+- More git features available
+
+Without this feature, PMAT uses shell `git` commands as a fallback, which works on any system with git installed.
+
+#### github-api
+
+The `github-api` feature enables GitHub-specific operations like:
+- Repository size checking before clone
+- GitHub API rate limit awareness
+- Private repository access (with token)
+
+This feature requires the `GITHUB_TOKEN` environment variable for authenticated requests.
+
 ## System Requirements
 
 - **OS**: Windows, macOS, Linux (any distribution)
