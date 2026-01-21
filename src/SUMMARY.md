@@ -73,6 +73,7 @@
 - [Chapter 40: Project Diagnostics](ch40-00-project-diagnostics.md)
 - [Chapter 41: Sovereign Stack Integration](ch41-00-sovereign-stack.md)
 - [Chapter 42: ComputeBrick Compliance](ch42-00-computebrick-compliance.md)
+- [Chapter 43: File Health and Max-Lines (CB-040)](ch43-00-file-health.md)
 
 ## Conclusion
 
