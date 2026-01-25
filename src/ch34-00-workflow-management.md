@@ -117,19 +117,40 @@ pmat work continue my-feature
 
 ### `pmat work complete`
 
-Mark work as complete and get next steps.
+Mark work as complete with Popperian Falsification quality enforcement.
 
 ```bash
-# Complete work (runs quality gates by default)
+# Complete work (runs quality gates + falsification by default)
 pmat work complete GH-75
 
-# Skip quality gates (for testing)
+# Skip quality gates (falsification still runs - cannot be skipped)
 pmat work complete GH-75 --skip-quality
+
+# Override specific claims with accountability
+pmat work complete GH-75 --override-claims coverage,complexity --ticket DEBT-001
 ```
 
-**Example Output:**
+**Example Output (Passing):**
 ```
 ✅ Completing work on: GH-75
+
+🔍 Running quality gates...
+✅ All quality gates passed
+
+📜 Loading Work Contract...
+   Baseline: a1b2c3d4 (TDG: 78.5, Coverage: 87.2%)
+
+Running Popperian Falsification (13 claims to validate)
+
+[1/13] All baseline files still exist
+      Result: PASSED
+
+[2/13] The falsifier is active and detecting (Meta-Check)
+      Result: PASSED
+
+... (all 13 claims) ...
+
+✅ FALSIFICATION RESULT: PASSED (13/13 claims validated)
 
 ✅ Marked as complete: Unified GitHub/YAML workflow
 ✅ Updated roadmap: ./docs/roadmaps/roadmap.yaml
@@ -137,6 +158,21 @@ pmat work complete GH-75 --skip-quality
 🎯 Next steps:
    1. Create commit: git commit -m "feat: Unified GitHub/YAML workflow (Refs GH-75)"
    2. Close GitHub issue: gh issue close 75
+```
+
+**Example Output (Blocked):**
+```
+❌ FALSIFICATION RESULT: BLOCKED (2 failure(s), 0 warning(s))
+
+Failures (must fix):
+  - [5] Total coverage >= 95%: Coverage dropped from 87.2% to 84.1%
+  - [7] No function exceeds complexity 20: 3 functions exceed threshold
+
+Fix issues and retry: pmat work complete GH-75
+
+Or override with accountability (Popperian Protocol):
+  1. Create debt ticket: pmat comply upgrade --target popperian
+  2. pmat work complete GH-75 --override-claims coverage,complexity --ticket DEBT-001
 ```
 
 ### `pmat work status`
@@ -932,7 +968,7 @@ pmat work complete GH-75
 #    - Unified GitHub/YAML workflow (#75)
 ```
 
-### Quality Gates Integration (Phase 8)
+### Quality Gates Integration (Phase 8) ✅ IMPLEMENTED
 Run quality gates before completion:
 ```bash
 pmat work complete GH-75
@@ -942,6 +978,186 @@ pmat work complete GH-75
 # ✅ Zero clippy warnings
 # ✅ Marked complete
 ```
+
+## Work Contract and Popperian Falsification
+
+**Version**: Added in PMAT v2.214.0
+
+The Work Contract system implements evidence-based quality enforcement using Popperian falsification epistemology. Every claim must be falsifiable—if falsification finds evidence of regression, work is BLOCKED.
+
+### Core Philosophy
+
+Karl Popper's falsificationism applied to software quality:
+
+> **"A claim is scientific only if it can be proven false."**
+
+In PMAT:
+- Every quality claim must have a falsification test
+- If the test finds counter-evidence, the claim is FALSIFIED
+- FALSIFIED claims BLOCK completion (unless overridden with accountability)
+- The falsifier itself is tested (meta-falsification)
+
+### Work Contract Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    pmat work start                          │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ IMMUTABLE BASELINE CAPTURED:                            ││
+│  │   • Git commit SHA                                      ││
+│  │   • TDG score                                           ││
+│  │   • Coverage percentage                                 ││
+│  │   • File manifest (protected files list)                ││
+│  │   • Rust project score (if applicable)                  ││
+│  └─────────────────────────────────────────────────────────┘│
+│                            ↓                                │
+│                     Developer works...                      │
+│                            ↓                                │
+│                    pmat work complete                       │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ 13 FALSIFICATION CLAIMS TESTED:                         ││
+│  │   1. Manifest integrity                                 ││
+│  │   2. Meta-falsification (self-test)                     ││
+│  │   3. Coverage gaming detection                          ││
+│  │   4. Differential coverage                              ││
+│  │   5. Absolute coverage                                  ││
+│  │   6. TDG regression                                     ││
+│  │   7. Complexity regression                              ││
+│  │   8. Supply chain integrity                             ││
+│  │   9. File size limits                                   ││
+│  │  10. Spec quality                                       ││
+│  │  11. GitHub sync                                        ││
+│  │  12. Examples compile                                   ││
+│  │  13. Book validation                                    ││
+│  └─────────────────────────────────────────────────────────┘│
+│                            ↓                                │
+│              ┌──────────┴──────────┐                        │
+│              │                     │                        │
+│         ALL PASS             ANY FAIL                       │
+│              │                     │                        │
+│              ↓                     ↓                        │
+│        ✅ COMPLETE          ❌ BLOCKED                      │
+│                           (fix or override)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### The 13 Falsifiable Claims
+
+| # | Claim | Falsification Test | Severity |
+|---|-------|-------------------|----------|
+| 1 | **Manifest Integrity** | No baseline files deleted | BLOCKING |
+| 2 | **Meta-Falsification** | Falsifier detects injected faults | BLOCKING |
+| 3 | **Coverage Gaming** | No `cfg(not(coverage))` or LCOV exclusions | BLOCKING |
+| 4 | **Differential Coverage** | All new/changed lines tested | WARNING |
+| 5 | **Absolute Coverage** | Coverage ≥ 95% | BLOCKING |
+| 6 | **TDG Regression** | TDG score ≥ baseline | BLOCKING |
+| 7 | **Complexity** | No function > 20 cyclomatic | BLOCKING |
+| 8 | **Supply Chain** | `cargo deny check` passes | BLOCKING |
+| 9 | **File Size** | No file > 500 lines | WARNING |
+| 10 | **Spec Quality** | Specification score ≥ threshold | WARNING |
+| 11 | **GitHub Sync** | No uncommitted/unpushed changes | BLOCKING |
+| 12 | **Examples Compile** | `cargo run --example` passes | WARNING |
+| 13 | **Book Validation** | pmat-book tests pass | WARNING |
+
+### Anti-Gaming Detection
+
+The system detects attempts to game coverage metrics:
+
+**Detected Patterns:**
+- `#[cfg(not(coverage))]` - Code excluded from coverage
+- `#[cfg(not(tarpaulin))]` - Tarpaulin-specific exclusion
+- `// LCOV_EXCL_START` / `// LCOV_EXCL_STOP` - LCOV exclusion markers
+- Test file deletions from baseline
+
+**Example Detection:**
+```
+[3/13] No coverage exclusion gaming
+      Falsification: Scanning for gaming patterns...
+      Result: FAILED
+      Evidence: Found cfg(not(coverage)) in src/services/cache.rs:45
+```
+
+### Accountable Overrides
+
+Overrides require accountability—you cannot bypass falsification silently:
+
+**BLOCKED (no accountability):**
+```bash
+pmat work complete GH-75 --override-claims coverage
+# Error: --ticket is mandatory for overrides.
+#
+# Popperian Principle: Every override must be accountable.
+# Create a debt ticket first:
+# 1. pmat comply upgrade --target popperian
+# 2. Or manually create .pmat-tickets/DEBT-XXX.yaml
+```
+
+**ALLOWED (with ticket):**
+```bash
+pmat work complete GH-75 --override-claims coverage,complexity --ticket DEBT-COV-20250125
+# ⚠️  FALSIFICATION RESULT: OVERRIDDEN (2 claim(s) overridden with ticket DEBT-COV-20250125)
+#
+# Overridden claims:
+#   - [5] Total coverage >= 95%: Coverage at 82.3% (OVERRIDDEN)
+#   - [7] No function exceeds complexity 20: 2 functions (OVERRIDDEN)
+#
+# ⚠️  WARNING: Technical debt incurred. Track with ticket: DEBT-COV-20250125
+```
+
+### Valid Override Claim Names
+
+Use these names with `--override-claims`:
+
+| Name | Claim |
+|------|-------|
+| `manifest` | Manifest integrity |
+| `meta-falsification` | Meta-falsification |
+| `coverage-gaming` | Coverage gaming detection |
+| `differential-coverage` | Differential coverage |
+| `coverage` | Absolute coverage |
+| `tdg` | TDG regression |
+| `complexity` | Complexity limits |
+| `supply-chain` | Supply chain integrity |
+| `file-size` | File size limits |
+| `spec-quality` | Specification quality |
+| `github-sync` | GitHub sync status |
+| `examples` | Examples compilation |
+| `book` | Book validation |
+
+### Contract Storage
+
+Work contracts are stored in `.pmat-work/<ticket-id>/contract.json`:
+
+```json
+{
+  "ticket_id": "GH-75",
+  "baseline_commit": "a1b2c3d4e5f6...",
+  "baseline_tdg": 78.5,
+  "baseline_coverage": 87.2,
+  "baseline_rust_score": 92.0,
+  "baseline_file_manifest": {
+    "files": ["src/lib.rs", "src/main.rs", ...],
+    "coverage_required": ["src/lib.rs", "src/services/..."]
+  },
+  "claims": [...],
+  "created_at": "2025-01-25T10:00:00Z"
+}
+```
+
+### --skip-quality vs Falsification
+
+**Important**: `--skip-quality` skips quality gates (clippy, tests), but falsification ALWAYS runs:
+
+```bash
+pmat work complete GH-75 --skip-quality
+# ⚠️  Quality gates SKIPPED (--skip-quality)
+#
+# 📜 Loading Work Contract...
+# Running Popperian Falsification (13 claims to validate)
+# ... falsification runs regardless ...
+```
+
+This ensures you can skip slow quality gates during development, but cannot bypass the evidence-based falsification system.
 
 ### Epic Support (Phase 9)
 Track epics with subtasks:
@@ -1258,6 +1474,10 @@ The `pmat work` command suite provides a powerful, flexible workflow management 
 - ✅ **Specification QA** (v2.211.0+) - 100-point Popperian falsifiability scoring
 - ✅ **200-point Perfection Score** (v2.211.1+) - Unified quality metric aggregating 8 categories
 - ✅ **Spec management commands** (v2.211.1+) - Score, comply, create, list specifications
+- ✅ **Work Contract system** (v2.214.0+) - Immutable baseline capture at work start
+- ✅ **Popperian Falsification** (v2.214.0+) - 13 falsifiable claims with evidence-based blocking
+- ✅ **Anti-gaming detection** (v2.214.0+) - Detects cfg(not(coverage)) and LCOV exclusions
+- ✅ **Accountable overrides** (v2.214.0+) - Override claims require debt ticket
 
 **Next Steps:**
 - Run `pmat work init` to get started
