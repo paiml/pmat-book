@@ -74,6 +74,7 @@
 - [Chapter 41: Sovereign Stack Integration](ch41-00-sovereign-stack.md)
 - [Chapter 42: ComputeBrick Compliance](ch42-00-computebrick-compliance.md)
 - [Chapter 43: File Health and Max-Lines (CB-040)](ch43-00-file-health.md)
+- [Chapter 44: Dependency Health (CB-081)](ch44-00-dependency-health.md)
 
 ## Conclusion
 
