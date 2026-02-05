@@ -63,7 +63,7 @@ This chapter covers integrating PMAT MCP tools with Claude Desktop for AI-assist
       "command": "pmat",
       "args": ["mcp-server", "--bind", "127.0.0.1:3001"],
       "env": {
-        "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+        "PMAT_SEMANTIC_ENABLED": "true",
         "PMAT_VECTOR_DB_PATH": "~/.pmat/embeddings.db",
         "RUST_LOG": "info"
       }
@@ -313,23 +313,25 @@ Workflow:
 - Claude says semantic search tools unavailable
 
 **Solutions:**
-1. Set OpenAI API key:
+1. Enable semantic search via config:
    ```bash
-   export OPENAI_API_KEY="sk-..."
+   pmat config --set semantic.enabled=true
    ```
 
-2. Add to Claude config:
+2. Or add to Claude config:
    ```json
    {
      "mcpServers": {
        "pmat": {
          "env": {
-           "OPENAI_API_KEY": "${OPENAI_API_KEY}"
+           "PMAT_SEMANTIC_ENABLED": "true"
          }
        }
      }
    }
    ```
+
+**Note:** PMAT uses local TF-IDF embeddings via the aprender library. No external API keys are required.
 
 ## Best Practices
 

@@ -1,13 +1,13 @@
 # MCP Tools
 
-**Chapter Status**: ✅ 100% Working (21/21 tools documented)
+**Chapter Status**: Working (25/25 tools documented)
 
-*Last updated: 2025-10-26*
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-02-04*
+*PMAT version: pmat 2.215.0*
 
 ## Overview
 
-PMAT provides 21 MCP tools across 7 categories for comprehensive code analysis, quality assessment, and AI-assisted development. All tools use standardized JSON-RPC 2.0 protocol.
+PMAT provides 25 MCP tools across 8 categories for comprehensive code analysis, quality assessment, and AI-assisted development. All tools use standardized JSON-RPC 2.0 protocol.
 
 ## Tool Categories
 
@@ -286,9 +286,99 @@ Detect performance and security issues.
 }
 ```
 
+### Agent Context (4 tools)
+
+RAG-powered semantic code search with quality annotations. No API keys required - works completely offline.
+
+#### `pmat_query_code`
+
+Semantic search for code by intent. Returns quality-ranked results with TDG scores, complexity, and Big-O estimates.
+
+**Input Schema:**
+```json
+{
+  "query": "error handling in API layer",
+  "limit": 5,
+  "min_grade": "B",
+  "max_complexity": 15,
+  "path": "src/"
+}
+```
+
+**Output:**
+```json
+{
+  "results": [
+    {
+      "id": "src/api/error.rs::handle_api_error",
+      "name": "handle_api_error",
+      "file": "src/api/error.rs",
+      "line": 42,
+      "signature": "pub fn handle_api_error(err: ApiError) -> Response",
+      "tdg_grade": "A",
+      "complexity": 8,
+      "big_o": "O(1)",
+      "relevance": 0.92
+    }
+  ]
+}
+```
+
+**Use Cases:**
+- Replace grep for AI agents (Claude Code, Cline, Cursor)
+- Quality-filtered code discovery
+- Pre-refactoring analysis
+
+#### `pmat_get_function`
+
+Get full function source with quality metrics by file and function name.
+
+**Input Schema:**
+```json
+{
+  "file": "src/api/error.rs",
+  "function": "handle_api_error",
+  "include_callers": false,
+  "include_callees": false
+}
+```
+
+#### `pmat_find_similar`
+
+Find functions similar to a given one for refactoring and deduplication.
+
+**Input Schema:**
+```json
+{
+  "file": "src/api/error.rs",
+  "function": "handle_api_error",
+  "limit": 5,
+  "min_similarity": 0.7
+}
+```
+
+#### `pmat_index_stats`
+
+Check agent context index health and statistics.
+
+**Input Schema:**
+```json
+{}
+```
+
+**Output:**
+```json
+{
+  "total_functions": 42001,
+  "total_files": 1816,
+  "avg_tdg_score": 0.3,
+  "languages": ["Rust", "TypeScript", "Python"]
+}
+```
+
 ### Semantic Search (4 tools)
 
-AI-powered semantic code search (requires OpenAI API key).
+Local semantic code search using TF-IDF embeddings (no API key required).
 
 #### `semantic_search`
 
@@ -529,6 +619,33 @@ const issues = await client.callTool('deep_wasm_detect_issues', {
   wasm_file: 'output.wasm',
   check_security: true,
   check_performance: true
+});
+```
+
+### Workflow 4: Agent Context Search
+
+```javascript
+// Step 1: Search for relevant code by intent
+const results = await client.callTool('pmat_query_code', {
+  query: 'error handling in API layer',
+  min_grade: 'B',
+  limit: 5
+});
+
+// Step 2: Get full function details
+for (const result of results) {
+  const details = await client.callTool('pmat_get_function', {
+    file: result.file,
+    function: result.name
+  });
+  console.log(`${result.name}: TDG ${result.tdg_grade}, Complexity ${result.complexity}`);
+}
+
+// Step 3: Find similar functions for refactoring
+const similar = await client.callTool('pmat_find_similar', {
+  file: results[0].file,
+  function: results[0].name,
+  limit: 3
 });
 ```
 
