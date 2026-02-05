@@ -21,6 +21,7 @@
 | `pmat similarity` | Code similarity | `pmat similarity --threshold=0.8` |
 | `pmat dead-code` | Dead code detection | `pmat dead-code --export-list` |
 | `pmat satd` | SATD detection | `pmat satd --priority=high` |
+| `pmat query` | RAG-powered semantic search | `pmat query "error handling" --min-grade B` |
 
 ## Configuration
 

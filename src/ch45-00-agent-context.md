@@ -118,6 +118,69 @@ pmat query "data processing" --language python
 pmat query "middleware" --path src/api/
 ```
 
+### Cross-Project Search
+
+By default, `pmat query` auto-discovers sibling projects with indexes. You can also explicitly include additional projects:
+
+```bash
+# Include a specific project (can be specified multiple times)
+pmat query "matrix multiplication" --include-project ~/src/aprender
+
+# Include multiple projects
+pmat query "graph algorithm" \
+  --include-project ~/src/aprender \
+  --include-project ~/src/trueno-graph
+
+# Combined with other filters
+pmat query "validation" --include-project ~/src/other-project --rank-by pagerank
+```
+
+**Note:** The included project must have a `.pmat/context.idx` file. Run `pmat query --rebuild-index` in that project first if needed.
+
+### Graph-Aware Ranking
+
+**NEW in v2.216.0**: Query results can be ranked by graph metrics (PageRank, centrality) instead of pure semantic relevance.
+
+```bash
+# Rank by PageRank (most important functions in the call graph)
+pmat query "error handling" --rank-by pagerank
+
+# Rank by in-degree (most called functions)
+pmat query "format" --rank-by indegree
+
+# Rank by centrality (hub functions with most connections)
+pmat query "parse" --rank-by centrality
+
+# Filter by minimum PageRank score
+pmat query "mcp" --min-pagerank 0.0001
+```
+
+**Ranking Options:**
+
+| Option | Description | Use Case |
+|--------|-------------|----------|
+| `relevance` | Default. Semantic similarity to query | Finding specific functionality |
+| `pagerank` | Function importance (called by important callers) | Finding critical code paths |
+| `centrality` | Total connections (in + out degree) | Finding hub functions |
+| `indegree` | Most called functions | Finding utility/helper functions |
+
+**Example Output with Graph Metrics:**
+
+```
+1. src/contracts/mcp_impl.rs:40 - error
+   Signature: pub fn error(id: Value, code: i32, message: String) -> Self
+   TDG: A (0.1) | Complexity: 1 | Big-O: O(1)
+   Calls: error, code, message, to_string
+   Called by: main, serve_mcp, execute_workflow, (+1443 more)
+   Graph: PageRank 0.000426 | In-Degree: 4649 | Out-Degree: 46
+   Relevance: 0.59
+```
+
+The `Graph:` line shows:
+- **PageRank**: Importance score (sum to 1.0 across all functions)
+- **In-Degree**: Number of functions that call this function
+- **Out-Degree**: Number of functions this function calls
+
 ## MCP Tools for Agents
 
 Four MCP tools expose the agent context to AI coding agents:
@@ -133,9 +196,22 @@ Semantic search for code by intent. This is the primary tool agents should use i
   "limit": 5,
   "min_grade": "B",
   "max_complexity": 15,
-  "path": "src/"
+  "path": "src/",
+  "rank_by": "pagerank",
+  "min_pagerank": 0.0001
 }
 ```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query` | string | Natural language query (required) |
+| `limit` | integer | Maximum results (default: 10) |
+| `min_grade` | string | Minimum TDG grade (A, B, C, D, F) |
+| `max_complexity` | integer | Maximum cyclomatic complexity |
+| `language` | string | Filter by language (rust, python, etc.) |
+| `path` | string | Filter by file path pattern |
+| `rank_by` | string | Ranking: relevance, pagerank, centrality, indegree |
+| `min_pagerank` | float | Minimum PageRank score filter |
 
 **Output:**
 ```json
@@ -151,6 +227,9 @@ Semantic search for code by intent. This is the primary tool agents should use i
     "tdg_score": 2.1,
     "complexity": 8,
     "big_o": "O(1)",
+    "pagerank": 0.000234,
+    "in_degree": 156,
+    "out_degree": 12,
     "relevance": 0.92
   }
 ]
@@ -258,6 +337,10 @@ This demo shows:
 3. JSON output for CI/CD
 4. Markdown output for documentation
 5. Language-filtered search
+6. PageRank ranking (most important functions)
+7. InDegree ranking (most called functions)
+8. Centrality ranking (hub functions)
+9. PageRank filter with JSON output
 
 ## grep vs pmat query
 
@@ -267,6 +350,8 @@ This demo shows:
 | **Context** | Raw text lines | Full signatures + docs |
 | **Quality** | None | TDG grade, complexity, Big-O |
 | **Relevance** | Keyword only | Semantic intent matching |
+| **Graph** | None | PageRank, in/out degree |
+| **Ranking** | Line order | Relevance, PageRank, centrality |
 | **Token cost** | High (noise) | Low (signal) |
 | **Speed** | O(n) scan | O(1) index lookup |
 
