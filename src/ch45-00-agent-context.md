@@ -2,7 +2,7 @@
 
 **Chapter Status**: Working
 
-*PMAT version: pmat 2.216.0*
+*PMAT version: pmat 2.217.0*
 
 ## The Problem
 
@@ -118,6 +118,43 @@ pmat query "data processing" --language python
 pmat query "middleware" --path src/api/
 ```
 
+### Definition Type Filter (v2.217.0)
+
+**NEW in v2.217.0**: Filter results by definition type to find specific kinds of code elements:
+
+```bash
+# Search only functions
+pmat query "error handling" --type fn
+
+# Search only struct definitions
+pmat query "config" --type struct
+
+# Search only enums
+pmat query "status" --type enum
+
+# Search only traits
+pmat query "serializable" --type trait
+
+# Search only type aliases
+pmat query "result" --type type
+```
+
+**Available Types:**
+
+| Type | Description | Example Match |
+|------|-------------|---------------|
+| `fn` | Functions and methods | `fn handle_error()` |
+| `struct` | Struct definitions | `struct Config { ... }` |
+| `enum` | Enum definitions | `enum Status { ... }` |
+| `trait` | Trait definitions | `trait Serializable { ... }` |
+| `type` | Type aliases | `type Result<T> = ...` |
+
+**Use Cases:**
+- Finding all error-related enums: `pmat query "error" --type enum`
+- Finding configuration structs: `pmat query "config" --type struct`
+- Finding trait implementations: `pmat query "handler" --type trait`
+- Combining with quality filters: `pmat query "parser" --type struct --min-grade B`
+
 ### Cross-Project Search
 
 By default, `pmat query` auto-discovers sibling projects with indexes. You can also explicitly include additional projects:
@@ -163,6 +200,45 @@ pmat query "mcp" --min-pagerank 0.0001
 | `pagerank` | Function importance (called by important callers) | Finding critical code paths |
 | `centrality` | Total connections (in + out degree) | Finding hub functions |
 | `indegree` | Most called functions | Finding utility/helper functions |
+
+### Churn Integration (v2.217.0)
+
+Query results include git churn metrics when available:
+
+```
+1. src/api/handler.rs:42 - process_request
+   Signature: pub async fn process_request(req: Request) -> Response
+   TDG: B (3.4) | Complexity: 12 | Big-O: O(n) | 🔥 Hot: 25 commits (80%)
+```
+
+- **🔥 Hot** indicator appears for files with churn_score > 0.5 (frequently modified)
+- **Commits** count shown for all files with git history
+- High-churn files may indicate code that needs attention (bug hotspots, unstable design)
+
+#### Programmatic Churn Enrichment
+
+The API provides functions for enriching query results with churn data:
+
+```rust
+use pmat::services::agent_context::{
+    enrich_with_churn, enrich_results_with_churn, build_churn_map
+};
+use std::collections::HashMap;
+
+// Option 1: Manual enrichment with pre-computed churn map
+let mut churn_map: HashMap<String, (u32, f32)> = HashMap::new();
+churn_map.insert("src/api.rs".to_string(), (42, 0.8)); // 42 commits, 80% churn
+enrich_with_churn(&mut results, &churn_map);
+
+// Option 2: Automatic churn computation from git
+enrich_results_with_churn(&mut results, project_root, 90).await?;
+```
+
+| Function | Description |
+|----------|-------------|
+| `enrich_with_churn` | Enrich results from pre-computed churn map |
+| `build_churn_map` | Convert `FileChurnMetrics` to lookup map |
+| `enrich_results_with_churn` | Compute churn from git and enrich results |
 
 **Example Output with Graph Metrics:**
 
@@ -210,6 +286,7 @@ Semantic search for code by intent. This is the primary tool agents should use i
 | `max_complexity` | integer | Maximum cyclomatic complexity |
 | `language` | string | Filter by language (rust, python, etc.) |
 | `path` | string | Filter by file path pattern |
+| `type` | string | Filter by definition type: fn, struct, enum, trait, type |
 | `rank_by` | string | Ranking: relevance, pagerank, centrality, indegree |
 | `min_pagerank` | float | Minimum PageRank score filter |
 
@@ -376,8 +453,27 @@ This project has a RAG-indexed context with quality annotations.
 | `pmat_find_similar` | Find similar functions |
 ```
 
+## Detecting AI-Generated Technical Debt
+
+**NEW in v2.217.0**: AI coding assistants often use euphemisms to hide technical debt. Use `pmat analyze satd --extended` to catch these:
+
+```bash
+# Standard SATD detection
+pmat analyze satd --path src/
+# Result: 89 violations
+
+# Extended mode (catches AI euphemisms)
+pmat analyze satd --extended --path src/
+# Result: 441 violations (+352 hidden debt)
+```
+
+Extended mode detects: `placeholder`, `stub`, `simplified`, `for demo`, `mock`, `dummy`, `fake`, `hardcoded`, `for now`, `WIP`, `skip/bypass`.
+
+See [Chapter 5: Analyze Suite](ch05-00-analyze-suite.md#extended-mode-issue-149) for details.
+
 ## Next Steps
 
+- [Chapter 5: Analyze Suite](ch05-00-analyze-suite.md) - SATD extended mode for AI code cleanup
 - [Chapter 35: Semantic Search and Code Clustering](ch35-00-semantic-search.md) - Related semantic analysis
 - [Chapter 42: ComputeBrick Compliance](ch42-00-computebrick-compliance.md) - CB-130 and other checks
 - [Appendix B: Command Reference](appendix-b-commands.md) - Full CLI reference

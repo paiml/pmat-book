@@ -20,8 +20,8 @@
 | `pmat complexity` | Complexity analysis | `pmat complexity --by-function` |
 | `pmat similarity` | Code similarity | `pmat similarity --threshold=0.8` |
 | `pmat dead-code` | Dead code detection | `pmat dead-code --export-list` |
-| `pmat satd` | SATD detection | `pmat satd --priority=high` |
-| `pmat query` | RAG-powered semantic search | `pmat query "error handling" --min-grade B` |
+| `pmat satd` | SATD detection | `pmat satd --extended` (detect euphemisms) |
+| `pmat query` | RAG-powered semantic search | `pmat query "error handling" --type fn --min-grade B` |
 
 ## Configuration
 
@@ -421,6 +421,7 @@ cargo run --example <example_name>
 | | `organizational_intelligence_integration` | Org-wide analysis |
 | **Semantic Search** | `semantic_search_demo` | Code semantic search |
 | | `similarity_demo` | Code similarity detection |
+| | `agent_context_query_demo` | RAG-powered agent context |
 | **Debugging** | `recording_capture_demo` | Time-travel debugging |
 | | `complexity_demo` | Complexity pattern testing |
 

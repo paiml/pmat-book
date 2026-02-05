@@ -225,6 +225,9 @@ Self-Admitted Technical Debt (SATD) tracks developer-annotated issues:
 # Find all SATD markers
 pmat analyze satd
 
+# Extended mode - detect euphemisms (NEW in v2.217.0)
+pmat analyze satd --extended
+
 # Categorize by type
 pmat analyze satd --categorize
 
@@ -233,6 +236,33 @@ pmat analyze satd --priority high
 
 # Generate SATD report
 pmat analyze satd --report
+```
+
+### Extended Mode (Issue #149)
+
+**NEW in PMAT v2.217.0**: The `--extended` flag detects euphemisms commonly used by AI coding assistants to bypass traditional SATD detection:
+
+| Pattern | Description | Example |
+|---------|-------------|---------|
+| `placeholder` | Incomplete implementation | "placeholder for real logic" |
+| `stub` | Missing implementation | "stub method" |
+| `simplified` | Corners cut | "simplified for now" |
+| `for demo` | Non-production code | "for demonstration only" |
+| `mock/dummy/fake` | Fake implementations | "mock implementation" |
+| `hardcoded` | Missing configuration | "hardcoded value" |
+| `for now` | Temporary solutions | "works for now" |
+| `WIP` | Work in progress | "WIP: not complete" |
+| `skip/bypass` | Missing validation | "skip validation for now" |
+
+```bash
+# Standard detection only (89 violations in pmat codebase)
+pmat analyze satd --path src/
+
+# Extended detection (441 violations - catches 352 more hidden debt)
+pmat analyze satd --extended --path src/
+
+# CI/CD zero-tolerance with extended detection
+pmat analyze satd --extended --strict --fail-on-violation
 ```
 
 ### SATD Categories and Patterns
