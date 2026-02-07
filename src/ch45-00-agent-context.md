@@ -2,7 +2,7 @@
 
 **Chapter Status**: Working
 
-*PMAT version: pmat 2.217.0*
+*PMAT version: pmat 3.0.0*
 
 ## The Problem
 
@@ -118,9 +118,9 @@ pmat query "data processing" --language python
 pmat query "middleware" --path src/api/
 ```
 
-### Definition Type Filter (v2.217.0)
+### Definition Type Filter (v3.0.0)
 
-**NEW in v2.217.0**: Filter results by definition type to find specific kinds of code elements:
+Filter results by definition type to find specific kinds of code elements:
 
 ```bash
 # Search only functions
@@ -200,6 +200,156 @@ pmat query "mcp" --min-pagerank 0.0001
 | `pagerank` | Function importance (called by important callers) | Finding critical code paths |
 | `centrality` | Total connections (in + out degree) | Finding hub functions |
 | `indegree` | Most called functions | Finding utility/helper functions |
+
+### Coverage Gap Analysis (v3.0.0)
+
+**NEW in v3.0.0**: Find uncovered code without writing a query string. Auto-detects LLVM coverage data from `cargo llvm-cov`.
+
+```bash
+# Top 20 coverage gaps, ranked by uncovered lines
+pmat query --coverage-gaps --limit 20 --exclude-tests
+
+# Coverage-enriched semantic search
+pmat query "error handling" --coverage --limit 10
+
+# Only uncovered functions
+pmat query "parse" --coverage --uncovered-only --limit 10
+
+# ROI ranking: missed_lines * pagerank * (1/complexity)
+pmat query --coverage-gaps --rank-by impact --limit 10
+```
+
+**Example Output:**
+
+```
+Coverage Gaps (20 functions with uncovered code)
+
+   1. 590 uncov |  3.3% cov | src/cli/command_structure.rs:57 execute [F] impact:1.4
+   2. 558 uncov |  3.8% cov | src/cli/command_dispatcher/mod.rs:57 route_command [F]
+   3. 345 uncov | 23.8% cov | src/tdg/cuda_simd/detection.rs:156 detect_ptx_memory_patterns [F]
+```
+
+**How it works:**
+
+1. Auto-detects coverage: checks `--coverage-file` flag, `PMAT_COVERAGE_FILE` env, `.pmat/coverage-cache.json`, or runs `cargo llvm-cov report --json`
+2. Enumerates ALL indexed functions (no query string needed)
+3. Intersects function line ranges with LLVM coverage data
+4. Filters to uncovered/partially-covered functions
+5. Sorts by missed lines (descending) for maximum impact
+
+**Impact score** (`--rank-by impact`): `missed_lines * max(pagerank * 10000, 0.1) * (1 / max(complexity, 1))` — prioritizes high-importance, low-complexity uncovered code (best ROI for writing tests).
+
+### Search Modes (v3.0.0)
+
+**NEW in v3.0.0**: `pmat query` now supports regex and literal search modes, replacing most `grep`/`rg` use cases:
+
+```bash
+# Regex search (like rg -e)
+pmat query --regex "fn\s+handle_\w+" --limit 10
+
+# Literal string search (like rg -F)
+pmat query --literal "unwrap()" --exclude-tests --limit 10
+
+# Case-insensitive search
+pmat query "Error" -i --limit 10
+
+# Exclude patterns (like grep -v)
+pmat query "handler" --exclude "test" --limit 10
+
+# Files with matches only (like rg -l)
+pmat query "cache" --files-with-matches
+
+# Count matches per file (like rg -c)
+pmat query "unwrap" --count
+
+# Context lines (like grep -C)
+pmat query "panic" -A 3 -B 2 --limit 10
+
+# Raw file search (bypass AST index, pure rg-like)
+pmat query --raw "TODO" --limit 20
+```
+
+### Enrichment Flags (v2.217.0+)
+
+Enrich query results with additional quality signals. All flags compose freely:
+
+```bash
+# Git volatility (hot files with high churn)
+pmat query "cache" --churn --limit 10
+
+# Code clone detection
+pmat query "serialize" --duplicates --limit 10
+
+# Pattern diversity metrics
+pmat query "handler" --entropy --limit 10
+
+# Fault pattern annotations (unwrap, panic, unsafe)
+pmat query "parse" --faults --exclude-tests --limit 10
+
+# Git commit history fusion (search by intent)
+pmat query "fix memory leak" -G --limit 10
+
+# LLVM line coverage enrichment (v3.0.0)
+pmat query "error handling" --coverage --limit 10
+
+# Coverage + uncovered only filter
+pmat query "parse" --coverage --uncovered-only --limit 10
+
+# Full enrichment (all signals)
+pmat query "dispatch" --churn --duplicates --entropy --faults --coverage -G --limit 10
+```
+
+#### Coverage Enrichment (v3.0.0)
+
+The `--coverage` flag fuses LLVM line coverage data into query results. Each function gets:
+
+| Field | Description |
+|-------|-------------|
+| `line_coverage_pct` | Percentage of instrumented lines covered (0.0-100.0) |
+| `lines_covered` | Number of lines with at least one execution |
+| `lines_total` | Total instrumented lines in function |
+| `missed_lines` | Number of uncovered lines |
+| `impact_score` | ROI score: `missed_lines * pagerank * (1/complexity)` |
+
+**Coverage data sources** (checked in order):
+1. `--coverage-file <path>` — explicit LLVM JSON file
+2. `PMAT_COVERAGE_FILE` environment variable
+3. `.pmat/coverage-cache.json` — cached from previous run
+4. `cargo llvm-cov report --json` — auto-runs instrumented export
+
+**Coverage as fault annotations**: When `--faults` is combined with `--coverage`, three coverage-specific fault patterns are annotated:
+
+| Fault | Condition | Meaning |
+|-------|-----------|---------|
+| `NO_COVERAGE` | 0% line coverage | Function is completely untested |
+| `LOW_COVERAGE` | 1-49% line coverage | Function has significant uncovered paths |
+| `COVERAGE_RISK` | Function has uncovered lines in high-pagerank code | High-impact coverage gap |
+
+```bash
+# Find fault patterns including coverage faults
+pmat query "error" --faults --coverage --exclude-tests --limit 10
+
+# Example output:
+#   src/api/handler.rs:42 - process_request
+#   TDG: B | Complexity: 12 | 🛡️32% | 📈4.2
+#   Faults: LOW_COVERAGE, UNWRAP_CALL
+```
+
+#### Impact Ranking (v3.0.0)
+
+`--rank-by impact` sorts results by ROI — uncovered code that matters most:
+
+```bash
+# Best ROI for writing tests: high importance, low complexity, many missed lines
+pmat query --coverage-gaps --rank-by impact --limit 20
+
+# Impact formula: missed_lines * max(pagerank * 10000, 0.1) * (1 / max(complexity, 1))
+```
+
+This prioritizes functions that are:
+- **Heavily called** (high pagerank = high blast radius if buggy)
+- **Simple** (low complexity = easy to write tests for)
+- **Uncovered** (many missed lines = high coverage gain per test)
 
 ### Churn Integration (v2.217.0)
 
@@ -418,6 +568,13 @@ This demo shows:
 7. InDegree ranking (most called functions)
 8. Centrality ranking (hub functions)
 9. PageRank filter with JSON output
+10. Coverage gap analysis (`--coverage-gaps`)
+11. Coverage-enriched search (`--coverage`)
+12. Regex search (`--regex`, like rg -e)
+13. Literal search (`--literal`, like rg -F)
+14. Fault pattern search (`--faults`)
+15. Multi-enrichment (`--churn --entropy`)
+16. Git history fusion (`-G`)
 
 ## grep vs pmat query
 
@@ -428,7 +585,9 @@ This demo shows:
 | **Quality** | None | TDG grade, complexity, Big-O |
 | **Relevance** | Keyword only | Semantic intent matching |
 | **Graph** | None | PageRank, in/out degree |
-| **Ranking** | Line order | Relevance, PageRank, centrality |
+| **Coverage** | None | Line coverage %, missed lines, impact |
+| **Enrichment** | None | Churn, duplicates, entropy, faults |
+| **Ranking** | Line order | Relevance, PageRank, centrality, impact |
 | **Token cost** | High (noise) | Low (signal) |
 | **Speed** | O(n) scan | O(1) index lookup |
 
@@ -470,6 +629,37 @@ pmat analyze satd --extended --path src/
 Extended mode detects: `placeholder`, `stub`, `simplified`, `for demo`, `mock`, `dummy`, `fake`, `hardcoded`, `for now`, `WIP`, `skip/bypass`.
 
 See [Chapter 5: Analyze Suite](ch05-00-analyze-suite.md#extended-mode-issue-149) for details.
+
+## Coverage-First Testing Workflow
+
+The recommended workflow for using coverage enrichment in development:
+
+```bash
+# Step 1: Run instrumented test build (creates coverage data)
+cargo llvm-cov test --lib --no-report
+
+# Step 2: Export coverage JSON
+cargo llvm-cov report --json > /tmp/coverage.json
+
+# Step 3: Find highest-impact coverage gaps
+pmat query --coverage-gaps --coverage-file /tmp/coverage.json \
+  --rank-by impact --limit 20 --exclude-tests
+
+# Step 4: Write tests for top gaps, re-run
+cargo llvm-cov test --lib --no-report
+pmat query --coverage-gaps --coverage-file /tmp/coverage.json \
+  --rank-by impact --limit 20 --exclude-tests
+
+# Step 5: Verify coverage improvement
+pmat query "your_module" --coverage --coverage-file /tmp/coverage.json --limit 10
+```
+
+Set `PMAT_COVERAGE_FILE` to avoid repeating the path:
+
+```bash
+export PMAT_COVERAGE_FILE=/tmp/coverage.json
+pmat query --coverage-gaps --rank-by impact --limit 20
+```
 
 ## Next Steps
 
