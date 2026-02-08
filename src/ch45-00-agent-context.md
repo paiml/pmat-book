@@ -2,7 +2,7 @@
 
 **Chapter Status**: Working
 
-*PMAT version: pmat 3.0.0*
+*PMAT version: pmat 3.0.1*
 
 ## The Problem
 
@@ -262,7 +262,7 @@ pmat query "cache" --files-with-matches
 # Count matches per file (like rg -c)
 pmat query "unwrap" --count
 
-# Context lines (like grep -C)
+# Context lines (like grep -C) — works across workspace projects
 pmat query "panic" -A 3 -B 2 --limit 10
 
 # Raw file search (bypass AST index, pure rg-like)
