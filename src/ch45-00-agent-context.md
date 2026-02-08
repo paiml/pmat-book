@@ -539,18 +539,22 @@ comply:
 
 ## Index Persistence
 
-The index is stored at `.pmat/context.idx` using bincode serialization:
+The index uses dual storage for maximum performance:
 
 ```
-.pmat/context.idx     # Serialized AgentContextIndex
+.pmat/context.db      # SQLite + FTS5 index (preferred, v2.0+)
+.pmat/context.idx     # Legacy LZ4 compressed blob (fallback)
 ```
+
+**SQLite FTS5** (v3.0.0+) provides BM25 relevance scoring, incremental updates, and on-demand lazy call graph loading. The legacy `.idx` format is still supported as a fallback.
 
 The index is:
 - **Auto-built** on first `pmat query` run
-- **Cached** for subsequent queries (loaded from disk)
-- **Rebuilt** when running `pmat query` after significant code changes
+- **Cached** for subsequent queries (sub-second warm loads)
+- **Incrementally updated** — only re-parses changed files
+- **Workspace-aware** — auto-discovers and merges sibling projects
 
-Add `.pmat/context.idx` to `.gitignore` -- it is machine-specific and regenerated automatically.
+Add `.pmat/context.db` and `.pmat/context.idx` to `.gitignore` — they are machine-specific and regenerated automatically.
 
 ## Example: Running the Demo
 
@@ -635,28 +639,29 @@ See [Chapter 5: Analyze Suite](ch05-00-analyze-suite.md#extended-mode-issue-149)
 The recommended workflow for using coverage enrichment in development:
 
 ```bash
-# Step 1: Run instrumented test build (creates coverage data)
+# Step 1: Run instrumented test build (creates profdata)
 cargo llvm-cov test --lib --no-report
 
-# Step 2: Export coverage JSON
-cargo llvm-cov report --json > /tmp/coverage.json
+# Step 2: Find highest-impact coverage gaps (auto-detects profdata)
+pmat query --coverage-gaps --rank-by impact --limit 20 --exclude-tests
 
-# Step 3: Find highest-impact coverage gaps
-pmat query --coverage-gaps --coverage-file /tmp/coverage.json \
-  --rank-by impact --limit 20 --exclude-tests
-
-# Step 4: Write tests for top gaps, re-run
+# Step 3: Write tests for top gaps, re-run
 cargo llvm-cov test --lib --no-report
-pmat query --coverage-gaps --coverage-file /tmp/coverage.json \
-  --rank-by impact --limit 20 --exclude-tests
+pmat query --coverage-gaps --rank-by impact --limit 20 --exclude-tests
 
-# Step 5: Verify coverage improvement
-pmat query "your_module" --coverage --coverage-file /tmp/coverage.json --limit 10
+# Step 4: Verify coverage improvement
+pmat query "your_module" --coverage --limit 10
 ```
 
-Set `PMAT_COVERAGE_FILE` to avoid repeating the path:
+**Coverage caching** (v3.0.0): After the first run, coverage data is cached to `.pmat/coverage-cache.json` with profdata-mtime invalidation. Subsequent queries with `--coverage` or `--coverage-gaps` resolve in ~1ms (no subprocess). The cache auto-invalidates when you run `cargo llvm-cov test` again.
+
+For CI or custom setups, you can still pass explicit coverage data:
 
 ```bash
+# Explicit coverage file (skips auto-detection)
+pmat query --coverage-gaps --coverage-file /tmp/coverage.json --limit 20
+
+# Or via environment variable
 export PMAT_COVERAGE_FILE=/tmp/coverage.json
 pmat query --coverage-gaps --rank-by impact --limit 20
 ```
