@@ -5,13 +5,13 @@
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Full AST Support | 12 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM, Bash, PHP, Java, Scala |
+| ✅ Full AST Support | 13 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM, Bash, PHP, Java, Scala, Lua |
 | ⚠️ Pattern-Based | 3 | Go, C#, Swift (regex/lexical, not full AST) |
 | ❌ Aspirational | 1 | Ruby (planned for future sprint) |
 | 📋 Tests Status | 100% | All test files passing with actual PMAT commands |
 
-*Last updated: 2025-10-26 (Sprint 52)*
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-02-10 (Sprint 60)*
+*PMAT version: pmat 3.0.3*
 <!-- DOC_STATUS_END -->
 
 ## The Problem
@@ -22,7 +22,7 @@ Traditional code analysis tools focus on single languages, leaving gaps in under
 
 ## PMAT's Multi-Language Approach
 
-PMAT provides comprehensive analysis across 10+ programming languages with:
+PMAT provides comprehensive analysis across 16 programming languages with:
 
 - **Language-Specific Analysis**: Custom analyzers for each language's unique patterns
 - **Unified Quality Metrics**: Consistent grading system across all languages
@@ -48,6 +48,7 @@ PMAT provides comprehensive analysis across 10+ programming languages with:
 | **PHP** | `.php` | Class/function detection, error handling patterns, full AST |
 | **Java** | `.java` | Classes, methods, packages, annotations, full AST (Sprint 51) |
 | **Scala** | `.scala` | Case classes, traits, objects, pattern matching, full AST (Sprint 51) |
+| **Lua** | `.lua` | Functions, require() imports, table constructors, control flow, full AST (Sprint 60) |
 
 **Pattern-Based Analysis (Regex/Lexical Parsing):**
 
@@ -835,6 +836,125 @@ pmat clippy ts_example/ --typescript-strict --react-hooks
   ]
 }
 ```
+
+### Lua Project Analysis
+
+Lua projects appear in game development (LOVE2D, Defold), embedded scripting (Redis, Nginx/OpenResty), and configuration (Neovim, Awesome WM). PMAT provides full AST analysis via tree-sitter-lua.
+
+**Project Structure:**
+```
+lua_example/
+├── game.lua
+├── utils.lua
+└── main.lua
+```
+
+**Lua Game Module with OOP Pattern:**
+```lua
+-- game.lua
+local json = require("dkjson")
+
+local Game = {}
+Game.__index = Game
+
+function Game.new(width, height)
+    local self = setmetatable({}, Game)
+    self.width = width or 800
+    self.height = height or 600
+    self.entities = {}
+    self.running = false
+    return self
+end
+
+function Game:add_entity(entity)
+    if not entity.x or not entity.y then
+        error("Entity must have x and y coordinates")
+    end
+    table.insert(self.entities, entity)
+end
+
+-- Complex control flow
+function Game:update(dt)
+    for _, entity in ipairs(self.entities) do
+        if entity.update then
+            entity:update(dt)
+        end
+        if entity.x < 0 then
+            entity.x = 0
+        elseif entity.x > self.width then
+            entity.x = self.width
+        end
+    end
+end
+
+function Game:process_collisions()
+    local n = #self.entities
+    for i = 1, n do
+        for j = i + 1, n do
+            local a = self.entities[i]
+            local b = self.entities[j]
+            if check_collision(a, b) then
+                if a.on_collision then a:on_collision(b) end
+                if b.on_collision then b:on_collision(a) end
+            end
+        end
+    end
+end
+
+return Game
+```
+
+**PMAT Lua Analysis:**
+```bash
+# Analyze Lua project
+pmat context --language lua lua_example/
+
+# Search for Lua functions
+pmat query "collision" --include-source --limit 5
+
+# Run the example
+cargo run --example lua_analysis
+
+# TDG analysis
+pmat tdg lua_example/
+```
+
+**Lua Analysis Output:**
+```
+$ cargo run --example lua_analysis
+
+=== PMAT Lua Language Analysis ===
+
+1. Simple Function Parsing
+   Functions found: 2
+   Complexity: cyclomatic=2, cognitive=1
+
+2. Module Imports (require)
+   Imports detected: 3
+   Functions defined: 2
+
+3. Complex Control Flow Analysis
+   Complexity: cyclomatic=14, cognitive=13
+   Grade: B (moderate)
+
+4. Table Constructors (Lua OOP)
+   Table constructors: 5
+   Methods/functions: 2
+
+5. Language Detection
+   Language: Lua
+   Parses .lua files: true
+   Parses .py files: false
+```
+
+**Key Lua Analysis Features:**
+- **Function Extraction**: Detects `function name()`, `local function name()`, and `function obj:method()` patterns
+- **Import Detection**: Recognizes `require("module")` as imports
+- **Table Constructor Analysis**: Identifies Lua OOP patterns via table constructors (metatables)
+- **Control Flow Complexity**: Analyzes `if/elseif/for/while/repeat` and logical operators (`and`/`or`)
+- **Feature-Gated**: Requires `lua-ast` feature (included in default `core-languages`)
+
+> **Note**: Lua AST analysis uses tree-sitter-lua 0.2.0. Compile with `--features lua-ast` or use the default feature set which includes it via `core-languages`.
 
 ## Polyglot Project Analysis
 
