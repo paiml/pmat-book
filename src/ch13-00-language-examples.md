@@ -906,20 +906,50 @@ return Game
 
 **PMAT Lua Analysis:**
 ```bash
-# Analyze Lua project
-pmat context --language lua lua_example/
+# Analyze Lua project context
+pmat context --project-path lua_example/
+
+# Analyze complexity with per-function breakdown
+pmat analyze complexity --project-path lua_example/
 
 # Search for Lua functions
 pmat query "collision" --include-source --limit 5
 
-# Run the example
+# Run the Rust example demonstrating Lua AST
 cargo run --example lua_analysis
-
-# TDG analysis
-pmat tdg lua_example/
 ```
 
-**Lua Analysis Output:**
+**Context Output (4-file Lua project):**
+```
+$ pmat context --project-path lua_example/
+## Project Structure
+- Total Files: 4
+- Total Functions: 31
+- Median Cyclomatic: 1.00
+- Median Cognitive: 1.00
+```
+
+**Complexity Analysis Output:**
+```
+$ pmat analyze complexity --project-path lua_example/
+📊 Files analyzed: 4
+🔧 Total functions: 30
+- Median Cyclomatic: 2.5
+- Max Cyclomatic: 49
+- 90th Percentile Cyclomatic: 12
+
+## Top Files by Complexity
+1. src/json_parser.lua - Cyclomatic: 91, Cognitive: 250, Functions: 6
+2. lib/state_machine.lua - Cyclomatic: 32, Cognitive: 66, Functions: 7
+3. src/http_router.lua - Cyclomatic: 20, Cognitive: 23, Functions: 10
+4. lib/event_emitter.lua - Cyclomatic: 17, Cognitive: 22, Functions: 7
+
+## Top Complexity Hotspots
+1. JsonParser.parse json_parser.lua:9 - cyclomatic: 49
+2. parse_number json_parser.lua:63 - cyclomatic: 14
+```
+
+**Rust API Example Output:**
 ```
 $ cargo run --example lua_analysis
 
