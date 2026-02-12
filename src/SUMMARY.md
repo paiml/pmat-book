@@ -76,6 +76,7 @@
 - [Chapter 43: File Health and Max-Lines (CB-040)](ch43-00-file-health.md)
 - [Chapter 44: Dependency Health (CB-081)](ch44-00-dependency-health.md)
 - [Chapter 45: RAG-Powered Agent Context](ch45-00-agent-context.md)
+- [Chapter 46: Rust Best Practices (CB-500 to CB-512)](ch46-00-rust-best-practices.md)
 
 ## Conclusion
 
