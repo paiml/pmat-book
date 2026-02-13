@@ -116,6 +116,8 @@ Two detection patterns:
 1. **Function return chaining**: `).` or `):` outside string literals
 2. **Deep field access**: 4+ consecutive dot-separated identifiers (`a.b.c.d`)
 
+**String-aware scanning**: The deep field access counter skips over quoted strings and bracket expressions. This prevents false positives on patterns like `corrections["H.N.S.W."] = "HNSW"` where dots appear inside string-literal table keys.
+
 ### CB-602: pcall Error Handling
 
 Detects `pcall()`/`xpcall()` calls where the error status is not properly handled:
@@ -141,6 +143,16 @@ Three sub-checks with escalating severity:
 2. **Captured but unchecked** (no `if not ok` within 5 lines) → Error
 3. **Properly handled** (captured + checked) → no violation
 
+**Variable-aware status checking**: The detector extracts the actual pcall status variable name from the assignment, so prefixed variable names are correctly recognized:
+
+```lua
+-- ✅ Correctly detected as handled (no false positive):
+local wrap_ok, err = pcall(risky_fn)
+if not wrap_ok then
+    handle_error(err)
+end
+```
+
 ### CB-603: Deprecated/Dangerous API
 
 Detects usage of APIs that enable command injection, sandbox escape, or are deprecated:
@@ -164,6 +176,21 @@ os.execute("make clean")
 Detected APIs:
 - **Deprecated**: `table.getn()`, `table.foreach()`, `table.foreachi()`, `setfenv()`, `getfenv()`, `module()`
 - **Dangerous**: `os.execute()`, `io.popen()`, `loadstring()`, `debug.getinfo()`, `debug.setlocal()`
+
+**Severity tiers**: The severity depends on how the API is called:
+
+| Usage Pattern | Severity | Rationale |
+|---------------|----------|-----------|
+| Hardcoded string argument: `os.execute("make clean")` | Info | Known command, no injection risk |
+| Variable or concatenation argument: `os.execute(cmd)` | Warning | Potential command injection |
+| No argument analysis possible | Warning | Default to cautious |
+
+**Inline suppression**: Add `-- pmat:ignore CB-603` (or bare `-- pmat:ignore`) on the same line to suppress individual violations:
+
+```lua
+os.execute("make clean")              -- pmat:ignore CB-603
+io.popen("git status")                -- pmat:ignore
+```
 
 ### CB-604: Unused Variables
 
@@ -276,6 +303,10 @@ The CB-600 detectors include several mechanisms to reduce false positives:
 | Brace depth tracking | CB-600 | Flagging table constructor fields as implicit globals |
 | Lua keyword prefix check | CB-600 | Flagging `if`, `for`, `return`, etc. as assignments |
 | String literal exclusion | CB-601, CB-602, CB-605 | Flagging patterns inside string content |
+| Bracket expression skipping | CB-601 | Flagging dots inside `["key.with.dots"]` as field access |
+| Variable name extraction | CB-602 | Flagging pcall as unchecked when prefixed var (e.g. `wrap_ok`) is checked |
+| Severity tiers (hardcoded vs variable args) | CB-603 | Over-warning on safe hardcoded `os.execute("make")` calls |
+| Inline suppression (`-- pmat:ignore`) | CB-603 | False positives on intentional dangerous API usage |
 | `_` prefix convention | CB-604 | Flagging intentionally unused variables |
 | Loop depth tracking | CB-605 | Flagging concat outside loops |
 
@@ -370,6 +401,45 @@ pmat analyze tdg --path game.lua --format json
 - **Imports**: `require()` calls counted as coupling
 - **Documentation**: Preceding `--`/`---` comments on functions
 
+## Dead Code Detection
+
+Lua projects receive module-export-aware dead code analysis via `pmat analyze dead-code`:
+
+```bash
+pmat analyze dead-code --path /path/to/lua/project
+
+# Example output:
+# Language: lua
+# Total functions: 5
+# Dead functions: 1
+#   - truly_dead (line 12): Function defined but never called
+# Dead code: 20.0%
+```
+
+**Module export awareness**: Functions attached to a returned module table are correctly excluded from dead code analysis:
+
+```lua
+local M = {}
+
+function M.public_api()      -- NOT dead: exported via return M
+    return M.helper()
+end
+
+function M.helper()          -- NOT dead: called by public_api
+    return 42
+end
+
+local function truly_dead()  -- DEAD: local, never called
+    return "nobody calls me"
+end
+
+return M                     -- signals M.* functions are exported
+```
+
+The detector identifies the `return M` pattern at the end of the file and marks all `M.name` and `M:name` functions as exported. Both `function M.name()` declarations and `M.name = function()` table field assignments are recognized.
+
+**Test file handling**: Test files (`test_*.lua`, `*_test.lua`, `*_spec.lua`, files under `test/`/`tests/`/`spec/` directories) are excluded from dead function reporting but their function calls are still tracked — so a function called only from tests is not falsely flagged as dead.
+
 ## Specification Reference
 
 Full detection logic: `src/cli/handlers/comply_cb_detect/lua_best_practices.rs`
@@ -377,3 +447,4 @@ TDG analyzer: `src/tdg/analyzer_ast/analyzer_impl1.rs` (`analyze_lua_ast`)
 Consistency scorer: `src/tdg/analyzer_ast/analyzer_impl2.rs` (`score_consistency_lua`)
 Visitor: `src/tdg/analyzer_ast/visitors.rs` (`LuaComplexityVisitor`)
 Aggregate check: `src/cli/handlers/comply_handlers/check_handlers.rs` (`check_lua_best_practices`)
+Dead code strategy: `src/services/dead_code_multi_language.rs` (`LuaDeadCodeStrategy`)
