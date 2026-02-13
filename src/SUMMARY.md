@@ -78,6 +78,11 @@
 - [Chapter 45: RAG-Powered Agent Context](ch45-00-agent-context.md)
 - [Chapter 46: Rust Best Practices (CB-500 to CB-512)](ch46-00-rust-best-practices.md)
 - [Chapter 47: Lua Best Practices (CB-600 to CB-607)](ch47-00-lua-best-practices.md)
+- [Chapter 48: SQL Best Practices (CB-700 to CB-705)](ch48-00-sql-best-practices.md)
+- [Chapter 49: Scala Best Practices (CB-800 to CB-805)](ch49-00-scala-best-practices.md)
+- [Chapter 50: Markdown Best Practices (CB-900 to CB-904)](ch50-00-markdown-best-practices.md)
+- [Chapter 51: YAML Best Practices (CB-950 to CB-953)](ch51-00-yaml-best-practices.md)
+- [Chapter 52: MLOps Model Quality (CB-1000 to CB-1008)](ch52-00-mlops-model-quality.md)
 
 ## Conclusion
 
