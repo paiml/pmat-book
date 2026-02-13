@@ -1,4 +1,4 @@
-# Chapter 46: Rust Best Practices (CB-500 to CB-512)
+# Chapter 46: Rust Best Practices (CB-500 to CB-518)
 
 The CB-500 series detects generic Rust defect patterns that apply to **any** Rust project. These checks were motivated by cross-stack fault analysis of 10 batuta projects that revealed systematic gaps: extreme unwrap density (14.7/file in trueno-rag), missing clippy/deny configurations (5/10 projects), string byte indexing panics on non-ASCII input, and universally low Rust Tooling scores (<55%).
 
@@ -9,7 +9,7 @@ The CB-500 series detects generic Rust defect patterns that apply to **any** Rus
 pmat comply check
 
 # Example output:
-# ⚠ CB-500: Rust Best Practices (CB-500 to CB-512): [Advisory] 0 errors, 189 warnings, 160 info:
+# ⚠ CB-500: Rust Best Practices (CB-500 to CB-518): [Advisory] 0 errors, 189 warnings, 160 info:
 # CB-506: String byte indexing (&str[n..m]) can panic on non-ASCII input (src/lib.rs:214)
 # CB-501: 8 unwrap() calls in production code (threshold: 5) (src/parser.rs:0)
 # ...
@@ -52,6 +52,22 @@ The CB-500 series is **advisory** — it reports with `Warn` status but does not
 | CB-510 | include!() Macro Hygiene | Info | Non-standalone files included via `include!()` |
 | CB-511 | Flaky Timing Tests | Warning | `Instant::now()` with duration assertions in tests |
 | CB-512 | Error Propagation Gap | Warning | Functions returning `Result` but using `unwrap()` internally |
+
+### Error Handling & Debug Hygiene (CB-513, CB-514, CB-517)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-513 | Silent Error Swallowing | Warning | `.unwrap_or_else(\|_\|` and `.map_err(\|_\|` discarding error context |
+| CB-514 | Debug Eprintln Leaks | Warning | `eprintln!("[DEBUG`/`[DBG`/`[TRACE` in production code |
+| CB-517 | Stale Debug Artifacts | Warning | `static AtomicUsize`/`AtomicBool` counters, `#[allow(unused)]` on statics |
+
+### Pattern Safety (CB-515, CB-516, CB-518)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-515 | Catch-All Match Default | Warning | `_ =>` returning concrete values instead of errors |
+| CB-516 | Hardcoded Magic Numbers | Info | Large numeric literals in `Some()` or struct field contexts |
+| CB-518 | Expensive Clone in Loop | Info | >3 `.clone()` calls inside `for`/`while`/`loop` bodies |
 
 ## Detection Algorithms
 
@@ -262,9 +278,138 @@ fn parse_config(path: &Path) -> Result<Config, Error> {
 }
 ```
 
+### CB-513: Silent Error Swallowing
+
+Detects patterns where errors are intentionally discarded, hiding failure context. Motivated by GH-215 where silent error swallowing in quantization hid data corruption:
+
+```rust
+// ❌ Discards error context (CB-513):
+let config = load_config().unwrap_or_else(|_| Config::default());
+let data = parse(input).map_err(|_| MyError::ParseFailed)?;
+
+// ✅ Preserve error context:
+let config = load_config().unwrap_or_else(|e| {
+    tracing::warn!("config load failed: {e}, using defaults");
+    Config::default()
+});
+let data = parse(input).map_err(|e| MyError::ParseFailed { source: e })?;
+```
+
+The `|_|` closure parameter is the signal — it means the original error is being intentionally thrown away.
+
+### CB-514: Debug Eprintln Leaks
+
+Detects debug print statements left in production code. These leak internal state to stderr and indicate incomplete cleanup after debugging sessions:
+
+```rust
+// ❌ Debug output in production (CB-514):
+eprintln!("[DEBUG] parsing token: {:?}", token);
+eprintln!("[TRACE] entering function with state={}", state);
+eprintln!("[DBG] cache size: {}", cache.len());
+
+// ✅ Use structured logging:
+tracing::debug!(?token, "parsing token");
+tracing::trace!(state, "entering function");
+log::debug!("cache size: {}", cache.len());
+```
+
+### CB-515: Catch-All Match Default
+
+Detects `_ =>` match arms that return a concrete value instead of an error, `None`, or `unreachable!()`. Motivated by GH-236 where `_ => Architecture::Qwen2` caused all unknown model architectures to silently receive wrong configuration:
+
+```rust
+// ❌ Silent default (CB-515):
+fn get_architecture(name: &str) -> Architecture {
+    match name {
+        "gpt" => Architecture::Gpt,
+        "llama" => Architecture::Llama,
+        _ => Architecture::Qwen2,  // All unknowns become Qwen2!
+    }
+}
+
+// ✅ Explicit error on unknown:
+fn get_architecture(name: &str) -> Result<Architecture, Error> {
+    match name {
+        "gpt" => Ok(Architecture::Gpt),
+        "llama" => Ok(Architecture::Llama),
+        _ => Err(Error::UnknownArchitecture(name.to_string())),
+    }
+}
+```
+
+Safe patterns that are **not** flagged: `Err(...)`, `None`, `unreachable!()`, `panic!()`, `return Err(...)`, `Default::default()`, `bail!()`, `todo!()`.
+
+### CB-516: Hardcoded Magic Numbers
+
+Detects large numeric literals (>100) in `Some()` or struct field contexts that likely represent configuration defaults. Motivated by GH-231 where a hardcoded `rope_theta: Some(10000.0)` default produced garbage output for models requiring different values:
+
+```rust
+// ❌ Hardcoded config defaults (CB-516 Info):
+Config {
+    rope_theta: Some(10000.0),  // Wrong for Qwen2 (uses 1000000.0)
+    max_seq_len: Some(4096),
+}
+
+// ✅ Named constants with documentation:
+const DEFAULT_ROPE_THETA: f64 = 10000.0;
+const DEFAULT_MAX_SEQ_LEN: usize = 4096;
+
+Config {
+    rope_theta: Some(DEFAULT_ROPE_THETA),
+    max_seq_len: Some(DEFAULT_MAX_SEQ_LEN),
+}
+```
+
+This is **Info** severity — advisory only with expected false positives. Common values (128, 256, 512, 1024, etc.) are excluded.
+
+### CB-517: Stale Debug Artifacts
+
+Detects leftover debug instrumentation in production code — static atomic counters and `#[allow(unused)]` annotations on static variables that were used during debugging and not cleaned up:
+
+```rust
+// ❌ Leftover debug counter (CB-517):
+static DEBUG_COUNTER: AtomicUsize = AtomicUsize::new(0);
+fn process() {
+    DEBUG_COUNTER.fetch_add(1, Ordering::Relaxed);
+}
+
+// ❌ Suppressed unused static (CB-517):
+#[allow(unused)]
+static TRACE_ENABLED: bool = false;
+
+// ✅ Remove debug artifacts before committing, or use proper instrumentation:
+fn process() {
+    metrics::counter!("process_calls").increment(1);
+}
+```
+
+### CB-518: Expensive Clone in Loop
+
+Detects loop bodies with >3 `.clone()` calls, which often indicate that data should be borrowed or restructured to avoid repeated allocation:
+
+```rust
+// ❌ Excessive cloning in loop (CB-518):
+for item in &items {
+    let name = config.name.clone();
+    let path = config.path.clone();
+    let data = config.data.clone();
+    let meta = config.meta.clone();
+    process(item, &name, &path, &data, &meta);
+}
+
+// ✅ Clone once before the loop, or borrow:
+let name = &config.name;
+let path = &config.path;
+for item in &items {
+    process(item, name, path, &config.data, &config.meta);
+}
+```
+
+This is **Info** severity — advisory, as some clones are necessary (e.g., sending data across threads).
+
 ## Test Code Exclusion
 
-All file-scanning checks (CB-501, CB-502, CB-506, CB-507, CB-508, CB-512) exclude test code using two mechanisms:
+All file-scanning checks (CB-501, CB-502, CB-506–CB-508, CB-512–CB-518) exclude test code using two mechanisms:
 
 1. **Test file exclusion**: Files matching `*_test.rs`, `*_tests.rs`, or under a `tests/` directory
 2. **Test region exclusion**: Code inside `#[cfg(test)]` module blocks within production files
@@ -286,13 +431,16 @@ const DOT_EXPECT_QUOTE: &str = concat!(".expe", "ct(\"");
 When `pmat comply check` reports CB-500 violations, fix them in this priority order:
 
 1. **CB-501 Errors** (>10 unwrap/file) — highest crash risk
-2. **CB-512** — functions claiming error handling but not doing it
-3. **CB-506** — string indexing panics on internationalized input
-4. **CB-507** — todo!/unimplemented! left in production
-5. **CB-502** — lazy expect messages hide root cause during debugging
-6. **CB-508** — lossy casts cause silent data corruption
-7. **CB-500, CB-505** — project configuration hygiene
-8. **CB-503, CB-504, CB-509, CB-510, CB-511** — informational, fix at leisure
+2. **CB-515** — catch-all match arms silently returning wrong defaults (GH-236)
+3. **CB-513** — silent error swallowing hiding data corruption (GH-215)
+4. **CB-512** — functions claiming error handling but not doing it
+5. **CB-506** — string indexing panics on internationalized input
+6. **CB-507** — todo!/unimplemented! left in production
+7. **CB-514, CB-517** — debug artifacts leaked to production
+8. **CB-502** — lazy expect messages hide root cause during debugging
+9. **CB-508** — lossy casts cause silent data corruption
+10. **CB-500, CB-505** — project configuration hygiene
+11. **CB-503, CB-504, CB-509, CB-510, CB-511, CB-516, CB-518** — informational, fix at leisure
 
 ## CI/CD Integration
 
