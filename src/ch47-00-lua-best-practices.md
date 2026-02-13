@@ -329,7 +329,51 @@ The CB-600 checks are grounded in empirical research on Lua defect patterns:
 | Maidl et al. (2014). "Typed Lua: An Optional Type System for Lua" | Global variable pollution as top defect source | CB-600, CB-604 |
 | luacheck documentation (2015-2024) | W111, W113, W211 warning codes | CB-600, CB-604 |
 
+## TDG Integration
+
+In addition to CB-600 compliance checks, Lua files receive full TDG (Technical Debt Grading) analysis via tree-sitter-lua. This provides the same 7-component quality scoring available for Rust, Python, JavaScript, TypeScript, and C/C++:
+
+```bash
+# TDG quality grading for a Lua file
+pmat analyze tdg --path game.lua --format json
+
+# Example output:
+# {
+#   "structural_complexity": 24.1,
+#   "semantic_complexity": 20.0,
+#   "duplication_ratio": 20.0,
+#   "coupling_score": 15.0,
+#   "doc_coverage": 7.3,
+#   "consistency_score": 10.0,
+#   "total": 96.4,
+#   "grade": "APLus",
+#   "confidence": 0.9,
+#   "language": "Lua"
+# }
+```
+
+**TDG scoring components for Lua:**
+
+| Component | Max Points | What It Measures |
+|-----------|-----------|-----------------|
+| Structural Complexity | 25 | Cyclomatic/cognitive complexity, nesting depth, function length |
+| Semantic Complexity | 20 | Parameter count, metatable usage (OOP patterns) |
+| Duplication Ratio | 20 | Code clone detection across functions |
+| Coupling Score | 15 | `require()` import count, external function calls |
+| Doc Coverage | 10 | `--` comment lines, documented functions (preceding comments) |
+| Consistency Score | 10 | Indentation consistency (tabs vs spaces), naming convention consistency (snake_case vs camelCase) |
+| Entropy Score | 10 | Pattern repetition and diversity |
+
+**Lua-specific detection:**
+- **Control flow**: `if/elseif/for/while/repeat` and `and`/`or` operators
+- **OOP patterns**: `setmetatable()` calls counted as type complexity
+- **Imports**: `require()` calls counted as coupling
+- **Documentation**: Preceding `--`/`---` comments on functions
+
 ## Specification Reference
 
 Full detection logic: `src/cli/handlers/comply_cb_detect/lua_best_practices.rs`
+TDG analyzer: `src/tdg/analyzer_ast/analyzer_impl1.rs` (`analyze_lua_ast`)
+Consistency scorer: `src/tdg/analyzer_ast/analyzer_impl2.rs` (`score_consistency_lua`)
+Visitor: `src/tdg/analyzer_ast/visitors.rs` (`LuaComplexityVisitor`)
 Aggregate check: `src/cli/handlers/comply_handlers/check_handlers.rs` (`check_lua_best_practices`)

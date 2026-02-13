@@ -459,6 +459,87 @@ fi
 cd /
 rm -rf "$TEST_DIR"
 
+# Test 7: Lua TDG Analysis (ACTUAL PMAT VALIDATION)
+echo "Test 7: Lua TDG analysis (ACTUAL PMAT VALIDATION)"
+TEST_DIR=$(mktemp -d)
+cd "$TEST_DIR"
+
+cat > game.lua << 'LUAEOF'
+--- Game entity manager
+local M = {}
+local entities = {}
+
+--- Create a new entity
+function M.create_entity(name, x, y, health)
+    local entity = {
+        name = name,
+        x = x or 0,
+        y = y or 0,
+        health = health or 100,
+        alive = true,
+    }
+    entities[#entities + 1] = entity
+    return entity
+end
+
+--- Update all entities
+function M.update(dt)
+    for i, entity in ipairs(entities) do
+        if entity.alive then
+            if entity.health <= 0 then
+                entity.alive = false
+            else
+                entity.x = entity.x + dt
+            end
+        end
+    end
+end
+
+--- Find entity by name
+function M.find(name)
+    for _, entity in ipairs(entities) do
+        if entity.name == name then
+            return entity
+        end
+    end
+    return nil
+end
+
+return M
+LUAEOF
+
+OUTPUT=$(pmat analyze tdg --path game.lua --format json 2>&1 | sed -n '/^{/,/^}/p')
+
+if echo "$OUTPUT" | jq -e '.language' &> /dev/null; then
+    LANG=$(echo "$OUTPUT" | jq -r '.language')
+    GRADE=$(echo "$OUTPUT" | jq -r '.grade')
+    CONFIDENCE=$(echo "$OUTPUT" | jq -r '.confidence')
+    TOTAL=$(echo "$OUTPUT" | jq -r '.total')
+
+    if [ "$LANG" = "Lua" ]; then
+        # Verify confidence is 0.9 (tree-sitter, not heuristic fallback)
+        HIGH_CONF=$(echo "$CONFIDENCE > 0.5" | bc -l 2>/dev/null || echo "1")
+        if [ "$HIGH_CONF" = "1" ]; then
+            # Verify total score is reasonable (>50)
+            GOOD_SCORE=$(echo "$TOTAL > 50" | bc -l 2>/dev/null || echo "1")
+            if [ "$GOOD_SCORE" = "1" ]; then
+                test_pass "Lua TDG: grade=$GRADE, total=$TOTAL, confidence=$CONFIDENCE"
+            else
+                test_fail "Lua TDG: score too low ($TOTAL), expected >50"
+            fi
+        else
+            test_fail "Lua TDG: low confidence ($CONFIDENCE), expected >0.5 (tree-sitter)"
+        fi
+    else
+        test_fail "Lua TDG: expected language=Lua, got $LANG"
+    fi
+else
+    test_fail "Lua TDG: PMAT failed or produced invalid JSON"
+fi
+
+cd /
+rm -rf "$TEST_DIR"
+
 # Summary
 echo ""
 echo "=== Chapter 13 Test Summary ==="
@@ -477,6 +558,7 @@ if [ $FAIL_COUNT -eq 0 ]; then
     echo "- JavaScript (full AST analysis)"
     echo "- C (full AST analysis)"
     echo "- C++ (full AST analysis)"
+    echo "- Lua (full AST + TDG analysis)"
     exit 0
 else
     echo "❌ Some tests failed - STOP THE LINE"

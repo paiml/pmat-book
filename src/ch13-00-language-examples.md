@@ -48,7 +48,7 @@ PMAT provides comprehensive analysis across 16 programming languages with:
 | **PHP** | `.php` | Class/function detection, error handling patterns, full AST |
 | **Java** | `.java` | Classes, methods, packages, annotations, full AST (Sprint 51) |
 | **Scala** | `.scala` | Case classes, traits, objects, pattern matching, full AST (Sprint 51) |
-| **Lua** | `.lua` | Functions, require() imports, table constructors, control flow, full AST (Sprint 60) |
+| **Lua** | `.lua` | Functions, require() imports, table constructors, control flow, TDG scoring, full AST |
 
 **Pattern-Based Analysis (Regex/Lexical Parsing):**
 
@@ -906,17 +906,37 @@ return Game
 
 **PMAT Lua Analysis:**
 ```bash
-# Analyze Lua project context
-pmat context --project-path lua_example/
+# TDG quality grading for a Lua file (full 7-component scoring)
+pmat analyze tdg --path game.lua --format json
 
 # Analyze complexity with per-function breakdown
 pmat analyze complexity --project-path lua_example/
 
+# Run CB-600 Lua best practices compliance checks
+pmat comply check
+
 # Search for Lua functions
 pmat query "collision" --include-source --limit 5
 
-# Run the Rust example demonstrating Lua AST
+# Run the Rust example demonstrating Lua AST + TDG
 cargo run --example lua_analysis
+```
+
+**TDG Output (Lua game module):**
+```
+$ pmat analyze tdg --path game.lua --format json
+{
+  "structural_complexity": 24.1,
+  "semantic_complexity": 20.0,
+  "duplication_ratio": 20.0,
+  "coupling_score": 15.0,
+  "doc_coverage": 7.3,
+  "consistency_score": 10.0,
+  "total": 96.4,
+  "grade": "APLus",
+  "confidence": 0.9,
+  "language": "Lua"
+}
 ```
 
 **Context Output (4-file Lua project):**
@@ -975,13 +995,27 @@ $ cargo run --example lua_analysis
    Language: Lua
    Parses .lua files: true
    Parses .py files: false
+
+6. TDG Quality Scoring
+   TDG Total:  97.3/100
+   Grade:      APLus
+   Confidence: 90%
+   Components:
+     Structural Complexity: 25.0/25
+     Semantic Complexity:   20.0/20
+     Duplication Ratio:     20.0/20
+     Coupling Score:        15.0/15
+     Doc Coverage:          7.3/10
+     Consistency Score:     10.0/10
 ```
 
 **Key Lua Analysis Features:**
+- **TDG Quality Grading**: Full 7-component scoring (structural, semantic, duplication, coupling, docs, consistency, entropy) with 90% confidence via tree-sitter AST
 - **Function Extraction**: Detects `function name()`, `local function name()`, and `function obj:method()` patterns
 - **Import Detection**: Recognizes `require("module")` as imports
 - **Table Constructor Analysis**: Identifies Lua OOP patterns via table constructors (metatables)
 - **Control Flow Complexity**: Analyzes `if/elseif/for/while/repeat` and logical operators (`and`/`or`)
+- **Best Practices (CB-600)**: 8 Lua-specific defect detectors (implicit globals, nil-unsafe access, pcall handling, deprecated APIs, unused vars, concat in loops, missing returns, colon/dot confusion)
 - **Feature-Gated**: Requires `lua-ast` feature (included in default `core-languages`)
 
 > **Note**: Lua AST analysis uses tree-sitter-lua 0.2.0. Compile with `--features lua-ast` or use the default feature set which includes it via `core-languages`.
