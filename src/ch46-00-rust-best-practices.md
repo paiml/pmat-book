@@ -1,4 +1,4 @@
-# Chapter 46: Rust Best Practices (CB-500 to CB-518)
+# Chapter 46: Rust Best Practices (CB-500 to CB-527)
 
 The CB-500 series detects generic Rust defect patterns that apply to **any** Rust project. These checks were motivated by cross-stack fault analysis of 10 batuta projects that revealed systematic gaps: extreme unwrap density (14.7/file in trueno-rag), missing clippy/deny configurations (5/10 projects), string byte indexing panics on non-ASCII input, and universally low Rust Tooling scores (<55%).
 
@@ -9,7 +9,7 @@ The CB-500 series detects generic Rust defect patterns that apply to **any** Rus
 pmat comply check
 
 # Example output:
-# ⚠ CB-500: Rust Best Practices (CB-500 to CB-518): [Advisory] 0 errors, 189 warnings, 160 info:
+# ⚠ CB-500: Rust Best Practices (CB-500 to CB-527): [Advisory] 0 errors, 189 warnings, 160 info:
 # CB-506: String byte indexing (&str[n..m]) can panic on non-ASCII input (src/lib.rs:214)
 # CB-501: 8 unwrap() calls in production code (threshold: 5) (src/parser.rs:0)
 # ...
@@ -68,6 +68,25 @@ The CB-500 series is **advisory** — it reports with `Warn` status but does not
 | CB-515 | Catch-All Match Default | Warning | `_ =>` returning concrete values instead of errors |
 | CB-516 | Hardcoded Magic Numbers | Info | Large numeric literals in `Some()` or struct field contexts |
 | CB-518 | Expensive Clone in Loop | Info | >3 `.clone()` calls inside `for`/`while`/`loop` bodies |
+
+### Data Pipeline & Format Safety (CB-519, CB-520, CB-521)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-519 | Lossy Data Pipeline | Warning | quantize/dequantize or encode/decode round-trips in same function |
+| CB-520 | Expensive Init in Hot Path | Warning | `::new()`/`::open()`/`::connect()` calls inside loop bodies |
+| CB-521 | Format Without Magic Bytes | Warning | Binary format parsing without magic byte/header validation |
+
+### Robustness & Compatibility (CB-522, CB-523, CB-524, CB-525, CB-526, CB-527)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-522 | Untested Path Normalization | Info | 3+ URL/path manipulation ops without edge case coverage |
+| CB-523 | External Config Over Embedded | Info | Filesystem heuristics for config discovery instead of embedded metadata |
+| CB-524 | Incomplete Enum Match Coverage | Warning | 3+ wildcard match arms with concrete defaults in one file |
+| CB-525 | Hardcoded Field Names | Info | 5+ `.get("field")` calls without `.or_else()` alias fallbacks |
+| CB-526 | Single-Path File Resolution | Info | `path.join("file").exists()` without parent/recursive fallback |
+| CB-527 | Incomplete Pattern List | Info | 3+ `.contains()` classification chain — may miss variants |
 
 ## Detection Algorithms
 
@@ -407,9 +426,102 @@ for item in &items {
 
 This is **Info** severity — advisory, as some clones are necessary (e.g., sending data across threads).
 
+### CB-519: Lossy Data Pipeline
+
+Detects functions containing both halves of a lossy transform pair (e.g., `quantize` + `dequantize`), which indicates data being round-tripped through lossy operations. Motivated by aprender GH-215/231/234/237 where GGUF export double-quantized attention weights:
+
+```rust
+// ❌ Lossy round-trip in same function (CB-519):
+fn convert_tensor(data: &[f32]) -> Vec<u8> {
+    let quantized = quantize_q4(data);       // f32 → q4 (lossy)
+    let dequantized = dequantize_q4(&quantized); // q4 → f32 (lossy again!)
+    pack_bytes(&dequantized)
+}
+
+// ✅ Single direction only:
+fn export_tensor(data: &[f32]) -> Vec<u8> {
+    let quantized = quantize_q4(data);
+    pack_bytes(&quantized)
+}
+```
+
+Detected pairs: quantize/dequantize, encode/decode, compress/decompress, serialize/deserialize, pack/unpack, to_bytes/from_bytes, to_f16/to_f32, to_bf16/to_f32.
+
+### CB-520: Expensive Init in Hot Path
+
+Detects constructor/load/open calls inside loop bodies where the initialization could be hoisted. Motivated by aprender GH-224 where `ChatSession` recreated GPU models (5-6GB VRAM upload) on every `generate()` call:
+
+```rust
+// ❌ Expensive init in loop (CB-520):
+for item in &items {
+    let client = HttpClient::new(config);  // Re-created every iteration
+    let conn = Database::connect("url");   // Re-connected every iteration
+    client.send(item);
+}
+
+// ✅ Hoist initialization:
+let client = HttpClient::new(config);
+let conn = Database::connect("url");
+for item in &items {
+    client.send(item);
+}
+```
+
+Detected patterns: `::new()`, `::open()`, `::connect()`, `::create()`, `::load()`, `::init()`, `::build()`, `::from_file()`, `::from_path()`, `File::open()`. Threshold: 2+ init calls per loop body.
+
+### CB-521: Format Detection Without Magic Bytes
+
+Detects binary format parsing functions that read binary data without validating magic bytes or format signatures. Motivated by aprender GH-213 where `.safetensors.index.json` was parsed as binary SafeTensors:
+
+```rust
+// ❌ No magic byte validation (CB-521):
+fn parse_file(reader: &mut impl Read) -> Result<Header, Error> {
+    let mut buf = [0u8; 8];
+    reader.read_exact(&mut buf)?;  // Assumes format is correct
+    let size = u64::from_le_bytes(buf);
+    Ok(Header { size })
+}
+
+// ✅ Validate magic bytes first:
+fn parse_file(reader: &mut impl Read) -> Result<Header, Error> {
+    let mut magic = [0u8; 4];
+    reader.read_exact(&mut magic)?;
+    if &magic != FILE_MAGIC {
+        return Err(Error::InvalidFormat);
+    }
+    let mut buf = [0u8; 8];
+    reader.read_exact(&mut buf)?;
+    Ok(Header { size: u64::from_le_bytes(buf) })
+}
+```
+
+### CB-522: Untested Path Normalization
+
+Detects files with 3+ URL/path manipulation operations (`.replace("//")`, `.strip_prefix("http")`, `Url::parse()`, etc.) which indicates complex normalization logic that needs edge case testing. Motivated by GH-221 where `hf://` URLs preserved web path components as file paths.
+
+### CB-523: External Config Over Embedded Metadata
+
+Detects filesystem heuristic patterns like `path.with_file_name("config.json")` that discover configuration from sibling files when the loaded data may already contain embedded metadata. Motivated by GH-222 where `apr chat` used sibling config.json instead of APR v2 embedded metadata.
+
+### CB-524: Incomplete Enum Match Coverage
+
+Detects files with 3+ `_ =>` wildcard match arms returning concrete values, indicating an enum is dispatched on inconsistently across multiple functions. Motivated by GH-233/236 where adding new Architecture variants required updating match arms in 5+ places. This is a code smell — consider `#[non_exhaustive]` enums or centralizing dispatch logic.
+
+### CB-525: Hardcoded Field Names Without Aliases
+
+Detects functions with 5+ `.get("field")` calls on JSON values without `.or_else()` fallback aliases. Motivated by GH-235 where `load_model_config_from_json` only handled HuggingFace field names (`hidden_size`) but not GPT-2 names (`n_embd`).
+
+### CB-526: Single-Path File Resolution
+
+Detects `path.join("filename").exists()` patterns without fallback search (parent directory, recursive discovery). Motivated by GH-216 where tokenizer.json wasn't found in workspace layouts.
+
+### CB-527: Incomplete Pattern List for Classification
+
+Detects `.contains("x") || .contains("y") || ...` chains with 3+ patterns, which are typically data classification logic that may miss variants. Motivated by GH-233B/234 where Rosetta density threshold only recognized `"embed"` but not `"wte"`, `"wpe"`, `"position_embedding"`. Consider centralizing patterns in a constant array or registry.
+
 ## Test Code Exclusion
 
-All file-scanning checks (CB-501, CB-502, CB-506–CB-508, CB-512–CB-518) exclude test code using two mechanisms:
+All file-scanning checks (CB-501, CB-502, CB-506–CB-508, CB-512–CB-527) exclude test code using two mechanisms:
 
 1. **Test file exclusion**: Files matching `*_test.rs`, `*_tests.rs`, or under a `tests/` directory
 2. **Test region exclusion**: Code inside `#[cfg(test)]` module blocks within production files
@@ -431,16 +543,20 @@ const DOT_EXPECT_QUOTE: &str = concat!(".expe", "ct(\"");
 When `pmat comply check` reports CB-500 violations, fix them in this priority order:
 
 1. **CB-501 Errors** (>10 unwrap/file) — highest crash risk
-2. **CB-515** — catch-all match arms silently returning wrong defaults (GH-236)
-3. **CB-513** — silent error swallowing hiding data corruption (GH-215)
-4. **CB-512** — functions claiming error handling but not doing it
-5. **CB-506** — string indexing panics on internationalized input
-6. **CB-507** — todo!/unimplemented! left in production
-7. **CB-514, CB-517** — debug artifacts leaked to production
-8. **CB-502** — lazy expect messages hide root cause during debugging
-9. **CB-508** — lossy casts cause silent data corruption
-10. **CB-500, CB-505** — project configuration hygiene
-11. **CB-503, CB-504, CB-509, CB-510, CB-511, CB-516, CB-518** — informational, fix at leisure
+2. **CB-519** — lossy data pipeline round-trips corrupt model weights (GH-215/231/237)
+3. **CB-521** — binary format parsing without magic bytes causes crashes (GH-213)
+4. **CB-515, CB-524** — catch-all match arms / incomplete enum coverage (GH-236)
+5. **CB-513** — silent error swallowing hiding data corruption (GH-215)
+6. **CB-520** — expensive initialization in hot path (GH-224)
+7. **CB-512** — functions claiming error handling but not doing it
+8. **CB-506** — string indexing panics on internationalized input
+9. **CB-507** — todo!/unimplemented! left in production
+10. **CB-514, CB-517** — debug artifacts leaked to production
+11. **CB-525** — hardcoded field names without aliases (GH-235)
+12. **CB-502** — lazy expect messages hide root cause during debugging
+13. **CB-508** — lossy casts cause silent data corruption
+14. **CB-500, CB-505** — project configuration hygiene
+15. **CB-503, CB-504, CB-509–CB-511, CB-516, CB-518, CB-522, CB-523, CB-526, CB-527** — informational, fix at leisure
 
 ## CI/CD Integration
 
