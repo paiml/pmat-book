@@ -1,4 +1,4 @@
-# Chapter 47: Lua Best Practices (CB-600 to CB-607)
+# Chapter 47: Lua Best Practices (CB-600 to CB-619)
 
 The CB-600 series detects Lua-specific defect patterns that apply to **any** Lua project. These checks are grounded in academic research on Lua taint analysis (LuaTaint), progressive taint analysis (FLuaScan), the Luau type system, and the luacheck static analyzer. They target the most common sources of runtime errors in Lua: implicit globals, nil-unsafe access, swallowed errors, dangerous APIs, and structural anti-patterns.
 
@@ -439,6 +439,280 @@ return M                     -- signals M.* functions are exported
 The detector identifies the `return M` pattern at the end of the file and marks all `M.name` and `M:name` functions as exported. Both `function M.name()` declarations and `M.name = function()` table field assignments are recognized.
 
 **Test file handling**: Test files (`test_*.lua`, `*_test.lua`, `*_spec.lua`, files under `test/`/`tests/`/`spec/` directories) are excluded from dead function reporting but their function calls are still tracked — so a function called only from tests is not falsely flagged as dead.
+
+## Advanced Checks (CB-608 to CB-619)
+
+The CB-608 through CB-619 checks detect deeper Lua defect patterns covering error handling, coroutines, FFI safety, require cycles, and ecosystem-specific concerns (OpenResty, LuaJIT). These were added in v3.0.7 based on empirical analysis of large Lua projects (Kong, APISIX, xmake, KOReader, AwesomeWM).
+
+### Error Handling & Safety (CB-608, CB-609, CB-610)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-608 | Unchecked nil,err Return | Warning | Caller ignores the `nil, err` error return pattern |
+| CB-609 | assert() in Library Code | Warning | `assert()` in non-test code — terminates without recovery |
+| CB-610 | String Accumulator in Loop | Info | `result = result .. x` pattern in loops (O(n²)) |
+
+#### CB-608: Unchecked nil,err Return
+
+The dominant Lua error handling pattern (>80% of real-world error handling) returns `nil, err` on failure. CB-608 flags callers that ignore this:
+
+```lua
+-- ❌ Unchecked nil,err (CB-608 Warning):
+local data = socket:read("*a")       -- ignores error return
+process(data)                          -- crashes if data is nil
+
+-- ✅ Proper error handling:
+local data, err = socket:read("*a")
+if not data then
+    log.error("read failed: " .. err)
+    return nil, err
+end
+process(data)
+```
+
+Reference: Kong (1,725 instances), APISIX (716), xmake (254).
+
+#### CB-609: assert() in Library Code
+
+`assert()` is appropriate in tests but problematic in library code — it terminates the entire process without allowing callers to recover:
+
+```lua
+-- ❌ assert in library (CB-609 Warning):
+function M.parse(input)
+    assert(type(input) == "string")   -- kills the process
+    -- ...
+end
+
+-- ✅ Return error instead:
+function M.parse(input)
+    if type(input) ~= "string" then
+        return nil, "expected string, got " .. type(input)
+    end
+    -- ...
+end
+```
+
+Reference: AwesomeWM (1,817 asserts), xmake (913).
+
+#### CB-610: String Accumulator in Loop
+
+More precise than CB-605 — only flags the accumulator pattern (`result = result .. x`) where the same variable is both source and target. Single-use concatenation like `log("msg: " .. x)` is not flagged:
+
+```lua
+-- ❌ Accumulator pattern (CB-610 Info):
+local result = ""
+for _, item in ipairs(items) do
+    result = result .. item .. ","    -- O(n²) due to copy each iteration
+end
+
+-- ✅ Use table.concat:
+local parts = {}
+for _, item in ipairs(items) do
+    parts[#parts + 1] = item
+end
+local result = table.concat(parts, ",")
+```
+
+### Weak Tables & Test Frameworks (CB-611, CB-612)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-611 | Weak Table Misuse | Warning | String/numeric keys with `__mode = "k"` (never GC'd) |
+| CB-612 | Test Framework Detection | Info | Auto-detects busted, luaunit, lust, Test::Nginx |
+
+#### CB-611: Weak Table Misuse
+
+Weak tables are a common GC optimization in Lua, but using `__mode = "k"` (weak keys) with string or numeric keys is ineffective — value types are never garbage collected:
+
+```lua
+-- ❌ Weak key with string keys (CB-611 Warning):
+local cache = setmetatable({}, { __mode = "k" })
+cache["user:123"] = expensive_data    -- string key is NEVER collected
+
+-- ✅ Use weak values or explicit eviction:
+local cache = setmetatable({}, { __mode = "v" })
+-- OR
+local cache = {}
+local function evict_old() ... end
+```
+
+Also flags unbounded caches without weak references or explicit eviction.
+
+#### CB-612: Test Framework Detection
+
+Informational check that auto-detects which test framework(s) a Lua project uses. Supports hybrid projects (e.g., Kong uses both busted and Test::Nginx):
+
+```bash
+# Example output:
+# CB-612: Detected test framework(s): busted, Test::Nginx
+# CB-612: 47 Lua test files found (spec/ directory, *_spec.lua pattern)
+```
+
+### Module Safety (CB-613, CB-614)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-613 | Require Cycle Detection | Error | Circular `require()` chains via DFS |
+| CB-614 | Global Protection | Warning | Missing `setmetatable(_G)` guards, unsafe `load`/`loadfile` |
+
+#### CB-613: Require Cycle Detection
+
+Builds a directed graph from top-level `require()` calls and detects cycles via DFS. Function-scoped requires are excluded (they use deferred loading and are safe):
+
+```lua
+-- ❌ Circular require chain (CB-613 Error):
+-- a.lua: require("b")
+-- b.lua: require("c")
+-- c.lua: require("a")  -- cycle: a -> b -> c -> a
+
+-- ✅ Break the cycle:
+-- Extract shared types into a separate module
+-- Use deferred (function-scoped) requires for cross-references
+```
+
+#### CB-614: Global Protection
+
+Checks for global namespace protection patterns and security-sensitive load calls:
+
+```lua
+-- ❌ No global protection (CB-614 Warning):
+-- Project has no setmetatable(_G, ...) anywhere
+
+-- ✅ Protect globals:
+setmetatable(_G, {
+    __newindex = function(_, k, v)
+        error("attempt to set global '" .. k .. "'", 2)
+    end
+})
+
+-- ❌ Unsafe load (CB-614 Warning):
+loadfile("plugin.lua")()           -- allows bytecode injection
+
+-- ✅ Restrict to text mode:
+loadfile("plugin.lua", "t")()     -- "t" mode blocks bytecode
+```
+
+### Coroutines & Type Annotations (CB-615, CB-616)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-615 | Coroutine Safety | Warning | `coroutine.resume` without pcall wrap |
+| CB-616 | Type Annotation Coverage | Info | LuaLS/LDoc annotation coverage percentage |
+
+#### CB-615: Coroutine Safety
+
+Detects `coroutine.resume()` calls without proper error handling — errors inside coroutines are silent unless explicitly checked:
+
+```lua
+-- ❌ Unprotected resume (CB-615 Warning):
+coroutine.resume(co, data)         -- error swallowed silently
+
+-- ✅ Check return value:
+local ok, err = coroutine.resume(co, data)
+if not ok then
+    log.error("coroutine error: " .. tostring(err))
+end
+```
+
+#### CB-616: Type Annotation Coverage
+
+Reports type annotation coverage for LuaLS (`---@param`, `---@return`) and LDoc (`-- @tparam`, `-- @treturn`) annotation systems:
+
+```bash
+# Example output:
+# CB-616: Type annotation coverage: 23% (47/204 functions annotated)
+# CB-616: Annotation system: LuaLS (---@param style)
+```
+
+### Ecosystem-Specific (CB-617, CB-618, CB-619)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-617 | OpenResty Performance | Warning | Stdlib globals in hot paths, unchecked ngx.var |
+| CB-618 | LuaJIT FFI Safety | Warning | Unchecked ffi.new buffers, C function calls |
+| CB-619 | OOP Pattern Detection | Info | Metatable, prototypal, __call constructor patterns |
+
+#### CB-617: OpenResty Performance
+
+Only runs on detected OpenResty projects. Flags performance anti-patterns specific to the OpenResty/ngx_lua environment:
+
+```lua
+-- ❌ Global stdlib in handler (CB-617 Warning):
+function _M.handler(ngx)
+    local data = string.format(...)  -- allocates on every request
+    local match = string.match(...)
+end
+
+-- ✅ Cache at module level:
+local str_format = string.format
+local str_match = string.match
+function _M.handler(ngx)
+    local data = str_format(...)     -- uses cached local
+end
+
+-- ❌ Unchecked ngx.var (CB-617 Warning):
+local host = ngx.var.host            -- can be nil
+
+-- ✅ Check for nil:
+local host = ngx.var.host or "default"
+```
+
+#### CB-618: LuaJIT FFI Safety
+
+Detects LuaJIT FFI patterns that can cause memory corruption or crashes:
+
+```lua
+-- ❌ Unchecked FFI allocation (CB-618 Warning):
+local buf = ffi.new("char[?]", size)   -- no NULL check
+ffi.copy(buf, data, size)
+
+-- ❌ Unchecked C function call (CB-618 Warning):
+local fd = C.open(path, flags)         -- return value unchecked
+
+-- ✅ Check returns:
+local buf = ffi.new("char[?]", size)
+if buf == nil then error("allocation failed") end
+
+local fd = C.open(path, flags)
+if fd < 0 then error("open failed: " .. ffi.errno()) end
+```
+
+#### CB-619: OOP Pattern Detection
+
+Informational check that recognizes and reports Lua OOP patterns for TDG awareness. Detects four styles:
+
+1. **Separate metatable**: `setmetatable(obj, { __index = Class })`
+2. **Prototypal inheritance**: `Child.__index = Parent`
+3. **__call constructor**: `setmetatable(Class, { __call = function(...) ... end })`
+4. **Self-as-metatable**: `Class.__index = Class`
+
+```bash
+# Example output:
+# CB-619: OOP patterns detected: self-as-metatable (12 classes),
+#          __call constructor (3 classes), prototypal (2 hierarchies)
+```
+
+## Mutation Testing Support
+
+As of v3.0.7, Lua projects support mutation testing via the busted test framework integration:
+
+```bash
+pmat mutate --target src/main.lua
+```
+
+The Lua mutation adapter (`LuaAdapter`) provides:
+- **AST-based operators**: Arithmetic, relational, conditional, unary replacement
+- **Project root detection**: Finds `.busted`, `*.rockspec`, or `init.lua`
+- **Test runner integration**: Uses `busted` command with configurable timeout
+- **File extension**: `.lua`
+
+Mutation operators applied to Lua code:
+- `+` ↔ `-`, `*` ↔ `/` (arithmetic)
+- `>` ↔ `<`, `>=` ↔ `<=`, `==` ↔ `~=` (relational)
+- `and` ↔ `or` (conditional)
+- `not` insertion/removal (unary)
+
+See [Chapter 28: Mutation Testing](ch28-00-mutation-testing.md) for full documentation.
 
 ## Specification Reference
 

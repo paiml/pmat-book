@@ -215,7 +215,7 @@ pmat mutate --target src/large_file.rs --failures-only
 
 ## Mutation Operators
 
-PMAT currently supports Rust mutations. More languages coming in v2.176.0+.
+PMAT supports mutations across multiple languages. As of v3.0.7, supported languages include Rust, Lua, Go, and C++.
 
 ### Binary Operators
 ```rust
@@ -513,19 +513,42 @@ pmat mutate --target src/ --output-format markdown > gaps.md
 
 ## Roadmap
 
-### Planned Features (v2.176.0+)
+### Multi-Language Support (v3.0.7+)
 
-- **Multi-Language Support**: Python, TypeScript, Go, C++
+PMAT's mutation testing now supports multiple languages through the `LanguageAdapter` trait:
+
+| Language | Test Runner | Project Root Detection | Status |
+|----------|------------|----------------------|--------|
+| **Rust** | `cargo test` | `Cargo.toml` | Stable |
+| **Lua** | `busted` | `.busted`, `*.rockspec`, `init.lua` | Stable |
+| **Go** | `go test` | `go.mod` | Stable |
+| **C++** | `cmake --build && ctest` | `CMakeLists.txt` | Stable |
+
+```bash
+# Lua mutation testing (requires busted)
+pmat mutate --target src/main.lua
+
+# Go mutation testing
+pmat mutate --target pkg/handler.go
+
+# C++ mutation testing (requires CMake)
+pmat mutate --target src/parser.cpp
+```
+
+All adapters share the same four mutation operator categories (arithmetic, relational, conditional, unary) with language-appropriate syntax.
+
+### Planned Features
+
 - **Incremental Mutation Testing**: Only test changed files
 - **Mutation Caching**: Skip equivalent mutants
 - **IDE Integration**: VS Code plugin with inline mutation indicators
 - **Custom Operators**: Define your own mutation rules
+- **Additional Languages**: Python, TypeScript, Java
 
 ### Current Limitations
 
-- **Rust Only**: Other languages coming in v2.176.0
-- **Single-File Focus**: Directory support in development
-- **No Differential Mutations**: Test only changed code (planned v2.177.0)
+- **No Differential Mutations**: Test only changed code (planned)
+- **Feature-gated**: Multi-language support requires `--features mutation-testing`
 
 ## Related Commands
 
