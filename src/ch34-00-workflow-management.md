@@ -140,24 +140,21 @@ pmat work complete GH-75 --override-claims coverage,complexity --ticket DEBT-001
 📜 Loading Work Contract...
    Baseline: a1b2c3d4 (TDG: 78.5, Coverage: 87.2%)
 
-Running Popperian Falsification (13 claims to validate)
+Running Popperian Falsification (17 claims to validate)
 
-[1/13] All baseline files still exist
+[1/17] All baseline files still exist
       Result: PASSED
 
-[2/13] The falsifier is active and detecting (Meta-Check)
+[2/17] The falsifier is active and detecting (Meta-Check)
       Result: PASSED
 
-... (all 13 claims) ...
+... (all 17 claims) ...
 
-✅ FALSIFICATION RESULT: PASSED (13/13 claims validated)
+✅ FALSIFICATION RESULT: PASSED (17/17 claims validated)
+   📋 Receipt: ./.pmat-work/GH-75/falsification/receipt-2026-02-14T10-30-00Z.json
 
 ✅ Marked as complete: Unified GitHub/YAML workflow
 ✅ Updated roadmap: ./docs/roadmaps/roadmap.yaml
-
-🎯 Next steps:
-   1. Create commit: git commit -m "feat: Unified GitHub/YAML workflow (Refs GH-75)"
-   2. Close GitHub issue: gh issue close 75
 ```
 
 **Example Output (Blocked):**
@@ -173,6 +170,19 @@ Fix issues and retry: pmat work complete GH-75
 Or override with accountability (Popperian Protocol):
   1. Create debt ticket: pmat comply upgrade --target popperian
   2. pmat work complete GH-75 --override-claims coverage,complexity --ticket DEBT-001
+   📋 Receipt: ./.pmat-work/GH-75/falsification/receipt-2026-02-14T10-30-00Z.json
+```
+
+**Example Output (Freshness Skip):**
+
+When a fresh receipt already exists matching the current HEAD commit, falsification is skipped:
+```
+✅ Completing work on: GH-75
+
+✅ Fresh falsification receipt found (matches HEAD a1b2c3d4)
+   Skipping re-run (receipt still valid)
+
+✅ Marked as complete: Unified GitHub/YAML workflow
 ```
 
 ### `pmat work status`
@@ -1015,21 +1025,19 @@ In PMAT:
 │                            ↓                                │
 │                    pmat work complete                       │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ 13 FALSIFICATION CLAIMS TESTED:                         ││
-│  │   1. Manifest integrity                                 ││
-│  │   2. Meta-falsification (self-test)                     ││
-│  │   3. Coverage gaming detection                          ││
-│  │   4. Differential coverage                              ││
-│  │   5. Absolute coverage                                  ││
-│  │   6. TDG regression                                     ││
-│  │   7. Complexity regression                              ││
-│  │   8. Supply chain integrity                             ││
-│  │   9. File size limits                                   ││
-│  │  10. Spec quality                                       ││
-│  │  11. GitHub sync                                        ││
-│  │  12. Examples compile                                   ││
-│  │  13. Book validation                                    ││
+│  │ 17 FALSIFICATION CLAIMS TESTED:                         ││
+│  │   1. Manifest integrity    10. Spec quality              ││
+│  │   2. Meta-falsification    11. Roadmap update            ││
+│  │   3. Coverage gaming       12. GitHub sync               ││
+│  │   4. Differential coverage 13. Examples compile          ││
+│  │   5. Absolute coverage     14. Book validation           ││
+│  │   6. TDG regression        15. SATD detection            ││
+│  │   7. Complexity regression 16. Dead code detection       ││
+│  │   8. Supply chain          17. Per-file coverage         ││
+│  │   9. File size limits      18. Lint pass                 ││
 │  └─────────────────────────────────────────────────────────┘│
+│                            ↓                                │
+│           RECEIPT persisted + appended to ledger            │
 │                            ↓                                │
 │              ┌──────────┴──────────┐                        │
 │              │                     │                        │
@@ -1041,23 +1049,28 @@ In PMAT:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### The 13 Falsifiable Claims
+### The 17 Falsifiable Claims
 
 | # | Claim | Falsification Test | Severity |
 |---|-------|-------------------|----------|
 | 1 | **Manifest Integrity** | No baseline files deleted | BLOCKING |
 | 2 | **Meta-Falsification** | Falsifier detects injected faults | BLOCKING |
 | 3 | **Coverage Gaming** | No `cfg(not(coverage))` or LCOV exclusions | BLOCKING |
-| 4 | **Differential Coverage** | All new/changed lines tested | WARNING |
+| 4 | **Differential Coverage** | All new/changed lines tested | BLOCKING |
 | 5 | **Absolute Coverage** | Coverage ≥ 95% | BLOCKING |
 | 6 | **TDG Regression** | TDG score ≥ baseline | BLOCKING |
 | 7 | **Complexity** | No function > 20 cyclomatic | BLOCKING |
 | 8 | **Supply Chain** | `cargo deny check` passes | BLOCKING |
 | 9 | **File Size** | No file > 500 lines | WARNING |
-| 10 | **Spec Quality** | Specification score ≥ threshold | WARNING |
-| 11 | **GitHub Sync** | No uncommitted/unpushed changes | BLOCKING |
-| 12 | **Examples Compile** | `cargo run --example` passes | WARNING |
-| 13 | **Book Validation** | pmat-book tests pass | WARNING |
+| 10 | **Spec Quality** | Specification score ≥ threshold | BLOCKING |
+| 11 | **Roadmap Update** | Roadmap modified since baseline | BLOCKING |
+| 12 | **GitHub Sync** | No uncommitted/unpushed changes | BLOCKING |
+| 13 | **Examples Compile** | `cargo build --examples` passes | BLOCKING |
+| 14 | **Book Validation** | pmat-book tests pass | BLOCKING |
+| 15 | **SATD Detection** | No new TODO/FIXME/HACK markers | Configurable |
+| 16 | **Dead Code Detection** | No new unreachable code | Configurable |
+| 17 | **Per-File Coverage** | All files ≥ 95% coverage | BLOCKING |
+| 18 | **Lint Pass** | `make lint` passes | Configurable |
 
 ### Anti-Gaming Detection
 
@@ -1123,6 +1136,10 @@ Use these names with `--override-claims`:
 | `github-sync` | GitHub sync status |
 | `examples` | Examples compilation |
 | `book` | Book validation |
+| `satd` | SATD marker detection |
+| `dead-code` | Dead code detection |
+| `per-file-coverage` | Per-file coverage threshold |
+| `lint` | Lint pass |
 
 ### Contract Storage
 
@@ -1142,6 +1159,76 @@ Work contracts are stored in `.pmat-work/<ticket-id>/contract.json`:
   "claims": [...],
   "created_at": "2025-01-25T10:00:00Z"
 }
+```
+
+### Falsification Ledger
+
+**Version**: Added in PMAT v3.0.7
+
+Every falsification run produces an immutable **receipt** that records what was tested, what passed/failed, and any overrides. Receipts are persisted per-item and appended to a global JSONL ledger for audit trails.
+
+**Storage Layout:**
+```
+.pmat-work/
+├── {item-id}/
+│   ├── contract.json              # Baseline contract
+│   └── falsification/             # Receipt directory
+│       ├── receipt-2026-02-14T10-28-50Z.json
+│       └── receipt-2026-02-14T10-29-28Z.json
+└── ledger.jsonl                   # Global append-only audit log
+```
+
+**Receipt Contents:**
+```json
+{
+  "id": "019c5bb2-30c2-76f3-8f7b-cb8c391c049f",
+  "git_sha": "6b7d70606f98...",
+  "timestamp": "2026-02-14T10:28:50+00:00",
+  "trigger": "WorkComplete",
+  "work_item_id": "PMAT-499",
+  "verdicts": [
+    {
+      "hypothesis": "All baseline files still exist",
+      "method": "ManifestIntegrity",
+      "falsified": false,
+      "is_blocking": true,
+      "explanation": "All 2128 files present"
+    }
+  ],
+  "overrides": [],
+  "summary": {
+    "total": 17, "passed": 11, "failed": 5,
+    "warnings": 1, "overridden": 0,
+    "allows_completion": false,
+    "health_score": 0.647
+  },
+  "content_hash": "4d57ddb1634d..."
+}
+```
+
+**Key Properties:**
+- **UUID v7** IDs (time-sortable) for chronological ordering
+- **SHA-256 content hash** covers all fields — tamper-detectable
+- **Freshness check**: Receipts are valid only when `git_sha` matches HEAD and age < 24 hours
+- **O(1) skip**: If a fresh passing receipt exists, `pmat work complete` skips re-running falsification
+- **Global ledger**: Compact JSONL entries for cross-project audit, one line per run
+
+**Trigger Types:**
+| Trigger | Description |
+|---------|-------------|
+| `WorkComplete` | `pmat work complete` |
+| `ManualCli` | Manual CLI invocation |
+| `CiPipeline` | CI/CD pipeline |
+| `McpTool` | MCP tool call |
+| `PreCommit` | Pre-commit hook |
+
+**Integrity Verification:**
+
+The ledger supports integrity verification to detect tampered receipts:
+```bash
+# Receipts are verified automatically on load
+# Tampered receipts (modified git_sha, verdicts, etc.) are detected
+# via SHA-256 content hash mismatch
 ```
 
 ### --skip-quality vs Falsification
@@ -1475,9 +1562,12 @@ The `pmat work` command suite provides a powerful, flexible workflow management 
 - ✅ **200-point Perfection Score** (v2.211.1+) - Unified quality metric aggregating 8 categories
 - ✅ **Spec management commands** (v2.211.1+) - Score, comply, create, list specifications
 - ✅ **Work Contract system** (v2.214.0+) - Immutable baseline capture at work start
-- ✅ **Popperian Falsification** (v2.214.0+) - 13 falsifiable claims with evidence-based blocking
+- ✅ **Popperian Falsification** (v2.214.0+) - 17 falsifiable claims with evidence-based blocking
 - ✅ **Anti-gaming detection** (v2.214.0+) - Detects cfg(not(coverage)) and LCOV exclusions
 - ✅ **Accountable overrides** (v2.214.0+) - Override claims require debt ticket
+- ✅ **Falsification Ledger** (v3.0.7+) - Immutable receipts with SHA-256 integrity, JSONL audit trail
+- ✅ **Receipt freshness** (v3.0.7+) - O(1) skip when fresh receipt matches HEAD
+- ✅ **Mandatory contracts** (v3.0.7+) - Legacy mode removed; `pmat work start` required
 
 **Next Steps:**
 - Run `pmat work init` to get started
