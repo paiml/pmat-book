@@ -1578,4 +1578,5 @@ The `pmat work` command suite provides a powerful, flexible workflow management 
 For more details, see:
 - [Chapter 7: Quality Gates](ch07-00-quality-gate.md) - Quality gate integration
 - [Chapter 9: Pre-commit Hooks](ch09-00-precommit-hooks.md) - Hook management
+- [Chapter 53: Spec Falsification Engine](ch53-00-spec-falsification.md) - `pmat falsify` command for spec-level falsification
 - [Appendix B: Command Reference](appendix-b-commands.md) - Full command list

@@ -83,6 +83,7 @@
 - [Chapter 50: Markdown Best Practices (CB-900 to CB-904)](ch50-00-markdown-best-practices.md)
 - [Chapter 51: YAML Best Practices (CB-950 to CB-953)](ch51-00-yaml-best-practices.md)
 - [Chapter 52: MLOps Model Quality (CB-1000 to CB-1008)](ch52-00-mlops-model-quality.md)
+- [Chapter 53: Spec Falsification Engine](ch53-00-spec-falsification.md)
 
 ## Conclusion
 
