@@ -24,24 +24,38 @@ Traditional code analysis tools provide point-in-time snapshots or focus on sing
 
 ### Regular Context (`pmat context`)
 
-**Purpose**: Quick AI assistant integration and basic project understanding  
-**Speed**: Fast (seconds)  
-**Output**: Basic file structure, line counts, language detection  
-**Use Cases**: Documentation generation, AI prompts, quick overview  
-**Token Optimization**: Designed for LLM token limits  
+**Purpose**: Quick AI assistant integration and basic project understanding
+**Speed**: Fast (seconds)
+**Output**: AST items per file with complexity metrics, quality scorecard
+**Use Cases**: Documentation generation, AI prompts, quick overview
+**Token Optimization**: Designed for LLM token limits
+**Formats**: `--format markdown` (default), `--format json`, `--format sarif`, `--format llm-optimized`
 
-**Example Output**:
+**Example Output** (`pmat context --format json`):
 ```json
 {
-  "total_files": 45,
-  "languages": {"python": 30, "javascript": 15},
-  "total_lines": 5420,
-  "project_structure": {
-    "src/": {"files": 30},
-    "tests/": {"files": 15}
-  }
+  "version": "1.0",
+  "project": {
+    "language": "python",
+    "path": "/home/user/myapp",
+    "total_files": 45,
+    "total_functions": 210,
+    "overall_health": 85.0,
+    "maintainability_index": 70.0
+  },
+  "files": [
+    {
+      "path": "src/server.py",
+      "items": [
+        {"name": "start_server", "type": "function", "line": 15, "complexity": 5, "cognitive_complexity": 3},
+        {"name": "Config", "type": "struct", "line": 3, "fields_count": 4}
+      ]
+    }
+  ]
 }
 ```
+
+> **See also**: [Chapter 54: Function Boundary Extraction](ch54-00-extract-command.md) for per-file tree-sitter extraction without an index.
 
 ### Deep Context (`pmat analyze deep-context`)
 

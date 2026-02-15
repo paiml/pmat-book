@@ -130,7 +130,7 @@ PMAT supports multiple output formats for different use cases:
 
 ### JSON Format
 
-Perfect for programmatic consumption:
+Perfect for programmatic consumption — structured project overview with per-function complexity:
 
 ```bash
 pmat context --format json > context.json
@@ -139,43 +139,52 @@ pmat context --format json > context.json
 Output structure:
 ```json
 {
+  "version": "1.0",
   "project": {
-    "name": "my-application",
-    "path": "/home/user/projects/my-application",
-    "vcs": "git",
-    "branch": "main"
+    "language": "rust",
+    "path": "/home/user/projects/my-app",
+    "total_files": 45,
+    "total_functions": 312,
+    "overall_health": 85.0,
+    "maintainability_index": 70.0
   },
-  "metrics": {
-    "files": 156,
-    "total_lines": 8432,
-    "languages": {
-      "Python": 7167,
-      "JavaScript": 843,
-      "YAML": 422
-    }
-  },
-  "structure": {
-    "src": {
-      "type": "directory",
-      "files": 12,
-      "lines": 2354,
-      "children": {
-        "main.py": {
-          "type": "file",
-          "lines": 245,
-          "language": "Python",
-          "complexity": 8
+  "files": [
+    {
+      "path": "src/main.rs",
+      "items": [
+        {
+          "name": "main",
+          "type": "function",
+          "line": 15,
+          "complexity": 3,
+          "cognitive_complexity": 2
+        },
+        {
+          "name": "Config",
+          "type": "struct",
+          "line": 5,
+          "fields_count": 4
+        },
+        {
+          "name": "AppError",
+          "type": "enum",
+          "line": 22,
+          "variants_count": 3
         }
-      }
+      ]
     }
-  },
-  "dependencies": ["fastapi", "sqlalchemy", "pytest"],
-  "quality_metrics": {
-    "complexity_average": 6.2,
-    "test_coverage": 82.5,
-    "technical_debt_grade": "B+"
-  }
+  ]
 }
+```
+
+Each item includes `name`, `type` (function/struct/enum/trait/impl), and `line`. Functions are enriched with `complexity` and `cognitive_complexity` from the analysis. Structs include `fields_count`, enums include `variants_count`.
+
+### SARIF Format
+
+For CI/CD static analysis integration (SARIF v2.1):
+
+```bash
+pmat context --format sarif > context.sarif
 ```
 
 ### Markdown Format
@@ -186,20 +195,12 @@ Ideal for documentation and reports:
 pmat context --format markdown > PROJECT_CONTEXT.md
 ```
 
-### XML Format
+### LLM-Optimized Format
 
-For enterprise integrations:
-
-```bash
-pmat context --format xml > context.xml
-```
-
-### AI-Optimized Format
-
-Specifically designed for LLM consumption:
+Specifically designed for AI assistant consumption:
 
 ```bash
-pmat context --ai-format
+pmat context --format llm-optimized
 ```
 
 This format includes:

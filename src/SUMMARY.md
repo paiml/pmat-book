@@ -84,6 +84,8 @@
 - [Chapter 51: YAML Best Practices (CB-950 to CB-953)](ch51-00-yaml-best-practices.md)
 - [Chapter 52: MLOps Model Quality (CB-1000 to CB-1008)](ch52-00-mlops-model-quality.md)
 - [Chapter 53: Spec Falsification Engine](ch53-00-spec-falsification.md)
+- [Chapter 54: Function Boundary Extraction](ch54-00-extract-command.md)
+- [Chapter 55: Autonomous Continuous Improvement (Kaizen)](ch55-00-kaizen.md)
 
 ## Conclusion
 

@@ -22,6 +22,9 @@
 | `pmat dead-code` | Dead code detection | `pmat dead-code --export-list` |
 | `pmat satd` | SATD detection | `pmat satd --extended` (detect euphemisms) |
 | `pmat query` | RAG-powered semantic search | `pmat query "error handling" --type fn --min-grade B` |
+| `pmat extract --list` | Tree-sitter function boundary extraction | `pmat extract --list src/main.rs` |
+| `pmat kaizen` | Autonomous continuous improvement | `pmat kaizen --dry-run` |
+| `pmat comply check` | PMAT compliance checking | `pmat comply check` |
 
 ## Configuration
 
@@ -383,13 +386,12 @@ pmat analyze . || exit $?
 
 ## Running Examples
 
-PMAT includes extensive runnable examples demonstrating various features. All examples are located in the `server/examples/` directory and can be run using Cargo.
+PMAT includes extensive runnable examples demonstrating various features. All examples are located in the `examples/` directory and can be run using Cargo.
 
 ### Running Examples
 
 ```bash
 # From the paiml-mcp-agent-toolkit directory
-cd server
 cargo run --example <example_name>
 ```
 
@@ -422,6 +424,7 @@ cargo run --example <example_name>
 | **Semantic Search** | `semantic_search_demo` | Code semantic search |
 | | `similarity_demo` | Code similarity detection |
 | | `agent_context_query_demo` | RAG-powered agent context |
+| **Extraction** | `extract_demo` | Function boundary extraction (tree-sitter) |
 | **Debugging** | `recording_capture_demo` | Time-travel debugging |
 | | `complexity_demo` | Complexity pattern testing |
 
@@ -443,13 +446,16 @@ cargo run --example mcp_server_pmcp
 # GitHub repo analysis
 cargo run --example analyze_github_repo
 
+# Function boundary extraction
+cargo run --example extract_demo
+
 # Mutation testing workflow
 cargo run --example rust_mutation_workflow
 ```
 
 ### Full Example List
 
-Run `ls server/examples/*.rs` to see all 67+ available examples.
+Run `ls examples/*.rs` to see all 80+ available examples.
 
 ## Getting Help
 
