@@ -76,7 +76,7 @@
 - [Chapter 43: File Health and Max-Lines (CB-040)](ch43-00-file-health.md)
 - [Chapter 44: Dependency Health (CB-081)](ch44-00-dependency-health.md)
 - [Chapter 45: RAG-Powered Agent Context](ch45-00-agent-context.md)
-- [Chapter 46: Rust Best Practices (CB-500 to CB-512)](ch46-00-rust-best-practices.md)
+- [Chapter 46: Rust Best Practices (CB-500 to CB-530)](ch46-00-rust-best-practices.md)
 - [Chapter 47: Lua Best Practices (CB-600 to CB-619)](ch47-00-lua-best-practices.md)
 - [Chapter 48: SQL Best Practices (CB-700 to CB-705)](ch48-00-sql-best-practices.md)
 - [Chapter 49: Scala Best Practices (CB-800 to CB-805)](ch49-00-scala-best-practices.md)

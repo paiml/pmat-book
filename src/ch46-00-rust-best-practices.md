@@ -1,4 +1,4 @@
-# Chapter 46: Rust Best Practices (CB-500 to CB-527)
+# Chapter 46: Rust Best Practices (CB-500 to CB-530)
 
 The CB-500 series detects generic Rust defect patterns that apply to **any** Rust project. These checks were motivated by cross-stack fault analysis of 10 batuta projects that revealed systematic gaps: extreme unwrap density (14.7/file in trueno-rag), missing clippy/deny configurations (5/10 projects), string byte indexing panics on non-ASCII input, and universally low Rust Tooling scores (<55%).
 
@@ -87,6 +87,13 @@ The CB-500 series is **advisory** — it reports with `Warn` status but does not
 | CB-525 | Hardcoded Field Names | Info | 5+ `.get("field")` calls without `.or_else()` alias fallbacks |
 | CB-526 | Single-Path File Resolution | Info | `path.join("file").exists()` without parent/recursive fallback |
 | CB-527 | Incomplete Pattern List | Info | 3+ `.contains()` classification chain — may miss variants |
+
+### Numerical Safety (CB-528, CB-530)
+
+| ID | Check | Severity | What it detects |
+|----|-------|----------|-----------------|
+| CB-528 | Division by Length | Warning | `x / collection.len()` without `is_empty()` or `.max(1)` guard |
+| CB-530 | Log Without Clamp | Warning | `.ln()`, `.log2()`, `.log10()` without `.max(epsilon)` or `.clamp()` guard |
 
 ## Detection Algorithms
 
@@ -519,9 +526,85 @@ Detects `path.join("filename").exists()` patterns without fallback search (paren
 
 Detects `.contains("x") || .contains("y") || ...` chains with 3+ patterns, which are typically data classification logic that may miss variants. Motivated by GH-233B/234 where Rosetta density threshold only recognized `"embed"` but not `"wte"`, `"wpe"`, `"position_embedding"`. Consider centralizing patterns in a constant array or registry.
 
+### CB-528: Division by Length Without Empty Guard
+
+Detects `x / collection.len()` without a preceding `is_empty()` or `len() > 0` guard. In ML and numerical code, dividing by the length of an empty collection causes division-by-zero: panic for integers, `Inf`/`NaN` for floats. Motivated by cross-stack analysis where mean calculations over empty batches silently produced `NaN` that propagated through training losses.
+
+```rust
+// ❌ Division by zero on empty input (CB-528):
+fn compute_mean(values: &[f64]) -> f64 {
+    let sum: f64 = values.iter().sum();
+    sum / values.len() as f64  // NaN when values is empty
+}
+
+fn average_batch(batch: &[Tensor]) -> Tensor {
+    let total = batch.iter().fold(Tensor::zeros(), |a, b| a + b);
+    total / batch.len() as f32  // Inf when batch is empty
+}
+
+// ✅ Guarded alternatives:
+fn compute_mean(values: &[f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    let sum: f64 = values.iter().sum();
+    sum / values.len() as f64
+}
+
+fn compute_mean_alt(values: &[f64]) -> f64 {
+    let sum: f64 = values.iter().sum();
+    sum / values.len().max(1) as f64  // .max(1) prevents zero denominator
+}
+```
+
+The detector looks back up to 8 lines for guard patterns: `is_empty()`, `.len() > 0`, `.len() >= 1`, `.len() != 0`, `.len() == 0`, and `.max(1)` on the same line.
+
+### CB-530: Log Without Clamp Guard
+
+Detects `.ln()`, `.log2()`, `.log10()` calls without a preceding `.max(epsilon)` or `.clamp()` guard. Passing zero or negative values to log functions produces `-Inf` or `NaN`, which silently corrupts ML training losses, probability calculations, and information-theoretic metrics. Discovered during 3.4.0 dogfooding where trueno's scalar backend had 3 unguarded log calls.
+
+```rust
+// ❌ Risk of -Inf/NaN (CB-530):
+fn cross_entropy(predicted: &[f64], actual: &[f64]) -> f64 {
+    predicted.iter().zip(actual).map(|(p, a)| {
+        -a * p.ln()  // -Inf when p == 0.0
+    }).sum()
+}
+
+fn information_content(probability: f64) -> f64 {
+    -probability.log2()  // NaN when probability < 0.0
+}
+
+fn signal_magnitude(value: f64) -> f64 {
+    value.log10()  // -Inf when value == 0.0
+}
+
+// ✅ Clamped alternatives:
+fn cross_entropy(predicted: &[f64], actual: &[f64]) -> f64 {
+    predicted.iter().zip(actual).map(|(p, a)| {
+        -a * p.max(1e-10).ln()  // Clamped to epsilon
+    }).sum()
+}
+
+fn information_content(probability: f64) -> f64 {
+    -probability.clamp(f64::EPSILON, 1.0).log2()
+}
+
+fn signal_magnitude(value: f64) -> f64 {
+    value.max(f64::EPSILON).log10()
+}
+```
+
+The detector recognizes these safe patterns and does **not** flag them:
+- `.max(epsilon).ln()` — epsilon guard on same expression
+- `.clamp(low, high).ln()` — range clamp before log
+- `(1.0 + x).ln()` — log of sum with positive constant (always > 0)
+- `2.0_f64.ln()` — log of known positive literal
+- Variable guarded within 3 lines: `let x = val.max(1e-10);` then `x.ln()`
+
 ## Test Code Exclusion
 
-All file-scanning checks (CB-501, CB-502, CB-506–CB-508, CB-512–CB-527) exclude test code using two mechanisms:
+All file-scanning checks (CB-501, CB-502, CB-506–CB-508, CB-512–CB-528, CB-530) exclude test code using two mechanisms:
 
 1. **Test file exclusion**: Files matching `*_test.rs`, `*_tests.rs`, or under a `tests/` directory
 2. **Test region exclusion**: Code inside `#[cfg(test)]` module blocks within production files
@@ -543,20 +626,22 @@ const DOT_EXPECT_QUOTE: &str = concat!(".expe", "ct(\"");
 When `pmat comply check` reports CB-500 violations, fix them in this priority order:
 
 1. **CB-501 Errors** (>10 unwrap/file) — highest crash risk
-2. **CB-519** — lossy data pipeline round-trips corrupt model weights (GH-215/231/237)
-3. **CB-521** — binary format parsing without magic bytes causes crashes (GH-213)
-4. **CB-515, CB-524** — catch-all match arms / incomplete enum coverage (GH-236)
-5. **CB-513** — silent error swallowing hiding data corruption (GH-215)
-6. **CB-520** — expensive initialization in hot path (GH-224)
-7. **CB-512** — functions claiming error handling but not doing it
-8. **CB-506** — string indexing panics on internationalized input
-9. **CB-507** — todo!/unimplemented! left in production
-10. **CB-514, CB-517** — debug artifacts leaked to production
-11. **CB-525** — hardcoded field names without aliases (GH-235)
-12. **CB-502** — lazy expect messages hide root cause during debugging
-13. **CB-508** — lossy casts cause silent data corruption
-14. **CB-500, CB-505** — project configuration hygiene
-15. **CB-503, CB-504, CB-509–CB-511, CB-516, CB-518, CB-522, CB-523, CB-526, CB-527** — informational, fix at leisure
+2. **CB-530** — log without clamp produces -Inf/NaN that silently corrupts ML losses and metrics
+3. **CB-519** — lossy data pipeline round-trips corrupt model weights (GH-215/231/237)
+4. **CB-528** — division by `.len()` without empty guard causes panic (integers) or NaN (floats)
+5. **CB-521** — binary format parsing without magic bytes causes crashes (GH-213)
+6. **CB-515, CB-524** — catch-all match arms / incomplete enum coverage (GH-236)
+7. **CB-513** — silent error swallowing hiding data corruption (GH-215)
+8. **CB-520** — expensive initialization in hot path (GH-224)
+9. **CB-512** — functions claiming error handling but not doing it
+10. **CB-506** — string indexing panics on internationalized input
+11. **CB-507** — todo!/unimplemented! left in production
+12. **CB-514, CB-517** — debug artifacts leaked to production
+13. **CB-525** — hardcoded field names without aliases (GH-235)
+14. **CB-502** — lazy expect messages hide root cause during debugging
+15. **CB-508** — lossy casts cause silent data corruption
+16. **CB-500, CB-505** — project configuration hygiene
+17. **CB-503, CB-504, CB-509–CB-511, CB-516, CB-518, CB-522, CB-523, CB-526, CB-527** — informational, fix at leisure
 
 ## CI/CD Integration
 
@@ -596,5 +681,5 @@ The CB-500 checks are grounded in empirical research on Rust defect patterns:
 
 ## Specification Reference
 
-Full detection logic: `src/cli/handlers/comply_cb_detect/rust_best_practices.rs`
-Aggregate check: `src/cli/handlers/comply_handlers/check_handlers.rs` (`check_rust_best_practices`)
+Full detection logic: `src/cli/handlers/comply_cb_detect/rust_best_practices.rs` (CB-500–CB-521) and `src/cli/handlers/comply_cb_detect/rust_best_practices_extended.rs` (CB-522–CB-530)
+Aggregate check: `src/cli/handlers/comply_cb_detect/check_handlers.rs` (`check_rust_best_practices`)
