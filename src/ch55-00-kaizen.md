@@ -72,6 +72,16 @@ pmat kaizen --dry-run --format json -o report.json
 jq -e '.issues | length == 0' report.json || exit 1
 ```
 
+## What Changed in v3.3.0
+
+- **CB-200 TDG Grade Gate auto-rebuild**: Stale `context.db` is now automatically rebuilt during comply checks, eliminating manual `pmat index` invocations before `pmat comply`
+- **TDG scoring refinements**: Cyclomatic complexity divisor changed from 20 to 25 (less harsh penalty), SATD penalty softened (first 2 markers free, 0.5 per marker after), LOC threshold raised to 200+, and enums/structs are now exempt from LOC penalties
+- **XXX removed from SATD markers**: Eliminates false positives from legitimate patterns like `BUG-XXX` identifiers that were incorrectly flagged as technical debt
+- **Dead code cleanup**: Deleted `extensions_old()` (80 lines) and orphaned `spec.rs` (24KB) discovered through kaizen scanning
+- **Configurable entropy quality gate**: Entropy thresholds are now configurable via `.pmat-gates.toml` under the `[entropy]` section
+- **CB-200 respects gate configuration**: TDG grade gate reads `[tdg] min_grade` and `exclude` patterns from `.pmat-gates.toml`, allowing project-specific tuning
+- **Command dispatchers excluded from TDG gate**: Functions matching the command dispatcher architectural pattern (large match blocks routing to handlers) are automatically excluded from TDG grading
+
 ## What Changed in v3.1.1
 
 - Added batuta defect scanner integration (`--skip-defects` to disable)

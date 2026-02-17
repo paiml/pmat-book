@@ -86,6 +86,7 @@
 - [Chapter 53: Spec Falsification Engine](ch53-00-spec-falsification.md)
 - [Chapter 54: Function Boundary Extraction](ch54-00-extract-command.md)
 - [Chapter 55: Autonomous Continuous Improvement (Kaizen)](ch55-00-kaizen.md)
+- [Chapter 56: Compliance Governance (pmat comply)](ch56-00-comply.md)
 
 ## Conclusion
 
