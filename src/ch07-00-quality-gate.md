@@ -1,17 +1,17 @@
 # Chapter 7: Quality Gates - Automated Quality Enforcement
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (8/8 examples)
+**Chapter Status**: ✅ 100% Working (10/10 examples)
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 8 | All quality gate features tested |
+| ✅ Working | 10 | All quality gate features tested |
 | ⚠️ Not Implemented | 0 | Planned for future versions |
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-09*  
-*PMAT version: pmat 2.213.1*  
+*Last updated: 2026-02-17*
+*PMAT version: pmat 2.213.1*
 *Test-Driven: All examples validated in `tests/ch07/test_quality_gate.sh`*
 <!-- DOC_STATUS_END -->
 
@@ -26,79 +26,74 @@ Quality gates are automated checkpoints that enforce code quality standards acro
 Start with a comprehensive quality assessment:
 
 ```bash
-# Analyze entire project
-pmat quality-gate .
+# Analyze current project (default)
+pmat quality-gate
 
 # Analyze specific directory
-pmat quality-gate src/
+pmat quality-gate --project-path src/
 
-# Include performance metrics
-pmat quality-gate . --performance
+# Analyze specific file
+pmat quality-gate --file src/main.rs
+
+# Run with verbose output
+pmat quality-gate --verbose
 ```
 
-### Example Output
+### Example Output (Summary Format)
 
 ```
-🚦 Quality Gate Report
-======================
+Quality Gate: FAILED
+Total violations: 378
 
-Project: my-application
-Checks Run: 6
-Time: 2.3s
+## complexity (266 violations)
+  - ./src/parser.rs:135 - parse_expression: cognitive-complexity -
+    Cognitive complexity of 21 exceeds recommended complexity of 20
+    (complexity: 21, threshold: 20)
+  - ./src/handler.rs:262 - handle_request: cyclomatic-complexity -
+    Cyclomatic complexity of 33 exceeds maximum allowed complexity of 30
+    (complexity: 33, threshold: 30)
 
-## Results Summary
+## satd (58 violations)
+  - ./src/agents/mod.rs:106 - Requirement: TODO: Properly implement
+    agent system initialization (at column 5)
 
-✅ PASSED: 4/6 checks
-❌ FAILED: 2/6 checks
+## entropy (50 violations)
+  - ./src/storage.rs - ApiCall pattern repeated 10 times (saves 928 lines) -
+    Fix: Create API client abstraction
 
-## Failed Checks
+## sections (3 violations)
+  - README.md - Missing required section: Installation
 
-❌ Complexity Check
-   - Function process_payment: Cyclomatic complexity 15 > threshold 10
-   - Function validate_user: Cyclomatic complexity 12 > threshold 10
-   - Files with high complexity: 2
-
-❌ SATD (Technical Debt) Check
-   - TODO items found: 12
-   - FIXME items found: 8
-   - HACK items found: 3
-   - Total technical debt markers: 23
-
-## Passed Checks
-
-✅ Dead Code Check (2.1% dead code < 15% threshold)
-✅ Documentation Check (89% documented > 80% threshold)
-✅ Lint Check (No violations found)
-✅ Coverage Check (82% > 60% threshold)
-
-Overall Status: ❌ FAILED
-Quality Score: 67/100
-
-🔧 Recommendations:
-1. Refactor high-complexity functions
-2. Address technical debt markers
-3. Consider adding more unit tests
+## provability (1 violation)
+  - Provability score 0.41 is below minimum 0.60
 ```
 
 ## Available Quality Checks
 
+PMAT's quality gate includes 9 check types, selectable via `--checks`:
+
+```bash
+# Run specific checks
+pmat quality-gate --checks complexity,satd,entropy
+
+# All checks (default)
+pmat quality-gate --checks all
+```
+
+**Available checks:** `complexity`, `satd`, `dead-code`, `coverage`, `sections`, `provability`, `entropy`, `security`, `duplicates`
+
 ### Complexity Analysis
 
-Monitor cyclomatic complexity to ensure maintainable code:
+Monitor both cyclomatic and cognitive complexity:
 
 ```bash
 # Focus on complexity only
-pmat quality-gate . --checks=complexity
-
-# Custom complexity threshold
-pmat quality-gate . --checks=complexity --max-complexity-p99=20
+pmat quality-gate --checks complexity
 ```
 
-**Complexity Thresholds:**
-- **Low**: 1-5 (Simple, easy to test)
-- **Moderate**: 6-10 (Acceptable complexity)
-- **High**: 11-20 (Consider refactoring)
-- **Very High**: 21+ (Refactor immediately)
+**Complexity Thresholds (built-in):**
+- **Cyclomatic**: Recommended ≤ 25, Maximum ≤ 30
+- **Cognitive**: Recommended ≤ 20, Maximum ≤ 25
 
 ### Technical Debt Detection (SATD)
 
@@ -106,10 +101,7 @@ Track Self-Admitted Technical Debt markers:
 
 ```bash
 # Check technical debt
-pmat quality-gate . --checks=satd
-
-# Multiple check types
-pmat quality-gate . --checks=complexity,satd,dead_code
+pmat quality-gate --checks satd
 ```
 
 **Detected Markers:**
@@ -124,261 +116,263 @@ pmat quality-gate . --checks=complexity,satd,dead_code
 Identify unused code that increases maintenance burden:
 
 ```bash
-# Check for dead code
-pmat quality-gate . --checks=dead_code --max-dead-code=10.0
+pmat quality-gate --checks dead-code
 ```
 
-**Dead Code Types:**
-- Unused functions
-- Unreachable code
-- Unused variables
-- Unused imports
-- Deprecated methods
+### Entropy Analysis
 
-### Documentation Coverage
-
-Ensure adequate code documentation:
+Detect repetitive code patterns that could be abstracted:
 
 ```bash
-# Check documentation coverage
-pmat quality-gate . --checks=documentation --min-doc-coverage=80.0
+pmat quality-gate --checks entropy
 ```
 
-### Lint Compliance
+Entropy analysis finds copy-paste patterns (e.g., repeated API calls, similar error handling) and estimates how many lines could be saved by refactoring. Each violation includes:
+- **Pattern type** (ApiCall, ErrorHandling, etc.)
+- **Repetition count** and estimated LOC reduction
+- **Affected files** and example code
+- **Fix suggestion** (e.g., "Create API client abstraction")
 
-Verify code follows style guidelines:
+Configure via `.pmat-gates.toml`:
+```toml
+[entropy]
+enabled = true
+min_pattern_diversity = 0.30
+exclude = ["examples/**", "benches/**"]
+```
+
+### Provability Analysis
+
+Score how amenable your code is to formal verification:
 
 ```bash
-# Run lint checks
-pmat quality-gate . --checks=lint
+pmat quality-gate --checks provability
+```
+
+Provability analysis samples functions and scores them on:
+- **Bounds checking** - Array/index safety
+- **Memory safety** - Ownership and lifetime correctness
+- **No aliasing** - Absence of mutable aliasing
+- **Null safety** - Option/Result handling
+- **Pure functions** - Side-effect-free logic
+
+Violations include the worst-scoring functions and verified property counts:
+```
+Provability score 0.41 is below minimum 0.60
+  Functions: from (20%), get_default_filter (20%)
+  Verified: bounds_check 15/50, memory_safety 15/50, pure_function 10/50
 ```
 
 ### Test Coverage
 
-Monitor test coverage levels:
+Monitor test coverage levels (reads from `.pmat/coverage-cache.json`):
 
 ```bash
-# Check test coverage
-pmat quality-gate . --checks=coverage --min-coverage=75.0
+pmat quality-gate --checks coverage
+```
+
+### Section Validation
+
+Check that README.md contains required sections:
+
+```bash
+pmat quality-gate --checks sections
 ```
 
 ## Output Formats
 
+PMAT supports 6 output formats: `summary` (default), `human`, `json`, `detailed`, `junit`, `markdown`.
+
 ### Summary Format (Default)
 
-Concise overview for quick assessment:
+Concise list grouped by check type:
 
 ```bash
-pmat quality-gate . --format=summary
+pmat quality-gate --format=summary
+```
+
+```
+Quality Gate: FAILED
+Total violations: 378
+
+## complexity (266 violations)
+  - ./src/parser.rs:135 - parse_expression: cognitive-complexity -
+    Cognitive complexity of 21 exceeds recommended complexity of 20
+
+## satd (58 violations)
+  - ./src/agents/mod.rs:106 - Requirement: TODO: Properly implement
+    agent system initialization
+
+## entropy (50 violations)
+  - ./src/storage.rs - ApiCall pattern repeated 10 times (saves 928 lines)
+
+## provability (1 violation)
+  - Provability score 0.41 is below minimum 0.60
 ```
 
 ### Human-Readable Format
 
-Detailed, formatted output for manual review:
+Same content as summary with additional detail per violation:
 
 ```bash
-pmat quality-gate . --format=human
-```
-
-**Output:**
-```
-🚦 Quality Gate Analysis
-========================
-
-Project Path: /path/to/project
-Analysis Time: 1.8s
-
-📊 Threshold Configuration:
-   Max Complexity (P99): 10
-   Max Dead Code: 15.0%
-   Min Coverage: 60.0%
-   Min Documentation: 80.0%
-
-🔍 Analysis Results:
-
-Complexity Analysis:
-   ❌ Max complexity (15) exceeds threshold (10)
-   ⚠️  Average complexity (7.2) is acceptable
-   ❌ 2 functions exceed recommended complexity
-
-Dead Code Analysis:
-   ✅ Dead code percentage (2.1%) is below threshold (15.0%)
-   ✅ No unused functions detected
-
-Technical Debt Analysis:
-   ❌ 23 technical debt markers found
-   - TODO: 12 items (moderate priority)
-   - FIXME: 8 items (high priority)  
-   - HACK: 3 items (critical priority)
-
-Coverage Analysis:
-   ✅ Test coverage (82%) exceeds threshold (60%)
-   ✅ All critical paths covered
-
-Overall Result: ❌ FAILED
-Quality Score: 67/100
-
-🔧 Action Items:
-1. Refactor process_payment function (complexity: 15)
-2. Refactor validate_user function (complexity: 12)
-3. Address 8 FIXME items (high priority)
-4. Address 3 HACK items (critical priority)
+pmat quality-gate --format=human
 ```
 
 ### JSON Format
 
-Machine-readable output for CI/CD integration:
+Machine-readable output for CI/CD integration. Progress messages go to stderr; clean JSON goes to stdout.
 
 ```bash
-pmat quality-gate . --format=json
+# Pipe-friendly: only JSON on stdout
+pmat quality-gate --format=json > report.json
+
+# Suppress progress entirely
+pmat quality-gate --format=json --quiet
 ```
 
 **JSON Structure:**
 ```json
 {
-  "status": "failed",
-  "timestamp": "2025-09-09T10:30:00Z",
-  "project_path": "/path/to/project",
-  "analysis_time_ms": 1847,
-  "checks_run": ["complexity", "satd", "dead_code", "coverage", "documentation", "lint"],
-  "thresholds": {
-    "max_complexity_p99": 10,
-    "max_dead_code_percentage": 15.0,
-    "min_coverage_percentage": 60.0,
-    "min_documentation_percentage": 80.0
-  },
   "results": {
-    "complexity": {
-      "passed": false,
-      "violations": [
-        {
-          "file": "src/payment.rs",
-          "function": "process_payment",
-          "complexity": 15,
-          "threshold": 10,
-          "line": 45
-        },
-        {
-          "file": "src/auth.rs", 
-          "function": "validate_user",
-          "complexity": 12,
-          "threshold": 10,
-          "line": 23
-        }
-      ],
-      "summary": {
-        "max_complexity": 15,
-        "avg_complexity": 7.2,
-        "functions_over_threshold": 2,
-        "total_functions": 24
+    "passed": false,
+    "total_violations": 378,
+    "complexity_violations": 266,
+    "dead_code_violations": 0,
+    "satd_violations": 58,
+    "entropy_violations": 50,
+    "security_violations": 0,
+    "duplicate_violations": 0,
+    "coverage_violations": 0,
+    "section_violations": 3,
+    "provability_violations": 1,
+    "provability_score": null,
+    "violations": []
+  },
+  "violations": [
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/parser.rs",
+      "line": 135,
+      "message": "parse_expression: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/agents/mod.rs",
+      "line": 106,
+      "message": "Requirement: TODO: Properly implement agent system initialization (at column 5)"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/storage.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 10 times (saves 928 lines) - Fix: Create API client abstraction",
+      "details": {
+        "affected_files": ["./src/storage.rs"],
+        "example_code": ".put(",
+        "fix_suggestion": "Create API client abstraction",
+        "score_factors": [
+          "pattern_type: ApiCall",
+          "repetitions: 10",
+          "variation_score: 1.00"
+        ]
       }
     },
-    "satd": {
-      "passed": false,
-      "violations": [
-        {
-          "file": "src/payment.rs",
-          "line": 67,
-          "type": "TODO",
-          "message": "Add retry logic for failed payments"
-        },
-        {
-          "file": "src/auth.rs",
-          "line": 156,
-          "type": "FIXME", 
-          "message": "Memory leak in token validation"
-        }
-      ],
-      "summary": {
-        "total_markers": 23,
-        "todo_count": 12,
-        "fixme_count": 8,
-        "hack_count": 3,
-        "xxx_count": 0
-      }
-    },
-    "dead_code": {
-      "passed": true,
-      "summary": {
-        "dead_functions": 0,
-        "dead_code_percentage": 2.1,
-        "total_lines": 4567,
-        "dead_lines": 96
-      }
-    },
-    "coverage": {
-      "passed": true,
-      "summary": {
-        "line_coverage": 82.4,
-        "branch_coverage": 76.8,
-        "function_coverage": 89.2
+    {
+      "check_type": "provability",
+      "severity": "warning",
+      "file": ".",
+      "line": null,
+      "message": "Provability score 0.41 is below minimum 0.60",
+      "details": {
+        "affected_files": [
+          "./src/bin/main.rs:from (20%)",
+          "./src/bin/main.rs:get_default_filter (20%)",
+          "./src/bin/main.rs:is_quality_gate_error (20%)"
+        ],
+        "fix_suggestion": "Reduce unsafe blocks, minimize FFI calls, extract pure functions, and lower cyclomatic complexity",
+        "score_factors": [
+          "functions_sampled: 50",
+          "average_score: 0.41",
+          "verified_boundscheck: 15/50",
+          "verified_memorysafety: 15/50",
+          "verified_noaliasing: 15/50",
+          "verified_nullsafety: 15/50",
+          "verified_purefunction: 10/50"
+        ]
       }
     }
-  },
-  "summary": {
-    "total_checks": 6,
-    "passed_checks": 4,
-    "failed_checks": 2,
-    "quality_score": 67,
-    "grade": "C+",
-    "recommendation": "Focus on reducing complexity and addressing technical debt"
-  }
+  ]
 }
+```
+
+**Key fields:**
+- `results.passed` - Overall pass/fail boolean
+- `results.*_violations` - Count per check type
+- `violations[]` - Flat array of all violations
+- `violations[].details` - Present for entropy and provability violations with explainability data (affected files, fix suggestions, score breakdown)
+- `violations[].line` - Line number (null for file-level or project-level violations)
+
+### JUnit Format
+
+For CI systems that consume JUnit XML:
+
+```bash
+pmat quality-gate --format=junit
+```
+
+### Markdown Format
+
+For embedding in pull request comments:
+
+```bash
+pmat quality-gate --format=markdown
 ```
 
 ## Configurable Thresholds
 
+Thresholds are configured in `.pmat-gates.toml` (project root). CLI flags override config values.
+
 ### Complexity Thresholds
 
-Control complexity tolerance levels:
+Built-in complexity thresholds (not currently CLI-configurable):
+- **Cyclomatic**: Recommended ≤ 25, Maximum ≤ 30
+- **Cognitive**: Recommended ≤ 20, Maximum ≤ 25
 
-```bash
-# Strict complexity limits
-pmat quality-gate . --max-complexity-p99=15
+### Dead Code Threshold
 
-# Very strict for critical code
-pmat quality-gate . --max-complexity-p99=8
-
-# Relaxed for legacy code
-pmat quality-gate . --max-complexity-p99=25
+```toml
+# .pmat-gates.toml
+[dead_code]
+# Library crates need higher threshold for public APIs
+max_dead_code_pct = 30.0
 ```
 
-### Dead Code Thresholds
+### Entropy Configuration
 
-Set acceptable dead code levels:
-
-```bash
-# Strict dead code limits
-pmat quality-gate . --max-dead-code=5.0
-
-# Standard tolerance
-pmat quality-gate . --max-dead-code=15.0
-
-# Legacy codebase tolerance
-pmat quality-gate . --max-dead-code=30.0
+```toml
+# .pmat-gates.toml
+[entropy]
+enabled = true
+# Files below this pattern diversity score are flagged (0.0-1.0)
+min_pattern_diversity = 0.30
+# Paths excluded from entropy analysis
+exclude = ["examples/**", "benches/**"]
 ```
 
-### Custom Threshold Combinations
+### Selective Check Execution
 
 ```bash
-# High-quality standards
-pmat quality-gate . \
-    --max-complexity-p99=10 \
-    --max-dead-code=5.0 \
-    --min-entropy=3.0
+# Run only complexity and entropy
+pmat quality-gate --checks complexity,entropy
 
-# Production readiness check
-pmat quality-gate . \
-    --max-complexity-p99=15 \
-    --max-dead-code=10.0 \
-    --min-entropy=2.5 \
-    --fail-on-violation
+# Run everything except duplicates
+pmat quality-gate --checks complexity,satd,dead-code,entropy,coverage,sections,provability,security
 
-# Legacy code maintenance
-pmat quality-gate . \
-    --max-complexity-p99=30 \
-    --max-dead-code=25.0 \
-    --min-entropy=1.5
+# Fail CI if quality gate fails
+pmat quality-gate --fail-on-violation --format json
 ```
 
 ## Single File Analysis
@@ -387,47 +381,13 @@ Analyze individual files for focused quality assessment:
 
 ```bash
 # Analyze specific file
-pmat quality-gate . --file=src/payment.rs
+pmat quality-gate --file src/payment.rs
 
-# Multiple files
-pmat quality-gate . --file=src/payment.rs --format=json
-pmat quality-gate . --file=src/auth.rs --format=json
+# With JSON output
+pmat quality-gate --file src/payment.rs --format json
 ```
 
-**Single File Output:**
-```json
-{
-  "status": "warning",
-  "file": "src/payment.rs",
-  "analysis_time_ms": 234,
-  "checks_run": ["complexity", "satd", "dead_code", "lint", "documentation"],
-  "results": {
-    "complexity": {
-      "passed": false,
-      "functions": [
-        {"name": "process_payment", "complexity": 15, "line": 45},
-        {"name": "validate_card", "complexity": 6, "line": 123},
-        {"name": "calculate_fee", "complexity": 4, "line": 234}
-      ],
-      "max_complexity": 15,
-      "violations": 1
-    },
-    "satd": {
-      "passed": false,
-      "markers": [
-        {"type": "TODO", "line": 67, "message": "Add retry logic"},
-        {"type": "FIXME", "line": 89, "message": "Handle edge case"}
-      ]
-    }
-  },
-  "summary": {
-    "passed_checks": 3,
-    "failed_checks": 2,
-    "quality_score": 60,
-    "grade": "C"
-  }
-}
-```
+Single file analysis runs the same checks but scoped to one file. The output format is identical to project-wide analysis, with violations filtered to the target file.
 
 ## CI/CD Integration
 
@@ -436,22 +396,18 @@ pmat quality-gate . --file=src/auth.rs --format=json
 Use quality gates as build gates in CI/CD pipelines:
 
 ```bash
-# Fail build if quality gate fails
-pmat quality-gate . --fail-on-violation
+# Fail build if quality gate fails (exit code 1)
+pmat quality-gate --fail-on-violation
 
-# Strict quality enforcement
-pmat quality-gate . \
-    --fail-on-violation \
-    --max-complexity-p99=10 \
-    --max-dead-code=5.0 \
-    --checks=complexity,dead_code,satd
+# Specific checks only
+pmat quality-gate --fail-on-violation --checks complexity,satd,entropy
 ```
 
 ### Exit Codes
 
 Quality gates return meaningful exit codes:
 
-- **0**: All checks passed
+- **0**: All checks passed (or `--fail-on-violation` not set)
 - **1**: Quality gate violations found
 - **2**: Analysis failed (tool error)
 
@@ -467,35 +423,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Install PMAT
         run: cargo install pmat
-        
+
       - name: Run Quality Gate
         run: |
-          pmat quality-gate . \
-            --format=json \
-            --output=quality-report.json \
+          pmat quality-gate \
+            --format json \
             --fail-on-violation \
-            --max-complexity-p99=15 \
-            --max-dead-code=10.0
-            
+            --checks complexity,satd,entropy,provability \
+            > quality-report.json
+
       - name: Upload Quality Report
         uses: actions/upload-artifact@v3
         if: always()
         with:
           name: quality-report
           path: quality-report.json
-          
-      - name: Comment PR with Quality Results
-        if: github.event_name == 'pull_request'
-        run: |
-          if [ -f quality-report.json ]; then
-            echo "## Quality Gate Results" >> pr-comment.md
-            echo "\`\`\`json" >> pr-comment.md
-            cat quality-report.json >> pr-comment.md
-            echo "\`\`\`" >> pr-comment.md
-          fi
 ```
 
 ### GitLab CI Integration
@@ -504,57 +449,66 @@ jobs:
 quality_gate:
   stage: test
   script:
-    - pmat quality-gate . --format=json --output=quality-report.json --fail-on-violation
+    - pmat quality-gate --format junit --fail-on-violation > quality-report.xml
   artifacts:
     reports:
-      junit: quality-report.json
+      junit: quality-report.xml
     expire_in: 1 week
   allow_failure: false
 ```
 
 ## Advanced Features
 
-### Performance Monitoring
+### SQL Querying of Quality Data
 
-Track analysis performance and resource usage:
-
-```bash
-pmat quality-gate . --performance --format=human
-```
-
-**Performance Output:**
-```
-⏱️  Performance Metrics:
-   Initialization: 45ms
-   File Discovery: 23ms (156 files)
-   Complexity Analysis: 456ms
-   SATD Detection: 234ms
-   Dead Code Analysis: 345ms
-   Report Generation: 67ms
-   
-   Total Runtime: 1,170ms
-   Files Analyzed: 156
-   Lines Processed: 12,450
-   Average Speed: 10,641 lines/sec
-
-📊 Resource Usage:
-   Peak Memory: 34.7 MB
-   CPU Utilization: 67%
-   I/O Operations: 312 reads, 8 writes
-   Cache Hit Rate: 89%
-```
-
-### Batch File Analysis
-
-Process multiple files efficiently:
+Quality gate data is stored in SQLite tables alongside the function index. Use `pmat sql` to query violations directly:
 
 ```bash
-# Analyze all Rust files
-find . -name "*.rs" -exec pmat quality-gate . --file={} \;
+# Query entropy violations sorted by repetition count
+pmat sql entropy-violations
 
-# Parallel analysis
-find . -name "*.rs" | xargs -P 4 -I {} pmat quality-gate . --file={}
+# Query low-provability functions
+pmat sql low-provability
 ```
+
+**Entropy violations table schema:**
+```sql
+CREATE TABLE entropy_violations (
+    id INTEGER PRIMARY KEY,
+    file_path TEXT NOT NULL,
+    pattern_type TEXT NOT NULL,
+    pattern_hash TEXT NOT NULL,
+    repetitions INTEGER NOT NULL,
+    variation_score REAL NOT NULL,
+    estimated_loc_reduction INTEGER NOT NULL,
+    severity TEXT NOT NULL,
+    example_code TEXT,
+    UNIQUE(file_path, pattern_hash)
+);
+```
+
+**Provability scores table schema:**
+```sql
+CREATE TABLE provability_scores (
+    id INTEGER PRIMARY KEY,
+    function_id INTEGER,
+    file_path TEXT NOT NULL,
+    function_name TEXT NOT NULL,
+    provability_score REAL NOT NULL,
+    verified_properties INTEGER DEFAULT 0,
+    FOREIGN KEY (function_id) REFERENCES functions(id)
+);
+```
+
+### Violation Explainability (Details)
+
+Entropy and provability violations include a `details` field in JSON output with:
+- **`affected_files`** - Which files contain the violation
+- **`example_code`** - Code snippet demonstrating the pattern
+- **`fix_suggestion`** - Actionable recommendation
+- **`score_factors`** - Breakdown of how the score was computed
+
+This enables automated triaging: parse the JSON, sort by impact, and generate fix suggestions programmatically.
 
 ### Custom Check Selection
 
@@ -562,112 +516,66 @@ Run only specific quality checks:
 
 ```bash
 # Code structure checks only
-pmat quality-gate . --checks=complexity,dead_code
+pmat quality-gate --checks complexity,dead-code
 
 # Code quality checks only
-pmat quality-gate . --checks=satd,lint,documentation
+pmat quality-gate --checks satd,entropy,provability
 
-# All checks except performance-intensive ones
-pmat quality-gate . --checks=complexity,satd,lint
+# Security-focused
+pmat quality-gate --checks security,provability
 ```
 
-## Quality Gate Profiles
+## Configuration Reference
 
-### Predefined Profiles
+### `.pmat-gates.toml` (Project Configuration)
 
-Use predefined quality profiles for different scenarios:
-
-```bash
-# Development profile (relaxed)
-pmat quality-gate . --profile=dev
-
-# Staging profile (balanced)
-pmat quality-gate . --profile=staging
-
-# Production profile (strict)
-pmat quality-gate . --profile=production
-
-# Security-focused profile
-pmat quality-gate . --profile=security
-```
-
-### Profile Configurations
-
-**Development Profile:**
-- Max Complexity: 20
-- Max Dead Code: 25%
-- SATD Tolerance: High
-- Documentation: 60%
-
-**Production Profile:**
-- Max Complexity: 10
-- Max Dead Code: 5%
-- SATD Tolerance: Low
-- Documentation: 90%
-
-**Security Profile:**
-- Max Complexity: 8
-- Max Dead Code: 2%
-- SATD Tolerance: None
-- Documentation: 95%
-- Additional security checks enabled
-
-## Configuration Files
-
-### Project Configuration
-
-Create `.pmat/quality-gate.toml` for project-specific settings:
+The primary configuration file lives in the project root:
 
 ```toml
-# Quality gate configuration
+# .pmat-gates.toml - Quality Gate Configuration
 
-[thresholds]
-max_complexity_p99 = 15
-max_dead_code_percentage = 10.0
-min_entropy = 2.5
+[gates]
+run_clippy = true
+clippy_strict = true
+run_tests = true
+test_timeout = 300
+check_coverage = true
 min_coverage = 80.0
-min_documentation = 85.0
+check_complexity = true
+max_complexity = 10
 
-[checks]
-enabled = ["complexity", "satd", "dead_code", "coverage", "documentation", "lint"]
-disabled = []
+[exclude]
+# Paths excluded from quality gate checks
+paths = [
+    "tests/**",
+    "examples/**",
+    "benches/**",
+    "**/target/**",
+]
 
-[complexity]
-per_function_threshold = 10
-aggregate_threshold = 15
-exclude_patterns = ["**/test/**", "**/*_test.rs"]
-
-[satd]
-patterns = ["TODO", "FIXME", "HACK", "XXX", "BUG"]
-severity_weights = { "TODO" = 1, "FIXME" = 3, "HACK" = 5, "XXX" = 8, "BUG" = 10 }
-max_weighted_score = 50
+[entropy]
+enabled = true
+# Minimum pattern diversity score (0.0-1.0)
+min_pattern_diversity = 0.30
+exclude = ["examples/**", "benches/**"]
 
 [dead_code]
-include_test_code = false
-include_example_code = false
-aggressive_detection = true
+# Library crates: public APIs count as "dead" since they aren't called internally
+max_dead_code_pct = 30.0
 
-[output]
-default_format = "human"
-include_recommendations = true
-include_performance_metrics = false
-```
+[tdg]
+# Exclude non-production code from TDG grade gate
+exclude = [
+    "examples/**",
+    "scripts/**",
+    "benches/**",
+]
 
-### Global Configuration
-
-Set system-wide defaults in `~/.pmat/config.toml`:
-
-```toml
-[quality_gate]
-default_profile = "production"
-fail_on_violation = true
-output_format = "human"
-include_performance = true
-
-[thresholds]
-complexity_p99 = 12
-dead_code_max = 8.0
-entropy_min = 2.8
+[comply]
+# Secret detector false positive exclusions
+yaml_secret_exclude_paths = [
+    "contracts/**/*.yaml",
+]
 ```
 
 ## Troubleshooting
@@ -676,39 +584,22 @@ entropy_min = 2.8
 
 #### Analysis Takes Too Long
 ```bash
-# Use performance mode to identify bottlenecks
-pmat quality-gate . --performance
+# Run only fast checks (skip entropy/provability)
+pmat quality-gate --checks complexity,satd,dead-code
 
-# Exclude large directories
-pmat quality-gate . --exclude="target/,node_modules/,build/"
-
-# Analyze smaller subset
-pmat quality-gate src/ --checks=complexity,satd
+# Analyze single file
+pmat quality-gate --file src/main.rs
 ```
 
-#### High Memory Usage
+#### False Positives in Entropy
 ```bash
-# Process files in smaller batches
-pmat quality-gate . --batch-size=50
-
-# Reduce analysis depth
-pmat quality-gate . --shallow-analysis
-
-# Use streaming mode
-pmat quality-gate . --stream
+# Exclude paths in .pmat-gates.toml
+# [entropy]
+# exclude = ["examples/**", "benches/**", "generated/**"]
 ```
 
-#### False Positives
-```bash
-# Adjust thresholds
-pmat quality-gate . --max-complexity-p99=20
-
-# Exclude problematic patterns
-pmat quality-gate . --exclude="**/generated/**,**/vendor/**"
-
-# Use file-specific analysis
-pmat quality-gate . --file=specific/file.rs
-```
+#### Coverage Shows 0%
+Coverage reads from `.pmat/coverage-cache.json`. Run `make coverage` first to populate the cache.
 
 ## Best Practices
 
@@ -743,16 +634,13 @@ pmat quality-gate . --file=specific/file.rs
 
 echo "Running quality gate checks..."
 
-if ! pmat quality-gate . --fail-on-violation --checks=complexity,satd,lint; then
-    echo "❌ Quality gate failed. Commit rejected."
-    echo "Fix quality issues before committing:"
-    echo "  - Reduce function complexity"
-    echo "  - Address technical debt markers"
-    echo "  - Fix lint violations"
+if ! pmat quality-gate --fail-on-violation --checks complexity,satd,entropy; then
+    echo "Quality gate failed. Commit rejected."
+    echo "Fix quality issues before committing."
     exit 1
 fi
 
-echo "✅ Quality gate passed. Proceeding with commit."
+echo "Quality gate passed. Proceeding with commit."
 ```
 
 ### Makefile Integration
@@ -762,13 +650,13 @@ echo "✅ Quality gate passed. Proceeding with commit."
 
 quality-gate:
 	@echo "Running quality gate..."
-	@pmat quality-gate . --fail-on-violation
+	@pmat quality-gate --fail-on-violation
 
 quality-report:
 	@echo "Generating quality report..."
-	@pmat quality-gate . --format=json --output=quality-report.json
-	@pmat quality-gate . --format=human --output=quality-report.txt
-	@echo "Reports generated: quality-report.json, quality-report.txt"
+	@pmat quality-gate --format json > quality-report.json
+	@pmat quality-gate --format markdown > quality-report.md
+	@echo "Reports generated: quality-report.json, quality-report.md"
 
 ci-quality: quality-gate
 	@echo "CI quality checks passed"
@@ -778,19 +666,19 @@ ci-quality: quality-gate
 
 PMAT's quality gates provide comprehensive automated quality enforcement:
 
-- **Multi-dimensional Analysis**: Complexity, technical debt, dead code, coverage
-- **Configurable Thresholds**: Adapt to your project's quality standards  
-- **Multiple Output Formats**: Human-readable and machine-readable results
-- **CI/CD Integration**: Seamless integration with build pipelines
-- **Performance Monitoring**: Track analysis performance and resource usage
-- **Flexible Configuration**: Project and global configuration options
+- **9 Check Types**: Complexity, SATD, dead code, coverage, entropy, provability, security, duplicates, sections
+- **Explainable Violations**: Entropy and provability violations include `details` with affected files, fix suggestions, and score breakdowns
+- **6 Output Formats**: Summary, human, JSON, detailed, JUnit, Markdown
+- **SQL Queryable**: Quality data stored in SQLite tables for ad-hoc analysis
+- **Configurable**: `.pmat-gates.toml` for project-specific thresholds
+- **CI/CD Ready**: `--fail-on-violation` flag with meaningful exit codes
 
 Use quality gates to:
-1. **Enforce Standards**: Maintain consistent code quality
-2. **Prevent Regression**: Catch quality degradation early
-3. **Guide Development**: Provide actionable quality feedback
-4. **Enable CI/CD**: Automate quality enforcement in pipelines
-5. **Track Progress**: Monitor quality improvements over time
+1. **Enforce Standards**: Maintain consistent code quality across teams
+2. **Prevent Regression**: Catch quality degradation early in CI/CD
+3. **Guide Refactoring**: Entropy analysis identifies DRY violations with LOC savings estimates
+4. **Prove Safety**: Provability scores track formal verification amenability
+5. **Query History**: SQL tables enable trend analysis across builds
 
 ## Next Steps
 
