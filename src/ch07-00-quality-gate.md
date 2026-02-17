@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Future roadmap features |
 
 *Last updated: 2026-02-17*
-*PMAT version: pmat 2.213.1*
+*PMAT version: pmat 3.3.0*
 *Test-Driven: All examples validated in `tests/ch07/test_quality_gate.sh`*
 <!-- DOC_STATUS_END -->
 
@@ -57,15 +57,15 @@ Total violations: 378
   - ./src/agents/mod.rs:106 - Requirement: TODO: Properly implement
     agent system initialization (at column 5)
 
-## entropy (50 violations)
-  - ./src/storage.rs - ApiCall pattern repeated 10 times (saves 928 lines) -
-    Fix: Create API client abstraction
+## entropy (33 violations)
+  - ./src/services/github_client.rs - ApiCall pattern repeated 10 times
+    (saves 302 lines) - Fix: Create API client abstraction
 
 ## sections (3 violations)
   - README.md - Missing required section: Installation
 
 ## provability (1 violation)
-  - Provability score 0.41 is below minimum 0.60
+  - Provability score 0.47 is below minimum 0.60
 ```
 
 ## Available Quality Checks
@@ -127,9 +127,11 @@ Detect repetitive code patterns that could be abstracted:
 pmat quality-gate --checks entropy
 ```
 
-Entropy analysis finds copy-paste patterns (e.g., repeated API calls, similar error handling) and estimates how many lines could be saved by refactoring. Each violation includes:
-- **Pattern type** (ApiCall, ErrorHandling, etc.)
-- **Repetition count** and estimated LOC reduction
+Entropy analysis finds **structurally identical** code patterns and estimates how many lines could be saved by refactoring. Patterns are grouped by structural hash — code is normalized (identifiers replaced with placeholders, literals removed) so that only truly duplicated logic is flagged. This eliminates false positives where different validation checks happen to use the same API (e.g., `.is_empty()`).
+
+Each violation includes:
+- **Pattern type** (ApiCall, ErrorHandling, ResourceManagement, etc.)
+- **Repetition count** (≥3 structurally identical matches required) and estimated LOC reduction
 - **Affected files** and example code
 - **Fix suggestion** (e.g., "Create API client abstraction")
 
@@ -149,18 +151,19 @@ Score how amenable your code is to formal verification:
 pmat quality-gate --checks provability
 ```
 
-Provability analysis samples functions and scores them on:
-- **Bounds checking** - Array/index safety
-- **Memory safety** - Ownership and lifetime correctness
-- **No aliasing** - Absence of mutable aliasing
-- **Null safety** - Option/Result handling
-- **Pure functions** - Side-effect-free logic
+Provability analysis reads actual function source code and scores each function on:
+- **Bounds checking** - Array/index safety (no unchecked indexing or `.unwrap()`)
+- **Memory safety** - Ownership and lifetime correctness (no `unsafe`, no raw pointers)
+- **No aliasing** - Absence of mutable aliasing (no `&mut` references)
+- **Null safety** - Rust type system guarantees (non-`unsafe` code is null-safe)
+- **Pure functions** - Side-effect-free logic (no I/O, no mutation, no loops)
 
-Violations include the worst-scoring functions and verified property counts:
+Scores are **differentiated per function** (0.2 to 1.0), not a single fallback value. Violations include the worst-scoring functions and verified property counts:
 ```
-Provability score 0.41 is below minimum 0.60
-  Functions: from (20%), get_default_filter (20%)
-  Verified: bounds_check 15/50, memory_safety 15/50, pure_function 10/50
+Provability score 0.47 is below minimum 0.60
+  Functions: main (20%), handle_request (33%)
+  Verified: bounds_check 25/50, memory_safety 30/50, null_safety 40/50,
+            no_aliasing 25/50, pure_function 15/50
 ```
 
 ### Test Coverage
@@ -193,7 +196,7 @@ pmat quality-gate --format=summary
 
 ```
 Quality Gate: FAILED
-Total violations: 378
+Total violations: 360
 
 ## complexity (266 violations)
   - ./src/parser.rs:135 - parse_expression: cognitive-complexity -
@@ -203,11 +206,12 @@ Total violations: 378
   - ./src/agents/mod.rs:106 - Requirement: TODO: Properly implement
     agent system initialization
 
-## entropy (50 violations)
-  - ./src/storage.rs - ApiCall pattern repeated 10 times (saves 928 lines)
+## entropy (33 violations)
+  - ./src/services/github_client.rs - ApiCall pattern repeated 10 times
+    (saves 302 lines) - Fix: Create API client abstraction
 
 ## provability (1 violation)
-  - Provability score 0.41 is below minimum 0.60
+  - Provability score 0.47 is below minimum 0.60
 ```
 
 ### Human-Readable Format
@@ -235,11 +239,11 @@ pmat quality-gate --format=json --quiet
 {
   "results": {
     "passed": false,
-    "total_violations": 378,
+    "total_violations": 360,
     "complexity_violations": 266,
     "dead_code_violations": 0,
     "satd_violations": 58,
-    "entropy_violations": 50,
+    "entropy_violations": 33,
     "security_violations": 0,
     "duplicate_violations": 0,
     "coverage_violations": 0,
@@ -266,17 +270,17 @@ pmat quality-gate --format=json --quiet
     {
       "check_type": "entropy",
       "severity": "warning",
-      "file": "./src/storage.rs",
+      "file": "./src/services/github_client.rs",
       "line": null,
-      "message": "ApiCall pattern repeated 10 times (saves 928 lines) - Fix: Create API client abstraction",
+      "message": "ApiCall pattern repeated 10 times (saves 302 lines) - Fix: Create API client abstraction",
       "details": {
-        "affected_files": ["./src/storage.rs"],
-        "example_code": ".put(",
+        "affected_files": ["./src/services/github_client.rs"],
+        "example_code": "let resp = client.post(\"/endpoint\", body).await",
         "fix_suggestion": "Create API client abstraction",
         "score_factors": [
           "pattern_type: ApiCall",
           "repetitions: 10",
-          "variation_score: 1.00"
+          "variation_score: 0.00 (structurally identical)"
         ]
       }
     },
@@ -285,22 +289,22 @@ pmat quality-gate --format=json --quiet
       "severity": "warning",
       "file": ".",
       "line": null,
-      "message": "Provability score 0.41 is below minimum 0.60",
+      "message": "Provability score 0.47 is below minimum 0.60",
       "details": {
         "affected_files": [
-          "./src/bin/main.rs:from (20%)",
-          "./src/bin/main.rs:get_default_filter (20%)",
-          "./src/bin/main.rs:is_quality_gate_error (20%)"
+          "./src/bin/main.rs:main (20%)",
+          "./src/bin/main.rs:handle_request (33%)",
+          "./src/bin/main.rs:process_input (45%)"
         ],
         "fix_suggestion": "Reduce unsafe blocks, minimize FFI calls, extract pure functions, and lower cyclomatic complexity",
         "score_factors": [
           "functions_sampled: 50",
-          "average_score: 0.41",
-          "verified_boundscheck: 15/50",
-          "verified_memorysafety: 15/50",
-          "verified_noaliasing: 15/50",
-          "verified_nullsafety: 15/50",
-          "verified_purefunction: 10/50"
+          "average_score: 0.47",
+          "verified_boundscheck: 25/50",
+          "verified_memorysafety: 30/50",
+          "verified_noaliasing: 25/50",
+          "verified_nullsafety: 40/50",
+          "verified_purefunction: 15/50"
         ]
       }
     }
@@ -592,6 +596,10 @@ pmat quality-gate --file src/main.rs
 ```
 
 #### False Positives in Entropy
+
+Entropy analysis uses **structural code hashing** — code is normalized (identifiers and literals replaced with placeholders) before comparison, so only ≥3 structurally identical code blocks are flagged. This eliminates false positives where different logic happens to use the same API (e.g., multiple unrelated `.is_empty()` checks).
+
+If you still see false positives, exclude paths:
 ```bash
 # Exclude paths in .pmat-gates.toml
 # [entropy]
