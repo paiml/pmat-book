@@ -43,7 +43,7 @@ pmat quality-gate --verbose
 
 ```
 Quality Gate: FAILED
-Total violations: 378
+Total violations: 348
 
 ## complexity (266 violations)
   - ./src/parser.rs:135 - parse_expression: cognitive-complexity -
@@ -57,15 +57,12 @@ Total violations: 378
   - ./src/agents/mod.rs:106 - Requirement: TODO: Properly implement
     agent system initialization (at column 5)
 
-## entropy (33 violations)
+## entropy (21 violations)
   - ./src/services/github_client.rs - ApiCall pattern repeated 10 times
     (saves 302 lines) - Fix: Create API client abstraction
 
 ## sections (3 violations)
   - README.md - Missing required section: Installation
-
-## provability (1 violation)
-  - Provability score 0.47 is below minimum 0.60
 ```
 
 ## Available Quality Checks
@@ -129,6 +126,13 @@ pmat quality-gate --checks entropy
 
 Entropy analysis finds **structurally identical** code patterns and estimates how many lines could be saved by refactoring. Patterns are grouped by structural hash — code is normalized (identifiers replaced with placeholders, literals removed) so that only truly duplicated logic is flagged. This eliminates false positives where different validation checks happen to use the same API (e.g., `.is_empty()`).
 
+> **Note:** The `calculate_pattern_variations()` function was removed because it was overriding structural hash results with its own variation scoring, which diluted the accuracy of structural deduplication. Structural hashing alone provides more precise duplicate detection.
+
+The following paths are **excluded** from entropy analysis by default:
+- `tests/` directory and `*.test.rs` files
+- Test files matching `*_tests.rs` and `*tests_part*.rs` patterns
+- `examples/` and `benches/` directories
+
 Each violation includes:
 - **Pattern type** (ApiCall, ErrorHandling, ResourceManagement, etc.)
 - **Repetition count** (≥3 structurally identical matches required) and estimated LOC reduction
@@ -152,18 +156,18 @@ pmat quality-gate --checks provability
 ```
 
 Provability analysis reads actual function source code and scores each function on:
-- **Bounds checking** - Array/index safety (no unchecked indexing or `.unwrap()`)
+- **Bounds checking** - Array/index safety (no unchecked indexing or `.unwrap()`); the `?` operator is recognized as proper error propagation and does not penalize the score
 - **Memory safety** - Ownership and lifetime correctness (no `unsafe`, no raw pointers)
-- **No aliasing** - Absence of mutable aliasing (no `&mut` references)
+- **No aliasing** - Absence of mutable aliasing; `&mut` is correctly treated as an **exclusive borrow** (Rust's ownership model guarantees NoAlias for `&mut` references, so their presence does not reduce the score)
 - **Null safety** - Rust type system guarantees (non-`unsafe` code is null-safe)
 - **Pure functions** - Side-effect-free logic (no I/O, no mutation, no loops)
 
-Scores are **differentiated per function** (0.2 to 1.0), not a single fallback value. Violations include the worst-scoring functions and verified property counts:
+Scores are **differentiated per function** (0.2 to 1.0), not a single fallback value. The provability gate passes when the project-wide average score meets the minimum threshold (>= 0.60). When it fails, violations include the worst-scoring functions and verified property counts:
 ```
-Provability score 0.47 is below minimum 0.60
+Provability score 0.55 is below minimum 0.60
   Functions: main (20%), handle_request (33%)
   Verified: bounds_check 25/50, memory_safety 30/50, null_safety 40/50,
-            no_aliasing 25/50, pure_function 15/50
+            no_aliasing 35/50, pure_function 15/50
 ```
 
 ### Test Coverage
@@ -196,7 +200,7 @@ pmat quality-gate --format=summary
 
 ```
 Quality Gate: FAILED
-Total violations: 360
+Total violations: 348
 
 ## complexity (266 violations)
   - ./src/parser.rs:135 - parse_expression: cognitive-complexity -
@@ -206,12 +210,12 @@ Total violations: 360
   - ./src/agents/mod.rs:106 - Requirement: TODO: Properly implement
     agent system initialization
 
-## entropy (33 violations)
+## entropy (21 violations)
   - ./src/services/github_client.rs - ApiCall pattern repeated 10 times
     (saves 302 lines) - Fix: Create API client abstraction
 
-## provability (1 violation)
-  - Provability score 0.47 is below minimum 0.60
+## sections (3 violations)
+  - README.md - Missing required section: Installation
 ```
 
 ### Human-Readable Format
@@ -239,16 +243,16 @@ pmat quality-gate --format=json --quiet
 {
   "results": {
     "passed": false,
-    "total_violations": 360,
+    "total_violations": 348,
     "complexity_violations": 266,
     "dead_code_violations": 0,
     "satd_violations": 58,
-    "entropy_violations": 33,
+    "entropy_violations": 21,
     "security_violations": 0,
     "duplicate_violations": 0,
     "coverage_violations": 0,
     "section_violations": 3,
-    "provability_violations": 1,
+    "provability_violations": 0,
     "provability_score": null,
     "violations": []
   },
@@ -281,30 +285,6 @@ pmat quality-gate --format=json --quiet
           "pattern_type: ApiCall",
           "repetitions: 10",
           "variation_score: 0.00 (structurally identical)"
-        ]
-      }
-    },
-    {
-      "check_type": "provability",
-      "severity": "warning",
-      "file": ".",
-      "line": null,
-      "message": "Provability score 0.47 is below minimum 0.60",
-      "details": {
-        "affected_files": [
-          "./src/bin/main.rs:main (20%)",
-          "./src/bin/main.rs:handle_request (33%)",
-          "./src/bin/main.rs:process_input (45%)"
-        ],
-        "fix_suggestion": "Reduce unsafe blocks, minimize FFI calls, extract pure functions, and lower cyclomatic complexity",
-        "score_factors": [
-          "functions_sampled: 50",
-          "average_score: 0.47",
-          "verified_boundscheck: 25/50",
-          "verified_memorysafety: 30/50",
-          "verified_noaliasing: 25/50",
-          "verified_nullsafety: 40/50",
-          "verified_purefunction: 15/50"
         ]
       }
     }
@@ -597,9 +577,9 @@ pmat quality-gate --file src/main.rs
 
 #### False Positives in Entropy
 
-Entropy analysis uses **structural code hashing** — code is normalized (identifiers and literals replaced with placeholders) before comparison, so only ≥3 structurally identical code blocks are flagged. This eliminates false positives where different logic happens to use the same API (e.g., multiple unrelated `.is_empty()` checks).
+Entropy analysis uses **structural code hashing** — code is normalized (identifiers and literals replaced with placeholders) before comparison, so only ≥3 structurally identical code blocks are flagged. This eliminates false positives where different logic happens to use the same API (e.g., multiple unrelated `.is_empty()` checks). Test files (`*_tests.rs`, `*tests_part*.rs`, `*.test.rs`, and the `tests/` directory) as well as `examples/` and `benches/` directories are excluded by default.
 
-If you still see false positives, exclude paths:
+If you still see false positives, exclude additional paths:
 ```bash
 # Exclude paths in .pmat-gates.toml
 # [entropy]
