@@ -87,6 +87,7 @@
 - [Chapter 54: Function Boundary Extraction](ch54-00-extract-command.md)
 - [Chapter 55: Autonomous Continuous Improvement (Kaizen)](ch55-00-kaizen.md)
 - [Chapter 56: Compliance Governance (pmat comply)](ch56-00-comply.md)
+- [Chapter 57: File Splitting (pmat split)](ch57-00-file-split.md)
 
 ## Conclusion
 
