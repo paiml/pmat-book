@@ -44,7 +44,7 @@ The split algorithm follows five steps:
 
 ### Text (Default)
 
-```
+```text
 Split Plan for: src/services/file_health.rs
 Total lines: ~468
 Modularity: 0.412
