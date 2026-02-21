@@ -22,6 +22,8 @@
 | `pmat dead-code` | Dead code detection | `pmat dead-code --export-list` |
 | `pmat satd` | SATD detection | `pmat satd --extended` (detect euphemisms) |
 | `pmat query` | RAG-powered semantic search | `pmat query "error handling" --type fn --min-grade B` |
+| `pmat query --docs-only` | Search only documents (PDF, SVG, markdown) | `pmat query "design spec" --docs-only --limit 5` |
+| `pmat query --no-docs` | Code-only search (disable document results) | `pmat query "parse" --no-docs --limit 10` |
 | `pmat extract --list` | Tree-sitter function boundary extraction | `pmat extract --list src/main.rs` |
 | `pmat kaizen` | Autonomous continuous improvement | `pmat kaizen --dry-run` |
 | `pmat comply check` | PMAT compliance checking | `pmat comply check` |

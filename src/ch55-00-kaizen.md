@@ -139,6 +139,11 @@ jq -e '.remaining_count == 0' report.json || exit 1
 - **Fix #234**: `rust-project-score` no longer counts `unwrap()` calls in `examples/` and `book/` directories as production code (MUDA elimination)
 - **Tarantula enrichment**: Findings can now carry `crate_name` for cross-stack grouping; reports group by crate in text, markdown, and JSON formats
 
+## What Changed in v3.5.0
+
+- **Document search** (`--docs`, `--docs-only`, `--no-docs`): Search Markdown, PDF, SVG, and plaintext documentation alongside code using FTS5 BM25 ranking
+- **batuta-common consolidation**: Shared utilities (math, formatting, compression, traits) extracted to `batuta-common` crate, reducing cross-crate code duplication by 98%
+
 ## What Changed in v3.3.0
 
 - **CB-200 TDG Grade Gate auto-rebuild**: Stale `context.db` is now automatically rebuilt during comply checks, eliminating manual `pmat index` invocations before `pmat comply`

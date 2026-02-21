@@ -2,7 +2,7 @@
 
 **Chapter Status**: Working
 
-*PMAT version: pmat 3.0.1*
+*PMAT version: pmat 3.4.0*
 
 ## The Problem
 
@@ -238,6 +238,110 @@ Coverage Gaps (20 functions with uncovered code)
 5. Sorts by missed lines (descending) for maximum impact
 
 **Impact score** (`--rank-by impact`): `missed_lines * max(pagerank * 10000, 0.1) * (1 / max(complexity, 1))` — prioritizes high-importance, low-complexity uncovered code (best ROI for writing tests).
+
+### Semantic File Rename Suggestions (v3.4.0)
+
+**NEW in v3.4.0**: `pmat query --suggest-rename` analyzes `_part_` files (created by file-splitting refactors) and suggests meaningful names based on cascading signal analysis.
+
+```bash
+# Find _part_ files with rename suggestions
+pmat query --suggest-rename --limit 10
+
+# Filter to a specific directory
+pmat query --suggest-rename --path src/services/ --limit 5
+
+# JSON output for CI/CD
+pmat query --suggest-rename --format json --limit 10
+
+# Markdown table for reports
+pmat query --suggest-rename --format markdown --limit 10
+
+# Apply renames automatically (confidence >= 0.70)
+pmat query --suggest-rename --apply
+```
+
+**Example Output:**
+
+```
+Rename Suggestions (3 _part_ files found)
+
+    1. [0.95] src/services/query_part_03.rs → query_graph_ranking.rs
+       Signal: DominantType (>80% of definitions are graph ranking functions) | 8 definitions
+       Parent: src/services/mod.rs (include!)
+
+    2. [0.82] src/cli/handlers/utility_part_02.rs → utility_context_output.rs
+       Signal: OriginalBase (Original filename base (utility_context_output)) | 5 definitions
+       Parent: src/cli/handlers/mod.rs (include!)
+
+    3. [0.80] src/tdg/tdg_part_01.rs → tdg_scoring.rs
+       Signal: CommonPrefix (Shared prefix: tdg_score) | 12 definitions
+```
+
+**Signal Types (cascading priority):**
+
+| Signal | Confidence | Description |
+|--------|-----------|-------------|
+| DominantType | 0.95 | >80% of definitions share a single type (struct, enum, trait) |
+| ExistingSuffix | 0.88 | `_part_` file already carries a meaningful suffix |
+| OriginalBase | 0.82 | Pre-split filename is still a valid description |
+| FunctionTheme | 0.85 | Functions share a common semantic theme |
+| CommonPrefix | 0.80 | Shared name prefix across definitions |
+| DocCommentConsensus | 0.70 | Doc comments agree on a topic |
+
+**Apply workflow:**
+
+1. **Review** suggestions: `pmat query --suggest-rename`
+2. **Apply** renames: `pmat query --suggest-rename --apply`
+   - Only renames files with confidence >= 0.70
+   - Updates parent `include!()` declarations automatically
+   - Uses `git mv` for tracked files (preserves history)
+3. **Verify**: `cargo check` to confirm compilation
+
+### Document Search (v3.5.0+)
+
+**NEW in v3.5.0**: `pmat query` now searches project documentation alongside code by default. PDFs, SVGs, images, markdown, and plaintext files are indexed lazily on first query and cached incrementally via SHA256 checksums.
+
+**Document results are included by default** in semantic query mode. Use `--no-docs` to disable, or `--docs-only` to search only documents.
+
+```bash
+# Default: code + document results combined
+pmat query "architecture" --limit 5
+
+# Document-only search (skip code index entirely)
+pmat query "design specification" --docs-only --limit 10
+
+# Disable document results (code only)
+pmat query "parse" --no-docs --limit 10
+
+# JSON output for CI/CD
+pmat query "error handling" --docs-only --format json --limit 5
+```
+
+**Supported document types:**
+
+| Type | Extensions | Extraction Method | Quality |
+|------|------------|-------------------|---------|
+| PDF | `.pdf` | Full text extraction (requires `--features doc-indexing`) | 1.0 |
+| SVG | `.svg` | `<text>`/`<tspan>` regex extraction | 0.5-0.8 |
+| Image | `.png` `.jpg` `.jpeg` `.gif` `.webp` | Filename + path metadata (no OCR) | 0.3 |
+| Markdown | `.md` `.markdown` | Heading-based chunking with section context | 1.0 |
+| Plaintext | `.txt` `.rst` `.adoc` | Paragraph-based chunking (4KB max) | 1.0 |
+
+**How it works:**
+
+1. **Lazy indexing**: Documents are not indexed during `pmat query` index build. Indexing happens on first query that includes documents.
+2. **Incremental updates**: SHA256 checksums per file skip unchanged documents on subsequent queries.
+3. **FTS5 BM25 ranking**: Porter stemming + unicode normalization for relevance ranking.
+4. **Stale removal**: Files deleted from disk are automatically removed from the index.
+5. **Chunk splitting**: Large documents are split at natural boundaries (headings, paragraphs) with 4KB max per chunk.
+
+**Output format:**
+
+Document results appear after code results, separated by a `── Document Results ──` header. Each result shows:
+- Document type badge (`[PDF]`, `[SVG]`, `[IMG]`, `[MD]`, `[TXT]`)
+- Extraction quality indicator (`●` high, `○` low)
+- File path with section heading or page number
+- BM25-highlighted snippet with `>>>match<<<` markers
 
 ### Search Modes (v3.0.0)
 
@@ -580,6 +684,31 @@ This demo shows:
 15. Multi-enrichment (`--churn --entropy`)
 16. Git history fusion (`-G`)
 
+There is also a dedicated document search demo:
+
+```bash
+cargo run --example doc_search_demo
+```
+
+This demo shows:
+1. Default search (code + documents combined)
+2. Document-only search (`--docs-only`)
+3. JSON output for CI/CD
+4. Code-only search (`--no-docs`)
+
+And a dedicated suggest-rename demo:
+
+```bash
+cargo run --example suggest_rename_demo
+```
+
+This demo shows:
+1. Basic suggest-rename (find `_part_` files)
+2. JSON output for scripting/CI
+3. Markdown output for documentation
+4. Path-filtered suggestions (specific directory)
+5. Signal types and apply workflow summary
+
 ## grep vs pmat query
 
 | Aspect | `grep -r "error" src/` | `pmat query "error handling"` |
@@ -591,6 +720,7 @@ This demo shows:
 | **Graph** | None | PageRank, in/out degree |
 | **Coverage** | None | Line coverage %, missed lines, impact |
 | **Enrichment** | None | Churn, duplicates, entropy, faults |
+| **Documents** | None | PDF, SVG, markdown, images (FTS5) |
 | **Ranking** | Line order | Relevance, PageRank, centrality, impact |
 | **Token cost** | High (noise) | Low (signal) |
 | **Speed** | O(n) scan | O(1) index lookup |
