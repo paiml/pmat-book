@@ -373,6 +373,18 @@ Codebase scoring dimensions:
 - **Mean drift**: average drift bound (lower is better)
 - **Composite**: 40% mean_score + 25% coverage + 20% lint_pass + 15% freshness
 
+## Runtime Violation Tracking (v1.2.0)
+
+Based on the ABC framework (arXiv:2602.22302), runtime violations are tracked for stack manifest commands:
+
+- **Command failures**: non-zero exit codes recorded with command and exit code
+- **Timing anomalies**: execution times >3 sigma from rolling 50-observation mean
+- **Trust violations**: manifest content hash changes detected
+
+Violation data is persisted to `.pmat-work/{id}/violations/tracker.json` and used to detect elevated violation sessions (>2x historical average).
+
+A **content hash chain** links trust decisions: each trust entry contains `chain_hash = SHA256(content_hash + prev_hash)`, preventing trust history tampering.
+
 ## Configuration
 
 DbC settings in `.pmat-work/dbc-config.toml`:
@@ -396,7 +408,7 @@ default = "rust"
 cargo run --example dbc_contract_demo
 ```
 
-This demonstrates all DbC concepts programmatically: Meyer's triad, subcontracting validation, stack manifest parsing, contract quality scoring, command security restrictions, 5-dimension scoring, ABC drift bounds, 13-rule lint gate, lint configuration, trend tracking, and codebase-level scoring.
+This demonstrates all DbC concepts programmatically: Meyer's triad, subcontracting validation, stack manifest parsing, contract quality scoring, command security restrictions, 5-dimension scoring, ABC drift bounds, 13-rule lint gate, lint configuration, trend tracking, codebase-level scoring, and runtime violation tracking.
 
 ## Specification
 
