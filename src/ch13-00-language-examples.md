@@ -1612,6 +1612,50 @@ These penalties affect the TDG score and grade, making GPU kernel complexity vis
 
 This correctly handles mixed headers like `llama.h` (has `extern "C"` -> C++), `ggml.h` (pure ANSI C), and `whisper.h` (C++ classes).
 
+### C++ Macro Classification (v3.6+)
+
+PMAT classifies known C/C++ macro families used in ML infrastructure codebases (GGML, PyTorch, CUDA) and emits searchable fault annotations:
+
+| Annotation | Macro Families | Meaning |
+|------------|---------------|---------|
+| `MACRO:ASSERT` | `GGML_ASSERT`, `GGML_ABORT`, `TORCH_CHECK`, `TORCH_INTERNAL_ASSERT`, `AT_ASSERT`, `CUDA_CHECK`, `CHECK_CUDA`, `CUBLAS_CHECK` | Boundary validation |
+| `MACRO:DISPATCH` | `AT_DISPATCH_ALL_TYPES`, `AT_DISPATCH_FLOATING_TYPES`, `AT_DISPATCH_INTEGRAL_TYPES`, `AT_DISPATCH_COMPLEX_TYPES`, `GGML_DISPATCH_BOOL`, `CUDA_DISPATCH` | Type-generic dispatch complexity |
+| `MACRO:LOG` | `GGML_LOG_INFO`, `GGML_LOG_WARN`, `GGML_LOG_ERROR`, `TORCH_WARN`, `TORCH_LOG` | Logging calls |
+
+```bash
+# Find functions using GGML assertion macros
+pmat query "GGML_ASSERT" --faults --limit 10
+
+# Find all dispatch-heavy functions (type-generic complexity)
+pmat query --literal "AT_DISPATCH" --faults --limit 20
+
+# Find functions with both assertions and logging
+pmat query "boundary check" --faults --limit 10
+```
+
+### Inline PTX Defect Detection (v3.6+)
+
+PMAT performs lightweight static analysis on inline PTX `asm()` blocks to detect safety issues without full PTX parsing. Based on GPUVerify SDV semantics:
+
+| Annotation | Pattern | Risk |
+|------------|---------|------|
+| `PTX_MISSING_BARRIER` | `st.shared` + `ld.shared` without `bar.sync` or `__syncthreads` | Shared memory race condition |
+| `PTX_BARRIER_DIV` | Branch (`if`/`@%p`) before `bar.sync` | Thread divergence deadlock |
+| `PTX_HIGH_REGS` | >8 register outputs in inline asm | Register spill risk |
+
+```bash
+# Find CUDA functions with missing barriers
+pmat query "PTX_MISSING_BARRIER" --faults --limit 10
+
+# Find all PTX defect patterns
+pmat query --literal "PTX_" --faults --limit 20
+
+# Audit inline PTX safety in a kernel directory
+pmat query "kernel" --faults --exclude-tests --limit 30
+```
+
+These annotations complement the PTX instruction tags (`PTX:mma.sync`, `PTX:cp.async`, etc.) by flagging potential correctness issues rather than just documenting which instructions are used.
+
 ### Real-World Results (Validated)
 
 | Project | Functions | Call Edges | Index Time |

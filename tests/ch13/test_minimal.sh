@@ -81,6 +81,20 @@ else
     test_fail "C++/CUDA complexity penalties missing"
 fi
 
+# Test 10: Contains C++ macro classification
+if grep -q "Macro Classification\|MACRO:ASSERT\|MACRO:DISPATCH\|MACRO:LOG" src/ch13-00-language-examples.md; then
+    test_pass "C++ macro classification documented"
+else
+    test_fail "C++ macro classification missing"
+fi
+
+# Test 11: Contains inline PTX defect detection
+if grep -q "PTX Defect Detection\|PTX_MISSING_BARRIER\|PTX_BARRIER_DIV\|PTX_HIGH_REGS" src/ch13-00-language-examples.md; then
+    test_pass "Inline PTX defect detection documented"
+else
+    test_fail "Inline PTX defect detection missing"
+fi
+
 echo ""
 echo "=== Test Summary ==="
 if [ $FAIL_COUNT -eq 0 ]; then
