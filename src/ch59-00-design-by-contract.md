@@ -241,6 +241,85 @@ Quality ratings:
 - **Adequate**: ≥ 50%
 - **Weak**: < 50%
 
+## Contract Scoring (v1.2.0)
+
+Every contract receives a **5-dimension quality score** adapted from provable-contracts:
+
+```bash
+# Score a work contract
+pmat work score PMAT-123
+
+# Score with minimum threshold (CI/CD mode)
+pmat work score PMAT-123 --min-score 0.60
+
+# JSON output for automation
+pmat work score PMAT-123 --format json
+```
+
+### Scoring Dimensions
+
+| Dimension | Weight | What it measures |
+|-----------|--------|------------------|
+| spec_depth | 0.20 | How comprehensive are the contract clauses? |
+| falsification | 0.25 | What fraction of claims have been verified? |
+| invariant_health | 0.25 | Invariant pass rate across checkpoints |
+| subcontracting | 0.10 | Monotonic postcondition strengthening |
+| traceability | 0.20 | Coverage of require/ensure/invariant triad |
+
+### Grade Scale
+
+| Grade | Score Range |
+|-------|------------|
+| A | >= 0.90 |
+| B | >= 0.75 |
+| C | >= 0.60 |
+| D | >= 0.40 |
+| F | < 0.40 |
+
+## DBC Lint Rules (v1.2.0)
+
+10 lint rules validate contract health, modeled after provable-contracts PV-* rules:
+
+| Rule ID | Severity | Description |
+|---------|----------|-------------|
+| DBC-VAL-001 | Warning | Missing preconditions (require empty) |
+| DBC-VAL-002 | Error | Missing postconditions (ensure empty) |
+| DBC-VAL-003 | Warning | Missing invariants (invariant empty) |
+| DBC-VAL-004 | Error | Empty claim hypothesis |
+| DBC-AUD-001 | Warning | Postcondition without falsification test |
+| DBC-AUD-002 | Info | Invariant without checkpoint evaluation |
+| DBC-AUD-003 | Info | Claim defined but never verified |
+| DBC-SCR-001 | Error | Contract score below threshold |
+| DBC-PRV-001 | Error | Subcontracting violation detected |
+| DBC-DRF-001 | Warning | Contract drift exceeds bound |
+
+Rules run in 5 sequential gates: validation, audit, score, provability, drift.
+
+## Drift Detection (v1.2.0)
+
+Based on the ABC drift bounds theorem (arXiv:2602.22302):
+
+- **alpha** (drift rate): Increases with time since last checkpoint
+- **gamma** (recovery rate): Increases with checkpoint frequency
+- **D\*** = alpha / gamma: Bounded drift (lower is better)
+- **Staleness**: Contracts without a checkpoint for >24h are flagged
+
+Drift metrics are computed at every checkpoint and stored with the checkpoint record.
+
+## Trend Tracking (v1.2.0)
+
+Quality trend tracking uses a 7-snapshot rolling window:
+
+- Each `pmat work checkpoint` records a trend snapshot
+- Rolling average score is computed over the last 7 snapshots
+- **Drift detection**: >5% drop from rolling average triggers a warning (DBC-DRF-001)
+- Trend direction: improving, stable, or declining
+
+```bash
+# View trend data in the score report
+pmat work score PMAT-123
+```
+
 ## Configuration
 
 DbC settings in `.pmat-work/dbc-config.toml`:
@@ -264,7 +343,7 @@ default = "rust"
 cargo run --example dbc_contract_demo
 ```
 
-This demonstrates all DbC concepts programmatically: Meyer's triad, subcontracting validation, stack manifest parsing, contract quality scoring, and command security restrictions.
+This demonstrates all DbC concepts programmatically: Meyer's triad, subcontracting validation, stack manifest parsing, contract quality scoring, command security restrictions, 5-dimension scoring, ABC drift bounds, lint rules, and trend tracking.
 
 ## Specification
 
@@ -274,3 +353,4 @@ Based on:
 - Meyer, B. (1997). *Object-Oriented Software Construction*, 2nd ed. Prentice Hall.
 - Popper, K. (1959). *The Logic of Scientific Discovery*. Routledge.
 - Liskov, B. (1987). "Data Abstraction and Hierarchy." *OOPSLA*.
+- ABC Drift Bounds (arXiv:2602.22302). Contracts with recovery rate gamma > alpha bound drift to D* = alpha/gamma.
