@@ -278,7 +278,7 @@ pmat work score PMAT-123 --format json
 
 ## DBC Lint Rules (v1.2.0)
 
-10 lint rules validate contract health, modeled after provable-contracts PV-* rules:
+13 lint rules validate contract health, modeled after provable-contracts PV-* rules:
 
 | Rule ID | Severity | Description |
 |---------|----------|-------------|
@@ -290,10 +290,13 @@ pmat work score PMAT-123 --format json
 | DBC-AUD-002 | Info | Invariant without checkpoint evaluation |
 | DBC-AUD-003 | Info | Claim defined but never verified |
 | DBC-SCR-001 | Error | Contract score below threshold |
+| DBC-SCR-002 | Warning | More than 30% of claims excluded |
 | DBC-PRV-001 | Error | Subcontracting violation detected |
 | DBC-DRF-001 | Warning | Contract drift exceeds bound |
+| DBC-TRD-001 | Warning | Quality trend declining |
+| DBC-TRD-002 | Info | Rescue success rate below 50% |
 
-Rules run in 5 sequential gates: validation, audit, score, provability, drift.
+Rules run in 5 sequential gates: validation, audit, score, provability, drift/trend.
 
 ## Drift Detection (v1.2.0)
 
@@ -320,6 +323,56 @@ Quality trend tracking uses a 7-snapshot rolling window:
 pmat work score PMAT-123
 ```
 
+## Lint Configuration (v1.2.0)
+
+Per-project lint configuration via `.pmat-work/dbc-lint.toml`:
+
+```toml
+# Score threshold for CI/CD
+min_score = 0.60
+
+# Promote all warnings to errors
+strict = false
+
+# Per-rule severity overrides
+[lint.rules]
+DBC-AUD-003 = "error"     # Promote to error
+DBC-SCR-002 = "off"       # Disable this rule
+
+# Suppress rules entirely
+[lint.suppress]
+rules = ["DBC-AUD-002"]
+
+# Trend tracking
+[lint.trend]
+enabled = true
+retention_days = 90
+drift_threshold = 0.05
+```
+
+**Strict mode** promotes all warnings to errors — useful for CI/CD pipelines where any finding should block the build.
+
+**Rule suppression** completely silences a rule. Unlike severity override to "off", suppressed rules don't appear in SARIF output.
+
+## Codebase-Level Scoring (v1.2.0)
+
+Aggregate quality metrics across all active work contracts:
+
+```bash
+# Portfolio quality score
+pmat work codebase-score
+
+# JSON output for dashboards
+pmat work codebase-score --format json
+```
+
+Codebase scoring dimensions:
+- **Contract coverage**: fraction of contracts scoring >= C (0.60)
+- **Mean score**: average quality across all contracts
+- **Lint pass rate**: fraction of contracts with zero lint errors
+- **Mean drift**: average drift bound (lower is better)
+- **Composite**: 40% mean_score + 25% coverage + 20% lint_pass + 15% freshness
+
 ## Configuration
 
 DbC settings in `.pmat-work/dbc-config.toml`:
@@ -343,7 +396,7 @@ default = "rust"
 cargo run --example dbc_contract_demo
 ```
 
-This demonstrates all DbC concepts programmatically: Meyer's triad, subcontracting validation, stack manifest parsing, contract quality scoring, command security restrictions, 5-dimension scoring, ABC drift bounds, lint rules, and trend tracking.
+This demonstrates all DbC concepts programmatically: Meyer's triad, subcontracting validation, stack manifest parsing, contract quality scoring, command security restrictions, 5-dimension scoring, ABC drift bounds, 13-rule lint gate, lint configuration, trend tracking, and codebase-level scoring.
 
 ## Specification
 
