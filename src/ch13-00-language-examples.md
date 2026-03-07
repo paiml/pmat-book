@@ -1559,12 +1559,49 @@ PMAT detects CUDA-specific fault patterns during indexing:
 | `INLINE_PTX` | `asm volatile(...)` or `asm("...")` | Info |
 | `CUDA_SYNC` | `__syncthreads()` | Info |
 | `CUDA_SHMEM` | `__shared__` declarations | Info |
+| `PTX:<opcode>` | Inline PTX instruction mnemonics | Info |
 
 ```bash
 # Find functions with CUDA fault patterns
 pmat query "kernel" --faults --limit 10
 # Output includes: CUDA_SHMEM, CUDA_SYNC, INLINE_PTX annotations
 ```
+
+### PTX Instruction Tags (v3.6+)
+
+PMAT extracts PTX instruction mnemonics from inline `asm()` blocks as searchable tags. When a CUDA function contains inline PTX like `asm("mma.sync.aligned...")`, pmat generates fault annotations like `PTX:mma.sync` that can be found via semantic or literal search.
+
+Supported PTX opcodes: `mma.sync`, `ldmatrix`, `movmatrix`, `cp.async`, `bar.sync`, `bar.arrive`, `membar`, `ld.shared`, `st.shared`, `ld.global`, `st.global`, `atom.shared`, `red.shared`, `shfl.sync`, `vote.sync`, `match.sync`.
+
+```bash
+# Find functions using tensor core MMA instructions
+pmat query --literal "mma.sync" --limit 5
+# Shows: ggml_cuda_mma::mma with INLINE_PTX fault annotation
+
+# Find async copy patterns
+pmat query --literal "cp.async" --limit 5
+
+# Find shared memory operations with defect context
+pmat query "ld.shared" --faults --limit 10
+```
+
+### C++/CUDA Complexity Penalties (v3.6+)
+
+PMAT applies domain-specific complexity penalties to C++/CUDA functions beyond standard cyclomatic/cognitive metrics:
+
+| Pattern | Penalty | Rationale |
+|---------|---------|-----------|
+| `#if`/`#ifdef` nesting | +1 per level | Preprocessor conditional complexity |
+| Macro-heavy (>5 calls) | +3 | GGML_*, TORCH_*, AT_* macro density |
+| `enable_if`/SFINAE | +3 | Template metaprogramming complexity |
+| Template nesting (>1) | +2 per level | Nested template instantiation |
+| `const_cast`/`reinterpret_cast` | +2 | Unsafe type coercion |
+| `__shared__` memory | +2 | GPU synchronization complexity |
+| `__syncthreads()` | +3 | Barrier coordination |
+| Warp primitives (`__shfl_*`) | +2 | Low-level GPU parallelism |
+| Thread divergence in kernel | +2 | `if` inside `__global__` function |
+
+These penalties affect the TDG score and grade, making GPU kernel complexity visible in query results. For example, a CUDA softmax kernel with shared memory, barrier, and thread divergence gets +7 additional complexity.
 
 ### Header Classification
 

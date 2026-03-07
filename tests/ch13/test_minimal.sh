@@ -67,6 +67,20 @@ else
     test_fail "Header classification missing"
 fi
 
+# Test 8: Contains PTX instruction tags
+if grep -q "PTX Instruction Tags\|PTX:mma.sync\|PTX:<opcode>" src/ch13-00-language-examples.md; then
+    test_pass "PTX instruction tags documented"
+else
+    test_fail "PTX instruction tags missing"
+fi
+
+# Test 9: Contains C++/CUDA complexity penalties
+if grep -q "Complexity Penalties\|__shared__.*+2\|__syncthreads.*+3" src/ch13-00-language-examples.md; then
+    test_pass "C++/CUDA complexity penalties documented"
+else
+    test_fail "C++/CUDA complexity penalties missing"
+fi
+
 echo ""
 echo "=== Test Summary ==="
 if [ $FAIL_COUNT -eq 0 ]; then
