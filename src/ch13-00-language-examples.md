@@ -41,7 +41,7 @@ PMAT provides comprehensive analysis across 16 programming languages with:
 | **TypeScript** | `.ts`, `.tsx` | Type safety, React components, interface usage, full AST |
 | **JavaScript** | `.js`, `.jsx` | ES6+ patterns, async code, modern practices, full AST |
 | **C** | `.c`, `.h` | Functions, structs, memory management, pointer usage, full AST |
-| **C++** | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx`, `.hh` | Classes, templates, namespaces, memory management, full AST |
+| **C++** | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx`, `.cu`, `.cuh` | Classes, templates, namespaces, CUDA kernels, inline PTX, full AST |
 | **Kotlin** | `.kt` | JVM interop, null safety, coroutines, full AST |
 | **WASM** | `.wasm`, `.wat` | Binary/text analysis, instruction-level inspection, disassembly |
 | **Bash** | `.sh`, `.bash` | Function extraction, error handling, script quality, full AST |
@@ -1519,9 +1519,71 @@ analyzer = "generic"
 rules = ["complexity", "duplication"]
 ```
 
-## Example: Analyzing C/C++ Projects
+## Example: Analyzing C/C++ and CUDA Projects
 
-PMAT v2.171.1 introduces full AST-based analysis for C and C++ projects, allowing for comprehensive code quality assessment.
+PMAT provides first-class C++, CUDA, and PTX support for querying ML infrastructure codebases like llama.cpp, PyTorch, and whisper.cpp.
+
+### C++ Query Features (v3.6+)
+
+- **Namespace-qualified names**: Functions indexed as `namespace::class::method`
+- **CUDA kernel detection**: `__global__`, `__device__`, `__shared__` attributes
+- **Inline PTX fault annotations**: `INLINE_PTX`, `CUDA_SYNC`, `CUDA_SHMEM`
+- **Header classification**: `.h` files auto-classified as C or C++ based on content
+- **Template extraction**: `template<...>` prefix preserved in function content
+
+### Querying C++ ML Projects
+
+```bash
+# Query llama.cpp for attention-related functions
+cd llama.cpp && pmat query "attention" --limit 5
+
+# Query PyTorch for autograd functions (48K+ functions indexed)
+cd pytorch && pmat query "autograd" --limit 5
+
+# Find CUDA kernels with synchronization barriers
+cd llama.cpp && pmat query "syncthreads" --faults --limit 10
+
+# Find functions using inline PTX assembly
+pmat query "mma.sync" --limit 5
+
+# Search with regex for kernel functions
+pmat query --regex "__global__.*kernel" --limit 10
+```
+
+### CUDA/PTX Fault Detection
+
+PMAT detects CUDA-specific fault patterns during indexing:
+
+| Fault Pattern | Trigger | Severity |
+|---------------|---------|----------|
+| `INLINE_PTX` | `asm volatile(...)` or `asm("...")` | Info |
+| `CUDA_SYNC` | `__syncthreads()` | Info |
+| `CUDA_SHMEM` | `__shared__` declarations | Info |
+
+```bash
+# Find functions with CUDA fault patterns
+pmat query "kernel" --faults --limit 10
+# Output includes: CUDA_SHMEM, CUDA_SYNC, INLINE_PTX annotations
+```
+
+### Header Classification
+
+`.h` files are automatically classified as C or C++ based on content:
+
+- **C++ indicators**: `extern "C"`, `class `, `namespace `, `template<`, `virtual `, `constexpr `, `std::`, `public:`, `private:`, `protected:`
+- **Default**: Pure C (no C++ indicators found)
+
+This correctly handles mixed headers like `llama.h` (has `extern "C"` -> C++), `ggml.h` (pure ANSI C), and `whisper.h` (C++ classes).
+
+### Real-World Results (Validated)
+
+| Project | Functions | Call Edges | Index Time |
+|---------|-----------|------------|------------|
+| llama.cpp | 12,510 | 187,701 | 7.4s |
+| whisper.cpp | 9,508 | 60,034 | 9.8s |
+| llamafile | 4,582 | 16,383 | 7.2s |
+| kernels-community | 1,850 | 17,275 | 1.3s |
+| PyTorch | 50,511 | — | ~30s |
 
 ### Basic C/C++ Analysis
 
@@ -1534,9 +1596,6 @@ pmat analyze --verbose ./path/to/cpp/project
 
 # Generate deep context for a mixed C/C++ project
 pmat context --output cpp_context.md ./path/to/cpp/project
-
-# Focus on header files only
-pmat analyze --include "*.h,*.hpp" ./path/to/cpp/project
 ```
 
 ### Finding Complexity Issues in C/C++
@@ -1547,62 +1606,6 @@ pmat complexity --threshold 10 ./path/to/cpp/project
 
 # Focus on specific file types
 pmat complexity --include "*.cpp" --exclude "*test*" ./path/to/cpp/project
-
-# Generate complexity report for a C project
-pmat complexity --format markdown --output complexity.md ./path/to/c/project
-```
-
-### Deep Analysis Example
-
-This example analyzes a C++ calculator project and generates metrics:
-
-```bash
-# Clone example C++ project
-git clone https://github.com/example/cpp-calculator
-
-# Generate comprehensive analysis
-pmat analyze --deep ./cpp-calculator
-
-# Check complexity specifically
-pmat complexity ./cpp-calculator
-
-# Find technical debt in comments
-pmat satd ./cpp-calculator
-
-# Generate complete context with all metrics
-pmat context --output calculator_context.md ./cpp-calculator
-```
-
-The analysis will detect:
-- Function signatures and complexity
-- Class hierarchies and relationships
-- Memory management patterns
-- Potential technical debt in comments
-- Header file dependencies
-
-### Sample Output for C++ Analysis
-
-```
-$ pmat analyze ./cpp-calculator
-
-📊 Analyzing C++ project: ./cpp-calculator
-Found 23 files (8 .cpp, 12 .h, 3 .hpp)
-
-Analysis complete:
-- 45 functions analyzed
-- 12 classes detected
-- 8 namespaces found
-- Average cyclomatic complexity: 4.2
-- Max cyclomatic complexity: 15 (in Calculator::evaluateExpression)
-- 3 potential complexity hotspots identified
-- 5 self-admitted technical debt markers found
-
-Top issues:
-1. ./src/parser.cpp:156 - High complexity (15) in Parser::parseExpression
-2. ./include/calculator.hpp:42 - Memory management concern in MathContext class
-3. ./src/calculator.cpp:203 - FIXME comment about potential memory leak
-
-See detailed report in pmat_analysis.json
 ```
 
 ## Summary
