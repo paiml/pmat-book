@@ -53,6 +53,20 @@ else
     test_fail "Polyglot examples missing"
 fi
 
+# Test 6: Contains C++/CUDA query features (v3.6+)
+if grep -q "CUDA Kernel Indexing\|CUDA kernel detection\|\.cu.*\.cuh" src/ch13-00-language-examples.md; then
+    test_pass "C++/CUDA query features documented"
+else
+    test_fail "C++/CUDA query features missing"
+fi
+
+# Test 7: Contains header classification
+if grep -q "Header Classification\|classify.*header\|\.h files" src/ch13-00-language-examples.md; then
+    test_pass "Header classification documented"
+else
+    test_fail "Header classification missing"
+fi
+
 echo ""
 echo "=== Test Summary ==="
 if [ $FAIL_COUNT -eq 0 ]; then
