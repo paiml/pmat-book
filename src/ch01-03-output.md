@@ -10,9 +10,84 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-10-26*  
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-03-08*
+*PMAT version: pmat 3.6.1*
 <!-- DOC_STATUS_END -->
+
+## Colorized Terminal Output
+
+Starting with v3.6.1, all PMAT CLI commands use a standardized colorized output system for terminal display. The shared `cli::colors` module provides consistent styling across every command:
+
+| Element | Style | Example |
+|---------|-------|---------|
+| Headers | Bold + Underline | `Complexity Analysis Summary` |
+| Labels | Bold | `Files analyzed:` |
+| Numbers | Bold White | `15` |
+| File paths | Cyan | `src/cli/colors.rs` |
+| Pass/Success | Green with checkmark | `✓ analysis.complexity` |
+| Fail/Error | Red with cross | `✗ Dead code detected` |
+| Warnings | Yellow | `⚠ 5 files over threshold` |
+| Dimmed text | Gray | `(142μs)` |
+| Grades | Color-coded | A+=Green, B=Yellow, F=Red |
+| Percentages | Threshold-based | Green ≥ good, Yellow ≥ warn, Red below |
+
+### Example: Diagnostics Output
+
+```
+PMAT Self-Diagnostic Report
+  Version: 3.6.1    Duration: 0ms
+
+✓ analysis.complexity (0μs)
+✓ analysis.deep_context (6μs)
+✓ ast.python (0μs)
+✓ ast.rust (137μs)
+✓ ast.typescript (0μs)
+✓ cache.subsystem (50μs)
+✓ integration.git (4μs)
+✓ output.mermaid (0μs)
+
+Summary:
+  Total: 8
+  Passed: 8
+  Failed: 0
+  Success Rate: 100.0%
+```
+
+### Example: Complexity Analysis
+
+```
+Complexity Analysis Summary
+
+  Files analyzed: 1
+  Total functions: 15
+
+Complexity Metrics
+
+  Median Cyclomatic: 1.0
+  Median Cognitive: 0.0
+  Max Cyclomatic: 7
+  Max Cognitive: 10
+
+Top Files by Complexity
+
+  1. src/cli/colors.rs - Cyclomatic: 26, Cognitive: 19, Functions: 15
+```
+
+### Disabling Colors
+
+Colors are automatically disabled when piping output or when the terminal does not support ANSI codes. You can also control color output with environment variables:
+
+```bash
+# Disable colors
+NO_COLOR=1 pmat analyze complexity --file src/main.rs
+
+# Force colors (even when piping)
+CLICOLOR_FORCE=1 pmat diagnose | less -R
+```
+
+### Machine-Readable Output
+
+When using `--format json`, `--format yaml`, or `--format sarif`, PMAT outputs clean machine-readable data with no ANSI codes. Use these formats for CI/CD pipelines, scripting, and tool integration.
 
 ## Output Formats
 

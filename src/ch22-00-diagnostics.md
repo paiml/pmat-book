@@ -10,8 +10,8 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-12*  
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-03-08*
+*PMAT version: pmat 3.6.1*
 <!-- DOC_STATUS_END -->
 
 ## The Problem
@@ -66,46 +66,31 @@ pmat diagnose --format compact
 pmat diagnose --verbose
 ```
 
-**Diagnostic Output Example:**
+**Diagnostic Output Example** (colorized in terminal):
 ```
-🏥 PMAT System Diagnostics
-=========================
-Version: 2.69.0
-Platform: Linux x86_64
-Rust: 1.75.0
+PMAT Self-Diagnostic Report
+  Version: 3.6.1    Duration: 0ms
 
-📋 Feature Status
-─────────────────
-✅ Core Analysis .............. OK (15ms)
-✅ Complexity Detection ....... OK (8ms)
-✅ Cache System ............... OK (3ms)
-✅ Quality Gates .............. OK (12ms)
-✅ Template Engine ............ OK (5ms)
-✅ Refactoring Engine ......... OK (22ms)
-✅ Agent System ............... OK (18ms)
-✅ API Server ................. OK (9ms)
-✅ MCP Integration ............ OK (7ms)
-⚠️  Telemetry ................. DEGRADED (slow: 145ms)
+✓ analysis.complexity (0μs)
+✓ analysis.deep_context (6μs)
+✓ ast.python (0μs)
+✓ ast.rust (137μs)
+✓ ast.typescript (0μs)
+✓ cache.subsystem (50μs)
+✓ integration.git (4μs)
+✓ output.mermaid (0μs)
 
-🔧 System Components
-────────────────────
-✅ Rust Toolchain ............ 1.75.0
-✅ Cargo ..................... 1.75.0
-✅ Git ....................... 2.42.0
-✅ Memory Available .......... 8.2 GB
-✅ Disk Space ................ 124 GB
-✅ CPU Cores ................. 8
-
-📊 Performance Metrics
-─────────────────────
-Average Latency: 12.3ms
-Peak Memory: 156 MB
-Cache Hit Rate: 87.5%
-Analysis Speed: 2,341 lines/sec
-
-🎯 Overall Health: HEALTHY (98%)
-Minor Issues: 1 (telemetry slow)
+Summary:
+  Total: 8
+  Passed: 8
+  Failed: 0
+  Success Rate: 100.0%
 ```
+
+> **Note**: In the terminal, the header appears bold+underlined, feature names
+> are cyan, pass/fail indicators are green/red, timing is dimmed, and the
+> success rate percentage is color-coded (green above 80%, yellow above 50%,
+> red below).
 
 ### JSON Format for Automation
 

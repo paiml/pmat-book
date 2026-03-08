@@ -10,8 +10,8 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-09-09*  
-*PMAT version: pmat 2.213.1*  
+*Last updated: 2026-03-08*
+*PMAT version: pmat 3.6.1*
 *Test-Driven: All examples validated in `tests/ch05/test_analyze.sh`*
 <!-- DOC_STATUS_END -->
 
@@ -120,43 +120,37 @@ pmat analyze complexity --ml --max-cyclomatic 20 --format json
 pmat analyze complexity --detailed
 ```
 
-Output:
+Output (colorized in terminal):
 ```
-🔧 Complexity Analysis
-=======================
+Complexity Analysis Summary
 
-## File-by-File Breakdown
+  Files analyzed: 3
+  Total functions: 6
 
-src/services/payment.py:
-  process_payment(): 42 (⚠️ Very High)
-    - 15 decision points
-    - 8 levels of nesting
-    - 27 logical operators
-  
-  validate_card(): 8 (Moderate)
-  refund_transaction(): 6 (Low)
-  
-src/models/user.py:
-  authenticate(): 12 (High)
-  update_profile(): 4 (Low)
-  get_permissions(): 3 (Low)
+Complexity Metrics
 
-## Summary Statistics
-- Average Complexity: 6.8
-- Median Complexity: 4
-- Maximum: 42 (process_payment)
-- Files Over Threshold (10): 5
+  Median Cyclomatic: 4.0
+  Median Cognitive: 2.0
+  Max Cyclomatic: 42
+  Max Cognitive: 35
+  90th Percentile Cyclomatic: 12
+  90th Percentile Cognitive: 8
 
-## Complexity Distribution
-Low (1-5):      ████████████ 65%
-Moderate (6-10): ████ 20%
-High (11-20):    ██ 10%
-Very High (>20): █ 5%
+Top Files by Complexity
 
-## Risk Assessment
-⚠️ 5 functions exceed recommended complexity (10)
-🔴 1 function in critical range (>30)
+  1. src/services/payment.py - Cyclomatic: 56, Cognitive: 45, Functions: 3
+  2. src/models/user.py - Cyclomatic: 19, Cognitive: 12, Functions: 3
+
+Functions in File
+
+  1. process_payment (line 5-50) - Cyclomatic: 42, Cognitive: 35
+  2. authenticate (line 3-25) - Cyclomatic: 12, Cognitive: 8
+  3. validate_card (line 52-70) - Cyclomatic: 8, Cognitive: 5
 ```
+
+> **Note**: In the terminal, headers appear bold+underlined, labels are bold,
+> numbers are bold white, and file paths are cyan. Use `--format json` for
+> machine-readable output without colors.
 
 ### Cognitive Complexity
 
