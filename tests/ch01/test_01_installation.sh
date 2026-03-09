@@ -91,7 +91,7 @@ fi
 # Test 5: Test basic analysis command
 echo "Test 5: Test basic analysis"
 if [ "$PMAT_AVAILABLE" = true ]; then
-    if pmat analyze "$TEST_FILE" &> /dev/null; then
+    if pmat analyze complexity --path "$(dirname "$TEST_FILE")" &> /dev/null; then
         test_pass "Basic analysis command works"
     else
         test_fail "Basic analysis command failed"
@@ -103,7 +103,7 @@ fi
 # Test 6: Test JSON output format
 echo "Test 6: Test JSON output"
 if [ "$PMAT_AVAILABLE" = true ]; then
-    OUTPUT=$(pmat analyze "$TEST_FILE" --format json 2>/dev/null)
+    OUTPUT=$(pmat analyze complexity --path "$(dirname "$TEST_FILE")" --format json 2>/dev/null)
     if echo "$OUTPUT" | jq empty 2>/dev/null; then
         test_pass "JSON output is valid"
     else
@@ -111,7 +111,7 @@ if [ "$PMAT_AVAILABLE" = true ]; then
     fi
 else
     # Test expected JSON structure without PMAT
-    EXPECTED_OUTPUT='{"repository":{"total_files":1},"languages":{"Python":{"files":1}}}'
+    EXPECTED_OUTPUT='{"files":[],"summary":{"total_files":0}}'
     if echo "$EXPECTED_OUTPUT" | jq empty 2>/dev/null; then
         test_pass "Expected JSON output structure is valid"
         OUTPUT="$EXPECTED_OUTPUT"
@@ -122,7 +122,7 @@ fi
 
 # Test 7: Test analysis contains expected fields
 echo "Test 7: Test analysis structure"
-if echo "$OUTPUT" | jq -e '.repository.total_files' &> /dev/null; then
+if echo "$OUTPUT" | jq -e '.summary' &> /dev/null || echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
     test_pass "Analysis contains expected fields"
 else
     test_fail "Analysis missing expected fields"
