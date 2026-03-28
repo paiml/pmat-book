@@ -665,3 +665,38 @@ Version 3.3.0 introduced several compliance improvements:
 - **Suppression system for CB patterns**: All language-specific best practice checks (CB-500, CB-600, CB-700, CB-800, CB-900, CB-950, CB-1000) now support the `.pmat.yaml` suppression mechanism, allowing teams to silence false positives with documented reasons and expiration dates.
 
 - **CB-1100 Custom Project Scores**: A new extensibility point allowing projects to define custom score commands in `.pmat.yaml` that are evaluated alongside built-in checks.
+
+## What Changed in v3.8.0
+
+### Provable Contracts Enforcement (CB-1200 Series)
+
+Version 3.8.0 adds enforcement checks for the `provable-contracts` ecosystem. These checks ensure that contract YAML files in `contracts/` are not "paper-only" — they must bind to real code with real preconditions.
+
+| Check | What It Does |
+|-------|-------------|
+| CB-1208 | **Binding Existence**: Verifies that functions listed as `implemented` in contract YAMLs actually exist in the codebase. Repos where <80% of bound functions are found receive a FAIL. Detects "ghost bindings" — contract entries that name functions that were never written. |
+| CB-1209 | **Contract Trait Enforcement**: Checks for a `tests/contract_traits.rs` file that validates contract trait implementations (e.g., `Verifiable`, `Auditable`). |
+| CB-1210 | **Precondition Quality**: Analyzes precondition diversity across all contracts. Detects mass-generated boilerplate (>90% identical preconditions) and missing postconditions. |
+
+```bash
+# Run comply check — CB-1208..1210 run automatically when contracts/ exists
+pmat comply check
+
+# Example output for a repo with ghost bindings:
+#   ✗ CB-1208: Binding Existence: 10/29 bound fns not found
+#     (L1, 66% verified, threshold: 80%)
+```
+
+### Infrastructure Score Integration
+
+The `pmat infra-score` command was added as a new top-level scorer (see Chapter 61). It evaluates CI/CD quality across 5 categories with a 100-point scale and 10 bonus points for provable contracts.
+
+### CUDA-TDG Default Mode
+
+The `pmat cuda-tdg` command no longer hard-fails in default report mode. Quality gate enforcement is now exclusive to the `pmat cuda-tdg gate` subcommand, making the default mode safe for informational use.
+
+### Bug Fixes
+
+- **DR-05**: `version.workspace = true` in workspace members no longer triggers a false "Version true does not follow semver" failure.
+- **validate-docs**: No longer crashes when a directory has a `.md` extension (e.g., `.pmat-work/docs/specifications/pmat-spec.md/`).
+- **perfection-score**: Total score is now clamped to 200.0 maximum, preventing display of scores like 200.2/200.0.

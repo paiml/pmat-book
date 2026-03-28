@@ -90,6 +90,8 @@
 - [Chapter 57: File Splitting (pmat split)](ch57-00-file-split.md)
 - [Chapter 58: Extract Candidates (--extract-candidates)](ch58-00-extract-candidates.md)
 - [Chapter 59: Design by Contract for Work Items](ch59-00-design-by-contract.md)
+- [Chapter 60: Unified Quality Score (pmat score)](ch60-00-unified-score.md)
+- [Chapter 61: Infrastructure Score (pmat infra-score)](ch61-00-infra-score.md)
 
 ## Conclusion
 

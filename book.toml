@@ -6,7 +6,6 @@ title = "PMAT: The PAIML MCP Agent Toolkit"
 authors = ["Pragmatic AI Labs"]
 description = "Complete guide to PMAT - Zero-configuration AI context generation with MCP integration"
 language = "en"
-multilingual = false
 src = "src"
 
 [build]
@@ -23,7 +22,6 @@ default-theme = "rust"
 preferred-dark-theme = "coal"
 smart-punctuation = true
 mathjax-support = false
-copy-fonts = true
 additional-css = ["theme/pmat.css"]
 additional-js = []
 git-repository-url = "https://github.com/paiml/pmat-book"
