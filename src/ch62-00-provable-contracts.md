@@ -246,7 +246,27 @@ The provable-contracts fleet now covers **178+ contracts across 37+ repos** (ful
 | PMAT infrastructure | 14 | CLI, MCP, graph, concurrency, memory, state machine, work DBC (v2.0) |
 | IaC heavy types | 13 | forjar |
 | CLI/MCP/HTTP boundaries | 8 | aprender (cli-dispatch, http-api, mcp-tool-schema), depyler (cli-transpile), bashrs (cli-lint), batuta (cli-oracle), presentar (tui-lifecycle) |
+| Model format safety | 3 | gguf-format-safety, safetensors-format-safety, model-format-conversion |
+| apr-cli operations | 1 | apr-cli-operations (all 48 subcommands: side effects, resources, determinism) |
 | Sovereign stack (remaining) | 48+ | trueno-graph, trueno-db, trueno-rag, trueno-viz, trueno-zram-core, renacer, certeza, probar, pmcp, pzsh, rclean, zenith, and others |
+
+### Model Format Safety Contracts
+
+Model format parsing is the **#1 defect vector** in ML inference. Three contracts cover:
+
+- **gguf-format-safety-v1**: Magic validation before allocation, tensor metadata integrity (shape overflow, offset bounds), alignment enforcement, metadata KV safety. References CVE-2024-25664 (heap buffer overflow) and CVE-2024-25631 (OOB read).
+- **safetensors-format-safety-v1**: Header size bounded before JSON parsing, tensor offset bounds (no OOB), no overlapping tensor regions, dtype size consistency, zero-copy mmap correctness.
+- **model-format-conversion-v1**: Format conversion roundtrip (tensor count/names/shapes preserved), quantization error bounds, merge weight algebra (architecture compatibility), import integrity (content-based format detection), export fidelity (atomic write via temp+rename).
+
+### APR CLI Operations Contract
+
+`apr-cli-operations-v1` covers all 48 apr CLI subcommands:
+- **Side-effect classification**: ReadOnly (26 commands), Mutating (14), LongRunning (8)
+- **Resource cleanup**: GPU memory, temp files, threads released on all exit paths
+- **Inference determinism**: temperature=0 greedy decoding is deterministic
+- **Tokenizer consistency**: encode/decode roundtrip preserves text
+- **Concurrent model access**: per-request KV cache, no cross-contamination
+- **Progress reporting**: monotonic [0.0, 1.0] with at least 1 update/sec
 
 ### Work DBC Contract (v2.0)
 
