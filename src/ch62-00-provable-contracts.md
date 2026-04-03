@@ -75,7 +75,7 @@ pv kani contracts/softmax-kernel-v1.yaml
 pv lean contracts/softmax-kernel-v1.yaml
 ```
 
-The fleet currently has 265 contracts, 93 Lean theorems (0 sorry), and 590 bindings across 31 repos.
+The fleet currently has 266 contracts, 93 Lean theorems (1 sorry), and 660 bindings across 33 repos.
 
 ## How pmat comply Integrates
 
@@ -249,17 +249,17 @@ All examples run against contracts shipped in the `contracts/` directory and req
 cd provable-contracts && pv kaizen
 ```
 
-Current fleet status (31 repos):
+Current fleet status (33 repos):
 
 | Metric | Value |
 |--------|-------|
-| Total bindings | 590 |
-| Call sites | 411 |
-| Penetration | 69.7% |
+| Total bindings | 660 |
+| Call sites | 411+ |
+| Penetration | 62.3% |
 | E0 (generic assertions) | 43 |
 | E1 (domain precondition) | 136 |
 | E2 (pre + postcondition) | 232 |
-| Total assertions | 14,436 |
+| Total assertions | 14,436+ |
 
 ### E-Level Classification
 
@@ -275,20 +275,36 @@ Repos are graded A-F based on call-site enforcement quality. Mature repos (bashr
 
 `pmat comply` resolves contract YAML from a sibling `provable-contracts` repository rather than requiring contracts inside each project. It reads `Cargo.toml` to extract the package name, then probes `../provable-contracts/contracts/<pkg>/` for YAML files. This enables a single monorepo of contracts to serve the entire fleet without duplicating YAML across repositories.
 
+## Agent Contract Enforcement (CB-1400 to CB-1410)
+
+AI agents operating on the sovereign stack must work contract-first. The CB-1400 series ensures no agent generates code without a prior contract:
+
+| Check | Enforcement |
+|-------|------------|
+| CB-1400 | Agent context files (CLAUDE.md, GEMINI.md) reference contract-first |
+| CB-1401 | Work contracts have falsifiable claims with evidence |
+| CB-1402 | Verification level >= L1 (L0 paper-only blocked for autonomous agents) |
+| CB-1403 | Assume-guarantee chains validated for multi-agent workflows |
+| CB-1408 | Evidence mechanisms are executable (not placeholder) |
+| CB-1409 | AI-authored commits (Co-Authored-By) have work contracts |
+| CB-1410 | Iterative contracts compose correctly (Liskov substitution) |
+
+CB-1402 enforces a hard floor: autonomous agents may NOT operate at L0 (human review only). Every AI commit must trace to a work contract with at least L1 verification (type-system or quality-gate enforcement).
+
 ## Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| Contract YAML files | 315 |
-| Scored contracts | 265 |
-| Mean score | 0.68 (C) |
-| Lean theorems | 93 (0 sorry) |
+| Contract YAML files | 315+ |
+| Scored contracts | 266 |
+| Mean score | 0.70 (C) |
+| Lean theorems | 93 (1 sorry) |
 | Lean theorem files | 56 |
-| Binding registries | 13 crates |
-| Fleet repos | 31 |
+| Binding registries | 15 crates |
+| Fleet repos | 33 |
 | Proof obligation types | 26 |
 | Lint gates | 7 |
-| CB enforcement checks | 13 |
+| CB enforcement checks | 20 (CB-1200..1214 + CB-1400..1410) |
 
 ## Configurable Thresholds
 
