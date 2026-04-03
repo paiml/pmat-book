@@ -241,6 +241,18 @@ cargo run --example design_by_contract
 
 All examples run against contracts shipped in the `contracts/` directory and require no external tooling beyond `cargo`.
 
+### Infrastructure Contracts (NEW)
+
+```bash
+# Score MCP, CLI, and HTTP contracts
+cargo run --example infrastructure_contracts
+```
+
+This demonstrates that provable-contracts works for non-kernel domains:
+- **pmcp** (MCP Protocol SDK): 9 equations, JSON-RPC dispatch + session lifecycle
+- **rurl** (HTTP Client): 7 equations, request construction + SSRF prevention
+- **apr-cli** (CLI Tool): 6 equations, command dispatch + training pipeline
+
 ## Fleet-Wide Enforcement
 
 `pv kaizen` measures contract enforcement across the entire sovereign stack:
