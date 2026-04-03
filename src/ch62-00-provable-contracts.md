@@ -1,41 +1,116 @@
 # Chapter 62: Provable Contracts (CB-1200 to CB-1214)
 
-The provable-contracts enforcement chain validates that Design by Contract (DbC) principles are applied correctly across the sovereign AI stack. It checks contract YAML quality, codegen fidelity, binding existence, and call-site enforcement quality.
+Provable-contracts is a Rust library and CLI (`pv`) for contract-first development of computational kernels. It converts peer-reviewed research papers into mathematically provable implementations via YAML contract intermediaries, Kani bounded model checking, and Lean 4 theorem proving. PMAT enforces contract compliance fleet-wide through the CB-1200 enforcement chain.
 
-## Overview
+## The Seven-Phase Pipeline
 
-`pmat comply check` runs 13 provable-contracts checks (CB-1200 through CB-1214, with CB-1212 and CB-1213 specified but not yet implemented). These checks span the verification ladder from L0 (paper-only) to L5 (Lean-proved).
+Every kernel implementation follows seven phases. Skipping a phase produces either a lint failure or a compiler error.
+
+| Phase | Action | Tool |
+|-------|--------|------|
+| 1. **Extract** | Parse a paper into canonical math (equations, domains, invariants) | `pv extract-pytorch`, manual |
+| 2. **Specify** | Encode the math as a YAML contract with proof obligations | Editor + `pv validate` |
+| 3. **Scaffold** | Generate Rust trait stubs and failing test skeletons | `pv scaffold` |
+| 4. **Implement** | Write the scalar reference, then SIMD-accelerated version | Editor + `cargo test` |
+| 5. **Falsify** | Run Popperian falsification via property-based testing | `pv probar` + certeza |
+| 6. **Verify** | Prove correctness bounds via Kani bounded model checking | `pv kani` + `cargo kani` |
+| 7. **Prove** | Prove correctness in Lean 4 type theory | `pv lean` + `lake build` |
+
+### Walking Through the Pipeline
+
+**Phase 1-2: Extract and Specify.** Start with a softmax kernel. The paper defines `softmax(x)_i = exp(x_i) / sum(exp(x))`. Encode this as YAML:
+
+```yaml
+name: softmax-kernel-v1
+version: "1.0"
+metadata:
+  description: "Numerically stable softmax"
+  paper: "https://arxiv.org/abs/..."
+
+equations:
+  softmax:
+    formula: "softmax(x)_i = exp(x_i - max(x)) / sum(exp(x - max(x)))"
+    preconditions:
+      - 'x.iter().all(|v| v.is_finite())'
+      - 'x.len() > 0'
+    postconditions:
+      - '(result.iter().sum::<f32>() - 1.0).abs() < 1e-5'
+      - 'result.iter().all(|v| *v >= 0.0 && *v <= 1.0)'
+    proof_obligations:
+      - type: invariant
+        description: "Output sums to 1 (partition of unity)"
+      - type: bound
+        description: "All outputs in [0, 1]"
+      - type: monotonicity
+        description: "Larger input produces larger output"
+
+falsification_tests:
+  - rule: "empty input panics"
+    input: "[]"
+    expect: panic
+  - rule: "NaN input detected"
+    input: "[NaN, 1.0]"
+    expect: panic
+```
+
+**Phase 3: Scaffold.** Generate Rust stubs:
+
+```bash
+pv scaffold contracts/softmax-kernel-v1.yaml
+```
+
+This produces a trait definition with `fn softmax(&self, x: &[f32]) -> Vec<f32>` and failing tests for each postcondition. You fill in the implementation.
+
+**Phase 4-5: Implement and Falsify.** Write the implementation, then generate property tests:
+
+```bash
+pv probar contracts/softmax-kernel-v1.yaml \
+    --binding contracts/aprender/binding.yaml
+```
+
+**Phase 6-7: Verify and Prove.** Generate Kani harnesses and Lean theorems:
+
+```bash
+pv kani contracts/softmax-kernel-v1.yaml
+pv lean contracts/softmax-kernel-v1.yaml
+```
+
+The fleet currently has 265 contracts, 93 Lean theorems (0 sorry), and 590 bindings across 31 repos.
+
+## How pmat comply Integrates
+
+`pmat comply check` runs 13 checks (CB-1200 through CB-1214) spanning the verification ladder from L0 (paper-only) to L5 (Lean-proved):
 
 ```bash
 # Run all compliance checks
 pmat comply check
 
-# Filter to PV checks only
+# Filter to provable-contracts checks only
 pmat comply check 2>&1 | grep 'CB-12'
 
 # Get infra-score bonus (PV-01..PV-05, up to 12 points)
 pmat infra-score
 ```
 
-## Enforcement Chain
+### Enforcement Chain
 
 | Check | Level | What it enforces |
 |-------|-------|-----------------|
 | CB-1200 | L0.5 | Contract existence + pv lint + binding coverage |
 | CB-1201 | L0.5 | pv lint pass/fail with error detail |
-| CB-1202 | L1 | Critical keyword coverage (forward, backward, kernel, etc.) |
+| CB-1202 | L1 | Critical keyword coverage (forward, backward, kernel) |
 | CB-1203 | L3 | Contract annotation coverage on bound functions |
 | CB-1204 | L1 | build.rs pipeline enforcement |
-| CB-1205 | L4 | Provability invariant (obligations → kani harnesses) |
+| CB-1205 | L4 | Provability invariant (obligations to kani harnesses) |
 | CB-1206 | L4/L5 | Verification level distribution per-project |
-| CB-1207 | — | Contract drift (stale YAML vs source, 90-day threshold) |
+| CB-1207 | -- | Contract drift (stale YAML vs source, 90-day threshold) |
 | CB-1208 | L1-L3 | Binding existence + enforcement level (L0-L3) |
 | CB-1209 | L2 | Contract trait enforcement (13 kernel traits) |
 | CB-1210 | L3 | YAML precondition diversity |
-| CB-1211 | L3 | Codegen fidelity — placeholder ratio check |
-| CB-1214 | L3 | Enforcement quality — call-site penetration × quality |
+| CB-1211 | L3 | Codegen fidelity -- placeholder ratio check |
+| CB-1214 | L3 | Enforcement quality -- call-site penetration x quality |
 
-## Enforcement Levels (CB-1208)
+### Enforcement Levels (CB-1208)
 
 CB-1208 detects the enforcement level for each project dynamically:
 
@@ -44,53 +119,147 @@ CB-1208 detects the enforcement level for each project dynamically:
 | L3 | build.rs + traits | `build.rs` contains contract keywords AND `tests/contract_traits.rs` exists |
 | L2 | traits only | `tests/contract_traits.rs` exists, no build.rs enforcement |
 | L1 | build.rs only | `build.rs` contains "binding", "contract", or "AllImplemented" |
-| L0 | paper-only | Neither mechanism present — **FAIL** (ghost bindings) |
+| L0 | paper-only | Neither mechanism present -- **FAIL** (ghost bindings) |
 
-L0 repos with binding.yaml entries but no enforcement are flagged as "ghost bindings" and fail CB-1208.
+L0 repos with binding.yaml entries but no enforcement are flagged as "ghost bindings" and fail CB-1208. Workspace projects with `crates/*/src/` layouts are fully scanned.
 
-**Workspace support**: CB-1208 scans both `src/` and `crates/*/src/` when searching for bound functions, so workspace projects with multiple crates are fully supported.
+## Example: Writing and Validating a Contract
 
-## Precondition Quality (CB-1210)
+### Step 1: Write a Contract YAML
 
-CB-1210 scans YAML contract preconditions for diversity and flags mass-generated placeholder patterns.
-
-**FAIL when:**
-- YAML precondition diversity < 30% (>70% of preconditions are identical)
-- More than 5% of equations have only placeholder preconditions like `!input.is_empty()`
+Create `contracts/my-project/my-kernel-v1.yaml`:
 
 ```yaml
-# Good: domain-specific preconditions
+name: my-kernel-v1
+version: "1.0"
+metadata:
+  description: "Vector normalization kernel"
+
 equations:
-  softmax:
+  normalize:
+    formula: "normalize(x)_i = x_i / ||x||_2"
     preconditions:
       - 'x.iter().all(|v| v.is_finite())'
-      - 'x.len() > 0'
+      - 'x.iter().any(|v| *v != 0.0)'
+    postconditions:
+      - '(result.iter().map(|v| v * v).sum::<f32>() - 1.0).abs() < 1e-5'
+    proof_obligations:
+      - type: invariant
+        description: "Output has unit L2 norm"
+      - type: bound
+        description: "All outputs in [-1, 1]"
 
-# Bad: placeholder-only preconditions (CB-1210 will flag)
-equations:
-  my_kernel:
-    preconditions:
-      - '!input.is_empty()'
+falsification_tests:
+  - rule: "zero vector panics"
+    input: "[0.0, 0.0, 0.0]"
+    expect: panic
 ```
 
-## Codegen Fidelity (CB-1211)
+### Step 2: Validate and Lint
 
-CB-1211 verifies that generated `debug_assert!` assertions are not dominated by placeholder patterns.
+```bash
+# Validate schema correctness
+pv validate contracts/my-project/my-kernel-v1.yaml
 
-**Detection:** Counts total `debug_assert!` lines in `generated_contracts.rs` (excluding comments) and how many contain the known placeholder `_contract_input.is_empty()`.
+# Run the 7-gate quality pipeline
+pv lint contracts/my-project/
+```
 
-| Result | Condition |
-|--------|-----------|
-| FAIL | Placeholder assertions > 50% of total |
-| WARN | 0 assertions from N preconditions (all skipped by `has_unbound_vars()`) |
-| SKIP | No generated file and pv CLI not available |
-| PASS | Placeholder ratio ≤ 50% |
+The 7 lint gates are: validate, audit, score, verify (test refs), enforce (pre/post/Lean), enforcement-level, and reverse-coverage.
 
-**Note:** Generated assertion count may be less than YAML precondition count because codegen skips assertions with unbound variables (e.g., multi-arg equations where `m`, `k`, `n` can't be mapped to the macro's single input parameter).
+### Step 3: Score
 
-## Enforcement Quality (CB-1214)
+```bash
+pv score contracts/my-project/my-kernel-v1.yaml
+```
 
-CB-1214 runs `pv coverage --enforcement` to measure contract call-site penetration and quality.
+Output shows five dimensions: Spec depth, Falsification coverage, Kani harness coverage, Lean proof coverage, and Binding coverage, with an A-F letter grade.
+
+### Step 4: Scaffold Implementation
+
+```bash
+pv scaffold contracts/my-project/my-kernel-v1.yaml
+```
+
+This generates a Rust trait with the function signature and failing test stubs for each postcondition and proof obligation.
+
+### Step 5: Generate Enforcement Code
+
+```bash
+# Generate debug_assert!() macros from preconditions/postconditions
+pv codegen contracts/my-project/ --output src/generated_contracts.rs
+
+# Generate Kani bounded model checking harnesses
+pv kani contracts/my-project/my-kernel-v1.yaml
+```
+
+## The pmat-work Lifecycle Contract (DBC-for-DBC)
+
+The `work-dbc-v1.yaml` contract applies Design by Contract to the `pmat work` lifecycle itself -- a "contract about contracts" ensuring the quality gate system is self-consistent.
+
+Key equations in the work DBC contract:
+
+- **work_lifecycle**: Planned -> InProgress -> Review -> Completed state machine (mirrors `ItemStatus` enum)
+- **meyer_triad**: require/ensure/invariant clause checking at Start/Checkpoint/Complete phases
+- **checkpoint_verification**: idempotent invariant checking with score delta from baseline
+- **falsifiable_claim**: Popperian claims with deterministic verdicts
+- **override_accountability**: `--override-claims` requires `--ticket` for accountability
+- **rescue_protocol**: Meyer Section 11 bounded retry strategies
+
+This contract scores 0.88 (B) with 10 falsification tests, 10 proof obligations, and 10 Kani harnesses. It lives at `contracts/pmat/work-dbc-v1.yaml` in the provable-contracts repo.
+
+## Running Examples
+
+The provable-contracts crate ships examples for each pipeline phase:
+
+```bash
+# Validate contract schema
+cargo run --example validate_contracts
+
+# Score contracts (five-dimension quality metric)
+cargo run --example score_contracts
+
+# Generate scaffolding (trait stubs + failing tests)
+cargo run --example scaffold_generation
+
+# Generate Lean 4 codegen
+cargo run --example lean_codegen
+
+# Check Lean proof status
+cargo run --example lean_status
+
+# Run traceability audit
+cargo run --example audit
+
+# Generate Kani harnesses
+# (requires provable-contracts repo checked out)
+cargo run --example proof_status
+
+# Design by Contract demo
+cargo run --example design_by_contract
+```
+
+All examples run against contracts shipped in the `contracts/` directory and require no external tooling beyond `cargo`.
+
+## Fleet-Wide Enforcement
+
+`pv kaizen` measures contract enforcement across the entire sovereign stack:
+
+```bash
+cd provable-contracts && pv kaizen
+```
+
+Current fleet status (31 repos):
+
+| Metric | Value |
+|--------|-------|
+| Total bindings | 590 |
+| Call sites | 411 |
+| Penetration | 69.7% |
+| E0 (generic assertions) | 43 |
+| E1 (domain precondition) | 136 |
+| E2 (pre + postcondition) | 232 |
+| Total assertions | 14,436 |
 
 ### E-Level Classification
 
@@ -100,45 +269,26 @@ CB-1214 runs `pv coverage --enforcement` to measure contract call-site penetrati
 | E1 | 0.5 | Domain-specific precondition check only |
 | E2 | 1.0 | Both precondition and postcondition checks |
 
-**Quality** = weighted average of E-levels across call sites.
-**Enforcement** = penetration (call sites / bindings) × quality.
+Repos are graded A-F based on call-site enforcement quality. Mature repos (bashrs, decy, forjar, batuta) score A; repos with bindings but no call sites score F. `pv kaizen` identifies the highest-ROI upgrade targets by sorting unbound call sites by PageRank criticality.
 
-### Decision Logic
+### Sibling Contract Resolution
 
-| Result | Condition |
-|--------|-----------|
-| FAIL | quality < 0.3 AND >30 call sites AND has mixed E-levels |
-| WARN | quality < 0.3 with E0-only (legitimate transition) |
-| WARN | 0 call sites (contracts exist but never invoked) |
-| SKIP | pv CLI not available |
-| PASS | quality ≥ 0.3 |
+`pmat comply` resolves contract YAML from a sibling `provable-contracts` repository rather than requiring contracts inside each project. It reads `Cargo.toml` to extract the package name, then probes `../provable-contracts/contracts/<pkg>/` for YAML files. This enables a single monorepo of contracts to serve the entire fleet without duplicating YAML across repositories.
 
-### Example Output
+## Key Metrics
 
-```text
-✓ CB-1214: Enforcement Quality: 47 call sites (E0=0, E1=19, E2=28), quality=0.80, enforcement=0.71
-```
-
-## Contract Annotations (CB-1203)
-
-CB-1203 checks that functions matching contract equation names have contract annotations. It recognizes:
-
-- `#[contract(equation = "...")]` proc-macro attribute
-- `#[requires(...)]` / `#[ensures(...)]` attributes
-- `contract_pre_*!` macro invocations in the function body
-- `// Contract:` comments in the function body
-
-## Infra-Score Bonus (PV-01..PV-05)
-
-`pmat infra-score` awards up to 12 bonus points for provable-contracts quality:
-
-| Check | Points | What it checks |
-|-------|--------|----------------|
-| PV-04 | 2 | contracts/ directory exists with schema-valid YAML |
-| PV-01 | 3 | `pv lint` passes (falls back to YAML structure check) |
-| PV-02 | 3 | `pv score >= 0.5` (requires pv CLI) |
-| PV-03 | 2 | At least one contract at proof level L2+ |
-| PV-05 | 2 | Enforcement quality — `pv coverage --enforcement` finds call sites |
+| Metric | Value |
+|--------|-------|
+| Contract YAML files | 315 |
+| Scored contracts | 265 |
+| Mean score | 0.68 (C) |
+| Lean theorems | 93 (0 sorry) |
+| Lean theorem files | 56 |
+| Binding registries | 13 crates |
+| Fleet repos | 31 |
+| Proof obligation types | 26 |
+| Lint gates | 7 |
+| CB enforcement checks | 13 |
 
 ## Configurable Thresholds
 
@@ -147,40 +297,28 @@ Configure PV enforcement strictness in `.pmat.yaml`:
 ```yaml
 comply:
   thresholds:
-    pv_lint_is_error: true        # CB-1201: treat lint failure as error
-    min_binding_existence: 95     # CB-1208: % threshold for binding verification
-    require_all_traits: true      # CB-1209: require 13/13 traits
-    min_kani_coverage: 20         # CB-1206: minimum Kani proof %
+    pv_lint_is_error: true
+    min_binding_existence: 95
+    require_all_traits: true
+    min_kani_coverage: 20
 ```
-
-Additional thresholds are hardcoded (not yet configurable):
-
-| Check | Threshold | Value |
-|-------|-----------|-------|
-| CB-1210 | Precondition diversity minimum | 30% |
-| CB-1210 | Placeholder-only equation maximum | 5% |
-| CB-1211 | Placeholder assertion ratio maximum | 50% |
-| CB-1214 | Enforcement quality minimum | 0.3 (with >30 call sites and mixed E-levels) |
 
 ## Adding Provable Contracts to Your Project
 
-1. **Create contracts/** with YAML files following the provable-contracts schema:
+1. **Create a contract** in `../provable-contracts/contracts/<your-crate>/`:
 
 ```yaml
-metadata:
-  version: "1.0.0"
-  description: "My kernel contract"
-
+name: my-kernel-v1
+version: "1.0"
 equations:
   my_function:
-    formula: "f(x) = ..."
     preconditions:
       - 'x.iter().all(|v| v.is_finite())'
     postconditions:
       - 'result.len() == x.len()'
 ```
 
-2. **Generate assertions**: `pv codegen contracts/ -o src/generated_contracts.rs`
+2. **Generate assertions**: `pv codegen contracts/<your-crate>/ -o src/generated_contracts.rs`
 
 3. **Add macro invocations** at call sites:
 
@@ -193,124 +331,18 @@ pub fn my_function(x: &[f32]) -> Vec<f32> {
 }
 ```
 
-4. **Add build.rs enforcement** for L1+ level:
-
-```rust
-fn main() {
-    // AllImplemented policy: binding.yaml entries must exist in source
-    println!("cargo:rerun-if-changed=contracts/");
-}
-```
+4. **Add build.rs enforcement** for L1+ level (compiler refuses to build if bindings are missing).
 
 5. **Add trait tests** for L2+ level: create `tests/contract_traits.rs` with trait implementations from `provable_contracts::traits`.
 
-## Examples
-
-```bash
-# Run the provable contracts demo
-cargo run --example provable_contracts_demo
-
-# Run the enforcement quality demo
-cargo run --example enforcement_quality_demo
-```
+6. **Run compliance**: `pmat comply check` to verify all CB-1200 checks pass.
 
 ## TDD Verification
 
-```rust
-# // Verify CB-1210 detects placeholder preconditions
-# let yaml = "equations:\n  test:\n    preconditions:\n      - '!input.is_empty()'";
-# // CB-1210 flags this as placeholder-only
-```
-
 ```bash
 $ pmat comply check 2>&1 | grep CB-1210
-✓ CB-1210: Precondition Quality: 1881 preconditions, 899 unique (86% diverse), 27 postconditions
-```
+# CB-1210: Precondition Quality: 1881 preconditions, 899 unique (86% diverse)
 
-```bash
 $ pmat comply check 2>&1 | grep CB-1214
-✓ CB-1214: Enforcement Quality: 47 call sites (E0=0, E1=19, E2=28), quality=0.80, enforcement=0.71
+# CB-1214: Enforcement Quality: 47 call sites, quality=0.80, enforcement=0.71
 ```
-
-## Sibling Contract Resolution
-
-`pmat comply` now resolves contract YAML from a sibling `provable-contracts` repository rather than requiring contracts to live inside each project. The `resolve_contracts_dir` function reads the project's `Cargo.toml` to extract the package name, then probes `../provable-contracts/contracts/<pkg>/` for YAML files. If the directory exists but is empty (no `.yaml` files), the check is skipped cleanly instead of producing a misleading PASS. This enables a single monorepo of contracts to serve an entire fleet of sovereign-stack crates without duplicating YAML across 27 repositories.
-
-## Sovereign Stack Coverage
-
-The provable-contracts fleet now covers **178+ contracts across 37+ repos** (full sovereign stack penetration).
-
-| Domain | Contracts | Key repos |
-|--------|-----------|-----------|
-| Math/ML kernels | 95 | entrenar, aprender, trueno |
-| PMAT infrastructure | 14 | CLI, MCP, graph, concurrency, memory, state machine, work DBC (v2.0) |
-| IaC heavy types | 13 | forjar |
-| CLI/MCP/HTTP boundaries | 8 | aprender (cli-dispatch, http-api, mcp-tool-schema), depyler (cli-transpile), bashrs (cli-lint), batuta (cli-oracle), presentar (tui-lifecycle) |
-| Model format safety | 3 | gguf-format-safety, safetensors-format-safety, model-format-conversion |
-| apr-cli operations | 1 | apr-cli-operations (all 48 subcommands: side effects, resources, determinism) |
-| Sovereign stack (remaining) | 48+ | trueno-graph, trueno-db, trueno-rag, trueno-viz, trueno-zram-core, renacer, certeza, probar, pmcp, pzsh, rclean, zenith, and others |
-
-### Model Format Safety Contracts
-
-Model format parsing is the **#1 defect vector** in ML inference. Three contracts cover:
-
-- **gguf-format-safety-v1**: Magic validation before allocation, tensor metadata integrity (shape overflow, offset bounds), alignment enforcement, metadata KV safety. References CVE-2024-25664 (heap buffer overflow) and CVE-2024-25631 (OOB read).
-- **safetensors-format-safety-v1**: Header size bounded before JSON parsing, tensor offset bounds (no OOB), no overlapping tensor regions, dtype size consistency, zero-copy mmap correctness.
-- **model-format-conversion-v1**: Format conversion roundtrip (tensor count/names/shapes preserved), quantization error bounds, merge weight algebra (architecture compatibility), import integrity (content-based format detection), export fidelity (atomic write via temp+rename).
-
-### APR CLI Operations Contract
-
-`apr-cli-operations-v1` covers all 48 apr CLI subcommands:
-- **Side-effect classification**: ReadOnly (26 commands), Mutating (14), LongRunning (8)
-- **Resource cleanup**: GPU memory, temp files, threads released on all exit paths
-- **Inference determinism**: temperature=0 greedy decoding is deterministic
-- **Tokenizer consistency**: encode/decode roundtrip preserves text
-- **Concurrent model access**: per-request KV cache, no cross-contamination
-- **Progress reporting**: monotonic [0.0, 1.0] with at least 1 update/sec
-
-### Work DBC Contract (v2.0)
-
-The `work-dbc-v1.yaml` contract enforces Design by Contract on the `pmat work` lifecycle itself — a "contract about contracts" that ensures the quality gate system is self-consistent.
-
-Key equations:
-- **work_lifecycle**: Planned→InProgress→Review→Completed state machine (matches `ItemStatus` enum)
-- **meyer_triad**: require/ensure/invariant clause checking at Start/Checkpoint/Complete phases
-- **checkpoint_verification**: idempotent invariant checking with score delta from baseline
-- **falsifiable_claim**: 22 Popperian claims with deterministic verdicts
-- **override_accountability**: `--override-claims` requires `--ticket` for accountability
-- **rescue_protocol**: Meyer Section 11 bounded retry strategies
-
-Score: **0.88 (B)** with binding (D2=1.00, D3=0.96). The contract has 10 falsification tests, 10 proof obligations, and 10 kani harnesses.
-
-Every repo has at least one domain-specific contract with preconditions beyond placeholder `!input.is_empty()` patterns. CB-1210 precondition diversity holds at 86% fleet-wide.
-
-## Section 34 Systems Contract Patterns
-
-The `provable-contracts` repository now includes **29 reusable systems-contract patterns** in `section-34/`, backed by **52 arXiv papers**. These patterns provide ready-made YAML templates for contract obligations that arise repeatedly in systems programming.
-
-The 7 pattern domains:
-
-| Domain | Scope |
-|--------|-------|
-| **Threading** | Mutex ordering, deadlock freedom, thread-pool bounds |
-| **Async** | Future cancellation safety, waker correctness, backpressure |
-| **Compute** | SIMD lane invariants, numerical stability, kernel convergence |
-| **Memory** | Arena lifetime, pool exhaustion, alignment guarantees |
-| **LLM** | Token budget, prompt injection guards, embedding dimension |
-| **Transpiler** | Semantic equivalence, round-trip fidelity, AST invariant preservation |
-| **Cross-cutting** | Idempotency, retry budgets, graceful degradation |
-
-Each pattern includes a motivation section citing the relevant paper, a YAML template with parameterized preconditions and postconditions, and a verification-level recommendation (L1 through L5).
-
-## Fleet Enforcement Status (pv kaizen)
-
-`pv kaizen` reports fleet-wide enforcement health:
-
-| Metric | Value |
-|--------|-------|
-| Grade | **B** (0.53) |
-| Penetration | 71% (call sites / bindings) |
-| Bindings | 559 |
-| Call sites | 398 |
-
-The grade reflects the transition from E0 placeholder assertions to E1/E2 domain-specific checks still in progress across the fleet. Repos with mature contracts (entrenar, aprender, trueno) score above 0.7; newer repos pull the average down. The `pv kaizen` command identifies the highest-ROI upgrade targets by sorting bindings without call sites by PageRank criticality.
