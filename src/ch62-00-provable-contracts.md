@@ -238,15 +238,29 @@ $ pmat comply check 2>&1 | grep CB-1214
 
 ## Sovereign Stack Coverage
 
-The provable-contracts fleet now covers **156 contracts across 27/27 repos** (100% penetration).
+The provable-contracts fleet now covers **178+ contracts across 37+ repos** (full sovereign stack penetration).
 
 | Domain | Contracts | Key repos |
 |--------|-----------|-----------|
 | Math/ML kernels | 95 | entrenar, aprender, trueno |
-| PMAT infrastructure | 14 | CLI, MCP, graph, concurrency, memory, state machine, work DBC |
+| PMAT infrastructure | 14 | CLI, MCP, graph, concurrency, memory, state machine, work DBC (v2.0) |
 | IaC heavy types | 13 | forjar |
 | CLI/MCP/HTTP boundaries | 8 | aprender (cli-dispatch, http-api, mcp-tool-schema), depyler (cli-transpile), bashrs (cli-lint), batuta (cli-oracle), presentar (tui-lifecycle) |
-| Sovereign stack (remaining) | 26 | trueno-graph, trueno-db, trueno-rag, trueno-viz, trueno-zram-core, renacer, certeza, probar, pmcp, and others |
+| Sovereign stack (remaining) | 48+ | trueno-graph, trueno-db, trueno-rag, trueno-viz, trueno-zram-core, renacer, certeza, probar, pmcp, pzsh, rclean, zenith, and others |
+
+### Work DBC Contract (v2.0)
+
+The `work-dbc-v1.yaml` contract enforces Design by Contract on the `pmat work` lifecycle itself — a "contract about contracts" that ensures the quality gate system is self-consistent.
+
+Key equations:
+- **work_lifecycle**: Planned→InProgress→Review→Completed state machine (matches `ItemStatus` enum)
+- **meyer_triad**: require/ensure/invariant clause checking at Start/Checkpoint/Complete phases
+- **checkpoint_verification**: idempotent invariant checking with score delta from baseline
+- **falsifiable_claim**: 22 Popperian claims with deterministic verdicts
+- **override_accountability**: `--override-claims` requires `--ticket` for accountability
+- **rescue_protocol**: Meyer Section 11 bounded retry strategies
+
+Score: **0.88 (B)** with binding (D2=1.00, D3=0.96). The contract has 10 falsification tests, 10 proof obligations, and 10 kani harnesses.
 
 Every repo has at least one domain-specific contract with preconditions beyond placeholder `!input.is_empty()` patterns. CB-1210 precondition diversity holds at 86% fleet-wide.
 
