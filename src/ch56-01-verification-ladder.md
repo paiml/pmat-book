@@ -249,11 +249,11 @@ This is the authoritative list of files PMAT reads when scoring the ladder. Each
 
 | Path | Shape | Writer | CB checks that read it |
 |------|-------|--------|-------|
-| `.pmat-work/<ID>/contract.json` | Full `WorkContract` struct (see `work_contract_core.rs`) | `pmat work start`, `pmat work bind` | Every CB-16xx; ladder root |
+| `.pmat-work/<ID>/contract.json` | Full `WorkContract` struct (see `work_contract_core.rs`) | `pmat work start` (with `--implements <CONTRACT>/<EQUATION>` for binding) | Every CB-16xx; ladder root |
 | `.pmat-work/<ID>/verification-report.json` | `{ target_level, achieved_level, l1_test_evidence }` | `pmat work verify` | CB-1612 (L1 test), CB-1619 (target==achieved) |
 | `.pmat-work/<ID>/falsification.log` | JSONL, 4-field shape | Component 29 unified falsification runner | CB-1613 L3, CB-1622 coverage, CB-1625 inherited-fatal, CB-1628 shape, CB-1629 L4 timeout, CB-1608 cross-binding |
 | `.pmat-work/<ID>/kani-report.json` | `{ success: bool, harnesses, counterexamples }` | Component 24 Kani runner | CB-1605 binding, CB-1614 L4 |
-| `.pmat-work/<ID>/kani-harness-shas.json` | `{ harnesses: [{name, sha}] }` or `{ harnesses: {name: sha} }` | `pmat work bind` at bind time | CB-1615 drift |
+| `.pmat-work/<ID>/kani-harness-shas.json` | `{ harnesses: [{name, sha}] }` or `{ harnesses: {name: sha} }` | `pmat work start --implements` at bind time | CB-1615 drift |
 | `.pmat-work/<ID>/lean-proof.json` | `{ sorry_count: int, theorem, verified_at }` | Component 24 Lean runner | CB-1606, CB-1616, CB-1648, CB-1649 |
 | `.pmat-work/<ID>/checkpoints/*.json` | `{ timestamp, verification_level, … }` | Checkpoint writer (Component 28) | CB-1618 monotonicity |
 | `.pmat-work/<ID>/agent-runs/<run_id>.json` | `{ prompt_sha, tool_calls: [], commit_sha }` | Component 10 agent writer | CB-1644 replayability |

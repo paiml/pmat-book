@@ -208,7 +208,7 @@ CB-1614: L4 Kani Evidence: No L4+ ticket has a `kani-report.json` yet (2 eligibl
 ```
 CB-1615: Kani Harness SHA: No L4+ ticket has `kani-harness-shas.json` yet (2 eligible)
 ```
-→ `pmat work bind` isn't writing the bind-time snapshot file yet.
+→ The bind step (`pmat work start --implements`) isn't writing the bind-time snapshot file yet; the dedicated `pmat work bind` subcommand that will own this artifact is planned but not shipped.
 
 ```
 CB-1618: Level Monotonicity: No checkpoint records the `verification_level` field yet

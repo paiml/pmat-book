@@ -1,4 +1,4 @@
-# Agent Workflow: From `pmat work bind` to CB-1620 Cutoff
+# Agent Workflow: From `pmat work start --implements` to CB-1620 Cutoff
 
 *Deep dive: Chapter 56, Section 3*
 
@@ -64,10 +64,10 @@ All informational. The checks are live but there's nothing yet to check.
 
 ## Step 2: Bump Target Level and Bind
 
-Edit `.pmat-work/PMAT-301/contract.json` to set `"verification_level": "L4"` (or use `pmat work retarget --level L4`), then bind:
+In v3.14.0 the binding step is folded into `pmat work start` via the repeatable `--implements <CONTRACT>/<EQUATION>` flag. A standalone `pmat work bind` subcommand is planned for a follow-up release; today, re-run `start` (or the alias `begin`) with `--implements` to establish the binding, and edit `.pmat-work/PMAT-301/contract.json` directly to promote `verification_level` to `"L4"`:
 
 ```bash
-pmat work bind PMAT-301 --implements rope-kernel-v1/rope
+pmat work start PMAT-301 --implements rope-kernel-v1/rope
 ```
 
 What happens inside the bind step (see `work_contract_binding.rs`):
@@ -390,7 +390,7 @@ fn cb1620_fail_mode_cutoff() -> NaiveDate {
 
 CB-1620 enforces that every binding has matching `ProvableContract{}` entries per YAML `falsification_tests[]` id. This is not a "writer is pending" situation — the evidence (roster entries) is always present on every bound ticket. The question is whether it has the right shape.
 
-Before v3.14.0, `pmat work bind` did not seed `ProvableContract{}` entries automatically. Every ticket bound between, say, v3.10.0 and v3.14.0 has an empty roster — it was bound cleanly under the old behavior, but the new CB-1620 check reads a spec that didn't exist at bind time.
+Before v3.14.0, the bind step did not seed `ProvableContract{}` entries automatically. Every ticket bound between, say, v3.10.0 and v3.14.0 has an empty roster — it was bound cleanly under the old behavior, but the new CB-1620 check reads a spec that didn't exist at bind time.
 
 If CB-1620 had shipped as Fail-on-day-one, every legacy ticket in every repo in the fleet would have failed compliance on the v3.14.0 release day. That would have been unmissable — and also unfair, because the author did nothing wrong.
 
@@ -450,9 +450,9 @@ This closes the loop: CB-1644 ensures the evidence is *recorded*; Renacer ensure
 | Step | Gate transitions |
 |------|------------------|
 | 1. `pmat work start` | CB-1610 Pass (parseable level), others remain Skip |
-| 2. `pmat work bind` | CB-1601, CB-1603, CB-1607, CB-1609, CB-1611, CB-1620, CB-1621, CB-1623, CB-1626 → Pass |
-| 3. `pmat work verify` | CB-1612, CB-1619 → Pass (at current achieved level) |
-| 4. `pmat work codegen` | CB-1630, CB-1631, CB-1632, CB-1633, CB-1634, CB-1636, CB-1638 → Pass |
+| 2. `pmat work start --implements` | CB-1601, CB-1603, CB-1607, CB-1609, CB-1611, CB-1620, CB-1621, CB-1623, CB-1626 → Pass |
+| 3. `pmat work verify` (planned) | CB-1612, CB-1619 → Pass (at current achieved level) |
+| 4. `pmat work codegen` (planned) | CB-1630, CB-1631, CB-1632, CB-1633, CB-1634, CB-1636, CB-1638 → Pass |
 | 5. `pmat work falsify` | CB-1613, CB-1622, CB-1625, CB-1628 → Pass |
 | 6. `pmat work kani` | CB-1605, CB-1614, CB-1615, CB-1629 → Pass |
 | 7. `pmat work complete` | CB-1619 re-checked with `achieved == target` |
