@@ -104,6 +104,10 @@
 
 - [Chapter 66: Kaizen Roadmap — R4 Research Tickets](ch66-00-kaizen-roadmap.md)
 
+## Part VI: Case Studies
+
+- [Chapter 67: Dogfooding pmat — 58 Defects in 5 Rounds](ch67-00-dogfooding.md)
+
 ## Conclusion
 
 - [Conclusion](conclusion.md)
