@@ -107,6 +107,7 @@
 ## Part VI: Case Studies
 
 - [Chapter 67: Dogfooding pmat — 58 Defects in 5 Rounds](ch67-00-dogfooding.md)
+- [Chapter 68: R7 Defect Remediation Patterns](ch68-00-r7-defect-remediation.md)
 
 ## Conclusion
 
