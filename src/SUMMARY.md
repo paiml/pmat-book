@@ -97,6 +97,8 @@
 - [Chapter 61: Infrastructure Score (pmat infra-score)](ch61-00-infra-score.md)
 - [Chapter 62: Provable Contracts (CB-1200 to CB-1214)](ch62-00-provable-contracts.md)
 - [Chapter 63: DbPC Scaffolding (CB-1900 to CB-1949)](ch63-00-dbpc-scaffolding.md)
+- [Chapter 64: MCP Mode — pmat as an MCP Server](ch64-00-mcp-mode.md)
+- [Chapter 65: HTTP Server — Current State is a Stub](ch65-00-http-server.md)
 
 ## Conclusion
 
