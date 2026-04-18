@@ -700,3 +700,117 @@ The `pmat cuda-tdg` command no longer hard-fails in default report mode. Quality
 - **DR-05**: `version.workspace = true` in workspace members no longer triggers a false "Version true does not follow semver" failure.
 - **validate-docs**: No longer crashes when a directory has a `.md` extension (e.g., `.pmat-work/docs/specifications/pmat-spec.md/`).
 - **perfection-score**: Total score is now clamped to 200.0 maximum, preventing display of scores like 200.2/200.0.
+
+## What Changed in v3.14.0
+
+### Contract-First Binding Lifecycle (CB-1600..1649)
+
+Version 3.14.0 adds **50 new `pmat comply check` gates** spanning Components 27-31 of the PMAT work-contract binding lifecycle. Together they audit that every `.pmat-work/<ID>/contract.json` ticket stays anchored to real provable-contracts YAML — from the moment a binding is declared through Kani / Lean discharge.
+
+#### How Skip Semantics Work
+
+All CB-16xx checks follow a **tiered skip-if-absent** policy: if the upstream writer that produces the evidence (for example `.pmat-work/<ID>/kani-harness-shas.json`, `falsification.log`, or `contracts/work/<ID>.manifest.json`) has not yet landed, the check returns `Skip` with a tiered informational message rather than `Fail`. This is deliberate — it lets the enforcement gates ship before their corresponding writers, and the check automatically lights up the moment the evidence file starts being written. A `Skip` from one of these checks is **not** a failure; it just means the infrastructure on the producing side is still being built out.
+
+#### Component 27: Binding Scope (CB-1600..1609)
+
+Audits every `ContractBinding` declared in a ticket's `implements:` array for internal consistency and anchoring against the referenced YAML.
+
+| Check | Level | Semantic | Skip-if-absent | Fail mode |
+|-------|-------|----------|----------------|-----------|
+| CB-1600 | L1 | Orphan detection: staged files with `#[pmat_work_contract]` attributes must be covered by an active ticket's `implements:` roster | No ticket directories | Unbound staged file |
+| CB-1601 | L1 | YAML SHA drift: ticket's recorded SHA must match the current bytes of every cited contract YAML | No bindings | Bytes drifted since bind |
+| CB-1602 | L1 | Unbind ledger audit: every `.pmat-work/ledger/unbinds.json` entry must cite a DEBT ticket | Ledger file absent | Entry missing debt reference |
+| CB-1603 | L3 | Inherited clause integrity: `contract.require` must contain every YAML-declared precondition of each bound equation | No bindings | Missing inherited precondition |
+| CB-1604 | L2 | Postcondition weakening: `inherited_postconditions` must be preserved (strengthened or equal) in `ensure:` — delegates to `validate_subcontracting()` | No inherited postconditions | Postcondition weakened or dropped |
+| CB-1605 | L4 | Kani harnesses: every `kani_harnesses[]` declared in YAML must appear with `success: true` in `.pmat-work/<ID>/kani-report.json` | No harness decls or no reports yet | Harness missing or failing |
+| CB-1606 | L5 | Lean theorem gating: bindings whose YAML `lean_theorem.status != "proved"` require a `BLOCK-ON-PROOF` follow-up in `contract.json` | No `lean_theorem:` blocks anywhere | Unproved theorem without block |
+| CB-1607 | L3 | Equation identifier resolves in referenced YAML | No bindings | `equation:` absent from YAML |
+| CB-1608 | L1 | Cross-binding consistency: multi-bind tickets cannot mix passing and failing per-binding `falsification.log` entries | No falsification log | Mixed pass/fail across bindings |
+| CB-1609 | L1 | Cited YAML file must be tracked in git | No bindings | YAML untracked / outside index |
+
+#### Component 28: Work Ladder (CB-1610..1619)
+
+Audits the typed verification ladder (L0..L5) — the single ordinal that says *how strongly* a claim is discharged. Uses the weakest-binding-dominates rule (Liskov-Wing) to determine the max attainable level for a ticket.
+
+**L1..L5 ladder**
+
+| Level | Required evidence |
+|-------|-------------------|
+| L0 | No claim (ticket didn't enter the ladder) |
+| L1 | Runtime asserts / unit tests pass (`verification-report.json` with `l1_test_evidence`) |
+| L2 | Codegen-wrapped preconditions + postconditions in place |
+| L3 | Falsification suite clean (all `falsification.log` lines `status: "pass"`) |
+| L4 | Kani bounded model checking discharges every harness (`kani-report.json` with `success: true`, no `status: "timeout"` in falsification log) |
+| L5 | Lean 4 theorem proved with `sorry_count == 0` in `lean-proof.json` |
+
+| Check | Level | Semantic | Skip-if-absent | Fail mode |
+|-------|-------|----------|----------------|-----------|
+| CB-1610 | L1 | `verification_level` string parses to a known variant | No tickets | Unknown level token |
+| CB-1611 | L1 | Target level ≤ max attainable level across all bound YAML equations | No tickets | Ticket claims higher than bindings support |
+| CB-1612 | L3 | L1 test evidence: `verification-report.json` carries `l1_test_evidence` with success/exit-code/status shape | `pmat work verify` hasn't recorded it | Evidence shape invalid |
+| CB-1613 | L3 | L3+ `falsification.log` lines must all be `status: "pass"` | No tickets or no log | Any failing line |
+| CB-1614 | L4 | L4+ completion requires `kani-report.json` with `success: true` | Component 24 runner absent | Harness missing or failing |
+| CB-1615 | L4 | Kani harness SHA matches bind-time snapshot (`kani-harness-shas.json`) | No snapshot written yet | Harness body edited post-bind |
+| CB-1616 | L5 | L5 completion requires `lean-proof.json` with `sorry_count == 0` | Component 24 Lean runner absent | Proof contains `sorry` |
+| CB-1617 | L3 | Downgrade without `--reason` forbidden (ledger audit) | No downgrades in ledger | Ledger entry missing reason |
+| CB-1618 | L1 | Level monotonicity: a ticket cannot drop level across checkpoints without an audited downgrade ledger entry | No checkpoint writer yet | Unaudited level drop |
+| CB-1619 | L3 | On completion, achieved level == target level | No completed tickets | Completion below target |
+
+#### Component 29: Falsification Unification (CB-1620..1629)
+
+Bridges the bespoke `FalsificationMethod` enum with per-equation `falsification_tests[]` arrays in the YAML. A ticket bound to a YAML equation automatically inherits `FalsificationMethod::ProvableContract{}` entries — one per YAML test.
+
+> **Migration cutoff — 2026-05-17.** CB-1620 (inherited roster coverage) ships as a **Warn** through the migration window so existing tickets can backfill their roster without immediately going red. **On 2026-05-17 it auto-promotes to Fail** — the cutoff is hard-coded in `check_falsification_unification_roster.rs`. Make sure every bound ticket's `claims` array has a `ProvableContract{}` entry per YAML `falsification_tests[]` id *before* that date.
+
+| Check | Level | Semantic | Skip-if-absent | Fail mode |
+|-------|-------|----------|----------------|-----------|
+| CB-1620 | L1 | Every binding has matching `ProvableContract{}` entries per YAML `falsification_tests[]` id | No bindings | **Warn until 2026-05-17, Fail after** — missing inherited entries |
+| CB-1621 | L1 | `ProvableContract{expected}` snapshot must match current YAML scalar `expected:` value | YAML `expected:` is mapping/list shape (per-entry skip) | Silent drift since bind |
+| CB-1622 | L3 | Every `ProvableContract` roster entry has ≥1 execution line in `.pmat-work/<ID>/falsification.log` | Log not written yet | Roster entry never executed |
+| CB-1623 | L3 | No duplicate `(yaml_path, test_id)` across a ticket's roster | No bindings | Duplicate roster entry |
+| CB-1624 | L1 | Manual deletion audit: any `action: "delete"` in `.pmat-work/ledger/roster-mutations.json` must carry `via_unbind: true` | Ledger file absent | Deletion without unbind flag |
+| CB-1625 | L3 | Any inherited log line with `status != "pass"` is fatal regardless of ticket level | No log | Any non-pass inherited line |
+| CB-1626 | L1 | Referenced `test_id` exists in the YAML at scan time | No bindings | `test_id` drifted / removed from YAML |
+| CB-1627 | L3 | Post-bind YAML drift: warn when current YAML `falsification_tests[]` has IDs not seeded into the ticket's roster | No bindings | New YAML test not backfilled |
+| CB-1628 | L3 | Every inherited log line carries the 4-field shape `{yaml, test_id, status, duration_ms}` | No log | Lines silently dropped post-runner |
+| CB-1629 | L4 | L4+ tickets must not record any `status: "timeout"` line in their falsification log | No L4+ tickets / no log | Kani-adjacent timeout defeats L4 claim |
+
+#### Component 30: Codegen (CB-1630..1639)
+
+`pmat work codegen` emits `contracts/work/<ID>.rs` modules of `debug_assert!` macros from contract.json clauses, and a `#[pmat_work_contract(id = "...", require = "R1", ensure = "E1")]` attribute wraps the target function so the generated preconditions/postconditions actually run at call sites.
+
+> **CB-1634 tightening (v3.14.0).** The gate now requires **both** the clause-level `expr` → `binds_to` pairing *and* the wearing `#[pmat_work_contract(id = "<TICKET>")]` attribute on a function in `src/`. A contract clause with `expr` but no `binds_to` is an orphaned codegen input — the generator has no target. A `binds_to` target that isn't wrapped by the attribute means the generated asserts are never invoked at runtime. Both conditions must be satisfied.
+
+| Check | Level | Semantic | Skip-if-absent | Fail mode |
+|-------|-------|----------|----------------|-----------|
+| CB-1630 | L2 | Most recent `pmat work codegen` run succeeded (`codegen/last-run.json`) | Receipt absent | exit_code != 0 / status != pass |
+| CB-1631 | L2 | Every `#[pmat_work_contract(id = X)]` in `src/` has a `contracts/work/X.rs` | No attribute usages | Missing generated module |
+| CB-1632 | L2 | Attribute's `require = "Y"` / `ensure = "Y"` IDs match a clause id in the referenced ticket's contract.json | No attribute usages | Clause id not found |
+| CB-1633 | L3 | `contracts/work/<ID>.manifest.json` SHA-256 entries match current bytes on disk | Manifests not emitted yet | SHA drift detected |
+| CB-1634 | L3 | Every `expr` clause has `binds_to` **and** every ticket with `expr`+`binds_to` clauses has ≥1 `#[pmat_work_contract(id = "<TICKET>")]` usage in `src/` | No clause has `expr` yet | Orphaned `expr` / missing attribute |
+| CB-1635 | L3 | Every `binds_to: "crate::a::b::c"` target maps to a file in `.pmat-work/<ID>/modified-files.json` | Work CLI not emitting diff receipts | Target file not in diff |
+| CB-1636 | L3 | `codegen/compile-status.json` reports generated macros compile in both debug and release | Receipt absent | Either profile failed |
+| CB-1637 | L2+ | Every modified `.rs` file declaring `pub fn` carries a `#[pmat_work_contract(id = X)]` attribute | No L2+ tickets / no modified-files.json | Public fn left unwrapped |
+| CB-1638 | L3 | Generated `contracts/work/*.rs` modules are tracked in git | No generated modules | Ungenerated / untracked |
+| CB-1639 | L4+ | Every L4+ ticket's `kani_harnesses[]` names resolve to a harness body in `kani/`, `tests/`, `harnesses/`, or `src/` that references `contracts::work::<ID>` or the attribute | Kani integration absent | Harness name doesn't resolve |
+
+#### Component 31: CoT Proof Derivation (CB-1640..1649)
+
+Restructures each `chain_of_thought` step as a typed node with `assumption`, `implication`, `evidence_method`, and `discharged_by`, then auto-derives proof obligations, falsification claims, and require/ensure clauses. The checks read hypothetical structured fields via `serde_json::Value` introspection so they are safe against today's legacy `{ step, question, answer }` shape and light up automatically once authors emit the new schema.
+
+| Check | Level | Semantic | Skip-if-absent | Fail mode |
+|-------|-------|----------|----------------|-----------|
+| CB-1640 | L3 | `assumption.references` resolve to prior step ids / implications, bound equation names, or axiomatic discharge (exact-string fallback when semantic-search vocabulary absent) | No structured steps | Dangling reference |
+| CB-1641 | L3 | Every step with structured fields has an `evidence_method` | No structured steps | Structured step without evidence |
+| CB-1642 | L1 | `evidence_method = ExistingTest` path/name resolves on disk | No `ExistingTest` steps | Test file / name not found |
+| CB-1643 | L3 | L3+ tickets: every structured step has `assumption.expr` or `implication.expr` | No L3+ tickets / no structured steps | Structured step missing codegen-ready expr |
+| CB-1644 | L1 | `.pmat-work/<ID>/agent-runs/<run_id>.json` entries carry the replay schema (`prompt_sha`, `tool_calls`, `commit_sha`) | Component 10 writer absent | Replay field missing |
+| CB-1645 | L3 | Derived `contracts/work/<ID>.yaml` is up-to-date with contract.json preconditions/postconditions | No derived YAML | Derived YAML stale |
+| CB-1646 | L1 | `.pmat-work/<ID>/cot-digest.json` SHA matches the canonical hash of `chain_of_thought` (detects manual edits that bypass `pmat work cot derive`) | Digest absent | Manual edit drift |
+| CB-1647 | L3 | No orphan steps — every step chains via `discharged_by` | No structured steps | Unchained step |
+| CB-1648 | L4 | Every `Axiomatic` discharge in an L4+ ticket is either a bound equation invariant or a documented lemma (non-empty `reason` prose) | No L4+ axiomatic discharges | Undocumented axiomatic |
+| CB-1649 | L5 | Every structured step in an L5 ticket carries a Lean theorem/lemma mapping via `lean_theorem`, `lean_lemma`, `evidence_method.LeanTheorem`/`LeanLemma`, or `discharged_by.Lean` | No L5 tickets | Step missing Lean mapping |
+
+#### Reading the Reports
+
+In `--format json` output, CB-16xx checks appear in the `checks` array alongside existing gates. A clean repo with none of the upstream infrastructure yet produces a long run of `Skip` entries — that is the expected baseline. As Components 24 (Kani/Lean runners), 10 (agent-run writer), and the `pmat work codegen` / `pmat work cot derive` CLIs ship, those `Skip`s convert to `Pass`/`Warn`/`Fail` without any additional configuration on the consumer side.
