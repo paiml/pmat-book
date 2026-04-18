@@ -100,6 +100,10 @@
 - [Chapter 64: MCP Mode — pmat as an MCP Server](ch64-00-mcp-mode.md)
 - [Chapter 65: HTTP Server — Current State is a Stub](ch65-00-http-server.md)
 
+## Part V: Roadmap
+
+- [Chapter 66: Kaizen Roadmap — R4 Research Tickets](ch66-00-kaizen-roadmap.md)
+
 ## Conclusion
 
 - [Conclusion](conclusion.md)
