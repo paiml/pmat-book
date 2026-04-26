@@ -10,8 +10,8 @@
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2025-10-26*  
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-04-26*  
+*PMAT version: pmat 3.16.0*
 <!-- DOC_STATUS_END -->
 
 ## Installation Methods
