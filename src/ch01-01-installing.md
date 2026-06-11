@@ -1,164 +1,54 @@
 # Installing PMAT
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (7/7 methods)
+**Chapter Status**: ✅ 100% Working (1/1 methods)
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 7 | All installation methods tested |
+| ✅ Working | 1 | `cargo install pmat` |
 | ⚠️ Not Implemented | 0 | Planned for future versions |
 | ❌ Broken | 0 | Known issues, needs fixing |
 | 📋 Planned | 0 | Future roadmap features |
 
-*Last updated: 2026-04-26*  
-*PMAT version: pmat 3.16.0*
+*Last updated: 2026-06-11*  
+*PMAT version: pmat 3.18.0*
 <!-- DOC_STATUS_END -->
 
-## Installation Methods
+## Installation
 
-PMAT is available through multiple package managers and installation methods. Choose the one that best fits your environment.
-
-### Method 1: Cargo (Recommended)
-
-The recommended installation method for all platforms:
+PMAT is installed from [crates.io](https://crates.io/crates/pmat) with Cargo.
+**This is the single supported install method** — one way, no scripts, no
+hand-managed binaries.
 
 ```bash
 cargo install pmat
 ```
 
-**Prerequisites**: Rust 1.80+ installed via [rustup.rs](https://rustup.rs)
+**Prerequisites**: Rust 1.80+ installed via [rustup.rs](https://rustup.rs).
 
-**Advantages**:
-- Always gets the latest version
-- Automatic compilation optimization for your CPU
-- Works on all platforms
+This installs the `pmat` binary to `~/.cargo/bin/pmat` (which rustup adds to your
+`PATH`). It always builds the latest published version, optimized for your CPU,
+on every platform.
 
-### Method 2: Homebrew (macOS/Linux)
+### From source (latest unreleased)
 
-For macOS and Linux users with Homebrew:
-
-```bash
-brew install pmat
-```
-
-**Verification**:
-```bash
-brew list pmat
-pmat --version
-```
-
-### Method 3: npm (Node.js)
-
-Install globally via npm:
-
-```bash
-npm install -g pmat-agent
-```
-
-**Usage**:
-```bash
-pmat-agent --version
-pmat-agent analyze .
-```
-
-### Method 4: Docker
-
-Run without installation using Docker:
-
-```bash
-# Pull the image
-docker pull paiml/pmat:latest
-
-# Run analysis on current directory
-docker run -v $(pwd):/workspace paiml/pmat analyze /workspace
-```
-
-**Alias for convenience**:
-```bash
-alias pmat='docker run -v $(pwd):/workspace paiml/pmat'
-```
-
-### Method 5: Debian Package (Ubuntu/Debian)
-
-Install via Debian package (recommended for Ubuntu/Debian users):
-
-```bash
-# Download the .deb package
-wget https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v2.213.1/pmat_2.213.1_amd64.deb
-
-# Install
-sudo dpkg -i pmat_2.213.1_amd64.deb
-
-# Verify installation
-pmat --version
-```
-
-**Dependencies** (automatically installed):
-- libc6 (>= 2.34)
-- libgcc-s1 (>= 4.2)
-- libssl3 (>= 3.0.0)
-
-### Method 6: Binary Download
-
-Download pre-compiled binaries from GitHub:
-
-```bash
-# Linux x86_64
-curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/pmat-linux-x86_64 -o pmat
-chmod +x pmat
-sudo mv pmat /usr/local/bin/
-
-# macOS ARM64
-curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/pmat-darwin-aarch64 -o pmat
-chmod +x pmat
-sudo mv pmat /usr/local/bin/
-
-# Windows
-# Download pmat-windows-x86_64.exe from releases page
-```
-
-### Method 7: Build from Source
-
-For latest development version:
+To install the in-development version directly from a checkout:
 
 ```bash
 git clone https://github.com/paiml/paiml-mcp-agent-toolkit
 cd paiml-mcp-agent-toolkit
-cargo build --release
-sudo cp target/release/pmat /usr/local/bin/
+cargo install --path .
 ```
 
-### Method 8: Package Managers (Platform Specific)
-
-#### Windows - Chocolatey
-```powershell
-choco install pmat
-```
-
-#### Arch Linux - AUR
-```bash
-yay -S pmat
-# or
-paru -S pmat
-```
-
-#### Ubuntu/Debian - APT
-
-Native APT packages are planned. For now, use the cargo install method:
-
-```bash
-# Install via cargo (recommended)
-cargo install pmat
-```
+This uses the same Cargo path — it does **not** introduce a second install
+location.
 
 ## Verification
-
-After installation, verify PMAT is working:
 
 ```bash
 # Check version
 pmat --version
-# Output: pmat 2.213.1
+# Output: pmat 3.18.0
 
 # Show help
 pmat --help
@@ -168,49 +58,28 @@ echo "print('Hello PMAT')" > test.py
 pmat analyze test.py
 ```
 
-## Troubleshooting
+## Upgrading
 
-### Issue: Command not found
-
-**Solution**: Add installation directory to PATH
 ```bash
-# Cargo installation
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# npm installation  
-export PATH="$(npm prefix -g)/bin:$PATH"
-```
-
-### Issue: Permission denied
-
-**Solution**: Use proper permissions
-```bash
-# Unix/Linux/macOS
-chmod +x /usr/local/bin/pmat
-
-# Or reinstall with sudo
-sudo cargo install pmat
-```
-
-### Issue: Old version installed
-
-**Solution**: Update to latest
-```bash
-# Cargo
 cargo install pmat --force
-
-# Homebrew
-brew upgrade pmat
-
-# npm
-npm update -g pmat-agent
 ```
+
+## Pre-flight verification (`pmat verify`)
+
+Before committing changes to a Rust project, run the CI-faithful pre-flight gate:
+
+```bash
+pmat verify --format json
+```
+
+It runs **format, complexity, satd, clippy, tests** fail-fast — the exact set CI
+enforces — so you get a "green here ⇒ green in CI" signal before pushing. See
+[Pre-commit Hooks Management](ch09-00-precommit-hooks.md).
 
 ## Feature Flags (Optional)
 
-PMAT supports optional features that can be enabled at compile time. These features add additional functionality but also add dependencies.
-
-### Available Features
+PMAT supports optional features enabled at compile time. They add functionality
+and dependencies.
 
 | Feature | Description | Dependencies Added |
 |---------|-------------|-------------------|
@@ -218,44 +87,23 @@ PMAT supports optional features that can be enabled at compile time. These featu
 | `github-api` | GitHub API integration via octocrab | ~255 deps |
 | `analytics-simd` | SIMD-accelerated analytics | platform-specific |
 
-### Installing with Features
-
 ```bash
-# Default installation (no optional features)
+# Default (no optional features)
 cargo install pmat
 
-# With git-lib feature (recommended for heavy git operations)
+# With a feature
 cargo install pmat --features git-lib
 
-# With GitHub API feature (for GitHub-specific operations)
-cargo install pmat --features github-api
-
-# With multiple features
+# Multiple features
 cargo install pmat --features "git-lib,github-api"
 
-# With all features
+# All features
 cargo install pmat --all-features
 ```
 
-### Feature Details
-
-#### git-lib
-
-The `git-lib` feature uses libgit2 instead of shell `git` commands for git operations. This provides:
-- Faster git operations (no process spawning)
-- Better error handling
-- More git features available
-
-Without this feature, PMAT uses shell `git` commands as a fallback, which works on any system with git installed.
-
-#### github-api
-
-The `github-api` feature enables GitHub-specific operations like:
-- Repository size checking before clone
-- GitHub API rate limit awareness
-- Private repository access (with token)
-
-This feature requires the `GITHUB_TOKEN` environment variable for authenticated requests.
+Without `git-lib`, PMAT shells out to `git` (works on any system with git).
+`github-api` enables repo-size checks and rate-limit awareness, and reads
+`GITHUB_TOKEN` for authenticated requests.
 
 ## System Requirements
 
@@ -265,6 +113,22 @@ This feature requires the `GITHUB_TOKEN` environment variable for authenticated 
 - **Disk**: 100MB for binary, 1GB for build cache
 - **Runtime**: None (statically linked)
 
+## Troubleshooting
+
+### Command not found
+
+Ensure Cargo's bin directory is on your `PATH`:
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+### Old version installed
+
+```bash
+cargo install pmat --force
+```
+
 ## Next Steps
 
-Now that PMAT is installed, let's run your first analysis in the [next section](ch01-02-first-analysis-tdd.md).
+With PMAT installed, continue to [First Analysis](ch01-02-first-analysis-tdd.md).
