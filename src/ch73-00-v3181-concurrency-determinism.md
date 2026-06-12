@@ -123,6 +123,7 @@ pre-existing defects. v3.18.2 (same day) fixed all of them:
 | `qdd validate` | ANSI header before JSON; `--output` claimed to write a report it never wrote | Header gated; report actually written before the notice |
 | `falsify` | `--format json` accepted, silently ignored | Implemented for dry-run and full runs, honors `--failures-only` |
 | `enforce extreme --file` | Single-file mode analyzed all 2,717 project files | `AnalysisScope` threads the file through every phase |
+| TDG penalty ordering | `penalties_applied` reordered between identical runs (HashMap in `PenaltyTracker`) — caught when the re-dogfood's byte-identical baseline check flaked | BTreeMap keyed by issue id; 4/4 runs byte-identical |
 
 The fix diff went through the same adversarial review as 3.18.1 — and again
 it caught a contract violation in the fix itself: `check-quality --format
