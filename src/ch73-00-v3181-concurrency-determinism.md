@@ -133,3 +133,30 @@ calls each printed their own document. The review's JSON-contract lens traced
 every `println!` reachable in JSON mode across all six surfaces and found the
 one conditional path the new tests didn't cover. The shipped fix merges both
 gate verdicts into a single document.
+
+## The MCP Pass: Validating the Agent-Facing Surface
+
+Before release, all 20 live MCP tools were validated over real stdio
+JSON-RPC the way a fleet of workflow agents uses them: every tool called
+with schema-derived arguments, two 8-way concurrent-session bursts (zero
+lock errors, zero scratch leftovers — the concurrency fixes hold through
+MCP), and byte-level framing checks (no non-JSON-RPC stdout anywhere). The
+SDK was bumped to the latest pmcp (2.3.0 → 2.9.0) with the full MCP test
+suite green.
+
+Five confirmed defects were fixed, the worst being an **index source-wipe**:
+every incremental index save rewrote the SQLite DB from lightweight-loaded
+entries whose `source` column was never read, so each save wiped source for
+all unchanged functions until the entire index (21k rows) returned empty
+source — silently breaking the documented agent workflow (`pmat_get_function`,
+`--include-source`). A second bug hid the first: the incremental path dropped
+`db_path`, so the on-demand backfill that would have masked the wipe
+early-returned. Four months of "use the index, not Read/grep" guidance ran
+on a dead path. The fix restores source before each rewrite, propagates
+`db_path`, self-heals wiped DBs, and pins it all with regression tests.
+
+Also fixed: an inverted `passed` verdict in the `quality_gate` tool (and the
+same Grade-ordering inversion in CLI `--min-grade`), three tools advertising
+empty schemas that made them uncallable by schema-validating clients,
+`pdmt_deterministic_todos` generating random UUIDs, and the stdio server
+never exiting on stdin EOF (one leaked process per scripted session).
