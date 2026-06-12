@@ -124,6 +124,10 @@ A **baseline** is a snapshot of your codebase's quality at a specific point in t
 ```bash
 cd /path/to/your/project
 pmat tdg baseline create --output .pmat/tdg-baseline.json --path src/
+
+# Optionally label the baseline (v3.18.1+; round-trips through save/load,
+# shown in `tdg baseline list --format json`, preserved by `baseline update`)
+pmat tdg baseline create --output .pmat/tdg-baseline.json --path src/ --name pre-refactor
 ```
 
 **Expected Output**:
@@ -148,6 +152,16 @@ pmat tdg baseline create --output .pmat/tdg-baseline.json --path src/
 - **Medium projects** (100-500 files): 1-5 minutes
 - **Large projects** (500-2000 files): 5-15 minutes
 - **PMAT-scale** (851 files): ~10 minutes
+
+**Concurrency & determinism (v3.18.1+)**:
+- Baseline JSON is deterministic — `files`, `grade_distribution`, and
+  `languages` serialize with sorted keys, so two runs on the same tree are
+  byte-identical modulo `created_at`. Pre-3.18.1 baselines load unchanged.
+- `baseline create`/`update` writes are atomic (scratch-then-rename), so a
+  concurrent reader never observes a partial baseline.
+- `check-regression`, `baseline compare`, and `check-quality` use
+  process-unique ephemeral paths; concurrent pmat invocations on one machine
+  no longer overwrite each other's in-flight comparison state.
 
 ### Step 2: Install Git Hooks
 
