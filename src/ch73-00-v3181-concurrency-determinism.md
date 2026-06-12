@@ -108,3 +108,27 @@ Each fix ships with a regression test, including threaded lost-update tests
 (8 concurrent recorders, 8 surviving observations) and a sorted-key-order
 assertion that fails a `HashMap` revert deterministically rather than the
 ~97% of the time plain JSON equality would.
+
+## The 3.18.2 Follow-Up: Fixing What the Dogfood Found
+
+The 111-command dogfood that validated 3.18.1 also catalogued seven
+pre-existing defects. v3.18.2 (same day) fixed all of them:
+
+| Surface | Defect | Fix |
+|---------|--------|-----|
+| `perfection-score` | RPS raw points divided by a stale hardcoded 134.0 scale → "184%" → total clamped to 200/200 A+ | Normalize by the orchestrator-reported `total_possible`; categories clamp to `[0, max]` |
+| `semantic search` | "Found 3 results", zero rows rendered (empty embeddings store) | Count and rows derive from one result set; empty store yields explicit `pmat embed sync` guidance |
+| `tdg baseline list/compare`, `check-regression`, `check-quality` | Decorated banners and ephemeral-baseline progress polluted `--format json` stdout | JSON-mode stdout is exactly one document; decoration → stderr; `check-quality` merges both gates into `{gate, f_grade_gate, passed}` |
+| `oracle status/fix/single` | Banner before JSON | Gated on format |
+| `qdd validate` | ANSI header before JSON; `--output` claimed to write a report it never wrote | Header gated; report actually written before the notice |
+| `falsify` | `--format json` accepted, silently ignored | Implemented for dry-run and full runs, honors `--failures-only` |
+| `enforce extreme --file` | Single-file mode analyzed all 2,717 project files | `AnalysisScope` threads the file through every phase |
+
+The fix diff went through the same adversarial review as 3.18.1 — and again
+it caught a contract violation in the fix itself: `check-quality --format
+json` still emitted **two** concatenated JSON documents on exactly the path
+CI cares about (F-grade violations present), because two `display_gate_result`
+calls each printed their own document. The review's JSON-contract lens traced
+every `println!` reachable in JSON mode across all six surfaces and found the
+one conditional path the new tests didn't cover. The shipped fix merges both
+gate verdicts into a single document.

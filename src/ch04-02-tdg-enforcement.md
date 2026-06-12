@@ -162,6 +162,11 @@ pmat tdg baseline create --output .pmat/tdg-baseline.json --path src/ --name pre
 - `check-regression`, `baseline compare`, and `check-quality` use
   process-unique ephemeral paths; concurrent pmat invocations on one machine
   no longer overwrite each other's in-flight comparison state.
+- (v3.18.2+) `--format json` stdout is exactly one jq-parseable document for
+  `baseline list`, `baseline compare`, `check-regression`, and
+  `check-quality` — decoration goes to stderr. `check-quality` emits a single
+  combined `{"gate": ..., "f_grade_gate": ..., "passed": ...}` document
+  (previously two concatenated documents when F-grade violations existed).
 
 ### Step 2: Install Git Hooks
 
