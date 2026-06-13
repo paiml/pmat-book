@@ -15,13 +15,15 @@ The Sovereign Stack provides performance-critical infrastructure that PMAT uses 
 
 | Crate | Version | Purpose |
 |-------|---------|---------|
-| `aprender` | 0.24.0 | ML library with text similarity, clustering, topic modeling |
-| `trueno` | 0.11.0 | SIMD compute library for matrix operations |
-| `trueno-graph` | 0.1.7 | GPU-first graph database (CSR, PageRank, Louvain) |
-| `trueno-rag` | 0.1.8 | RAG pipeline with VectorStore |
-| `trueno-db` | 0.3.10 | Embedded analytics database |
-| `trueno-viz` | 0.1.17 | Terminal graph visualization |
-| `trueno-zram-core` | 0.3.0 | SIMD-accelerated compression (optional) |
+| `aprender` | 0.41 | ML library with text similarity, clustering, topic modeling |
+| `aprender-graph` | 0.41 | CSR graph database (PageRank, Louvain) |
+| `aprender-db` | 0.41 | Columnar analytics database (lib name `trueno_db`) |
+| `aprender-rag` | 0.41 | RAG pipeline with VectorStore |
+| `aprender-viz` | 0.41 | Terminal graph visualization |
+| `aprender-compute` | 0.41 | SIMD/GPU compute library for matrix operations (lib name `trueno`) |
+| `aprender-zram-core` | 0.41 | SIMD-accelerated LZ4/ZSTD compression (optional) |
+| `aprender-contracts` | 0.49 | Provable contracts (with `aprender-contracts-macros` 0.49) |
+| `pmcp` | 2.9 | MCP protocol SDK |
 
 ## Graph Algorithm Adapter
 
@@ -77,11 +79,11 @@ This replaced the `levenshtein` crate with a sovereign stack implementation.
 
 ## Compression (Optional)
 
-The `sovereign-compression` feature enables SIMD-accelerated LZ4 compression via trueno-zram-core:
+The `sovereign-compression` feature enables SIMD-accelerated LZ4 compression via aprender-zram-core:
 
 ```toml
 [dependencies]
-pmat = { version = "2.213", features = ["sovereign-compression"] }
+pmat = { version = "3.19.2", features = ["sovereign-compression"] }
 ```
 
 ```rust
@@ -93,7 +95,7 @@ let decompressed = decompress(&compressed)?;
 assert_eq!(data.as_slice(), decompressed.as_slice());
 ```
 
-The adapter handles trueno-zram-core's PAGE_SIZE (4KB) API by:
+The adapter handles aprender-zram-core's PAGE_SIZE (4KB) API by:
 1. Chunking large data into 4KB pages
 2. Compressing each page with SIMD LZ4
 3. Storing metadata for reconstruction

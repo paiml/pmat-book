@@ -488,7 +488,7 @@ jobs:
 ### Docker Deployment
 
 ```dockerfile
-FROM rust:1.80 as builder
+FROM rust:1.95 as builder
 WORKDIR /app
 COPY . .
 RUN cargo build --release

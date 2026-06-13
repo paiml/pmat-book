@@ -11,7 +11,7 @@
 | 📋 Planned | 0 | Future roadmap features |
 
 *Last updated: 2026-06-11*  
-*PMAT version: pmat 3.18.0*
+*PMAT version: pmat 3.19.2*
 <!-- DOC_STATUS_END -->
 
 ## Installation
@@ -24,7 +24,7 @@ hand-managed binaries.
 cargo install pmat
 ```
 
-**Prerequisites**: Rust 1.80+ installed via [rustup.rs](https://rustup.rs).
+**Prerequisites**: Rust 1.95+ installed via [rustup.rs](https://rustup.rs).
 
 This installs the `pmat` binary to `~/.cargo/bin/pmat` (which rustup adds to your
 `PATH`). It always builds the latest published version, optimized for your CPU,
@@ -48,7 +48,7 @@ location.
 ```bash
 # Check version
 pmat --version
-# Output: pmat 3.18.0
+# Output: pmat 3.19.2
 
 # Show help
 pmat --help
