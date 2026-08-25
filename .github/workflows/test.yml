@@ -8,6 +8,25 @@ on:
   workflow_dispatch:
 
 jobs:
+  documented-commands:
+    # POKA-YOKE, not a test: every `pmat` invocation the book PRINTS must resolve
+    # against the pmat it documents. One platform, because command existence is
+    # not platform-specific. Every PR, because a chapter added without a test is
+    # exactly how this book reached 171 unresolvable paths while its own suite
+    # was green.
+    #
+    # A RATCHET — the count may only go down — so it does not block work on a
+    # book that is already drifted, and does not let it drift further.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install PMAT
+      run: |
+        cargo install pmat
+        pmat --version
+    - name: Every documented command must exist
+      run: bash scripts/verify-documented-commands.sh
+
   test-examples:
     runs-on: ${{ matrix.os }}
     strategy:

@@ -1,7 +1,7 @@
 # PMAT Book Makefile
 # Quality Gates and Development Commands
 
-.PHONY: all build serve test clean lint validate help install-deps
+.PHONY: all build serve test clean lint validate help install-deps test-commands
 
 # Default target
 all: validate build
@@ -314,3 +314,9 @@ quality-gate:
 # Run all quality checks
 validate: test lint lint-markdown dogfood-pmat quality-gate
 	@echo "✅ All quality checks passed"
+# POKA-YOKE: every `pmat` command the book prints must exist in the pmat it
+# documents. A ratchet — the count of unresolvable paths may only go down.
+# Fails (exit 2) when pmat is absent rather than skipping: a gate that passes
+# when it cannot measure is how this book shipped 88 green MOCK_MODE assertions.
+test-commands:
+	@bash scripts/verify-documented-commands.sh
