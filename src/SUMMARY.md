@@ -20,6 +20,7 @@
   - [MCP Server Setup](ch03-01-mcp-setup.md)
   - [Available Tools](ch03-02-mcp-tools.md)
   - [Claude Code Integration](ch03-03-claude-integration.md)
+  - [Three Surfaces: CLI, MCP stdio, MCP over HTTP](ch03-04-mcp-transports.md)
 
 - [Chapter 4: Technical Debt Grading (TDG)](ch04-01-tdg.md)
   - [TDG Enforcement System](ch04-02-tdg-enforcement.md)
@@ -97,8 +98,8 @@
 - [Chapter 61: Infrastructure Score (pmat infra-score)](ch61-00-infra-score.md)
 - [Chapter 62: Provable Contracts (CB-1200 to CB-1214)](ch62-00-provable-contracts.md)
 - [Chapter 63: DbPC Scaffolding (CB-1900 to CB-1949)](ch63-00-dbpc-scaffolding.md)
-- [Chapter 64: MCP Mode — pmat as an MCP Server](ch64-00-mcp-mode.md)
-- [Chapter 65: HTTP Server — Current State is a Stub](ch65-00-http-server.md)
+- [Chapter 64: MCP Mode — pmat as an MCP Server (historical, 3.14.0)](ch64-00-mcp-mode.md)
+- [Chapter 65: HTTP Server — the 3.14.0 Stub (historical)](ch65-00-http-server.md)
 
 ## Part V: Roadmap
 

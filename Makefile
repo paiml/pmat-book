@@ -85,9 +85,12 @@ test-ch02:
 test-ch03:
 	@echo "🧪 Testing Chapter 3 examples..."
 	@mkdir -p test-results/ch03
-	@chmod +x tests/ch03/test_simple.sh
+	@chmod +x tests/ch03/test_simple.sh tests/ch03/test_04_mcp_transports.sh
 	@echo "Running Chapter 3 MCP TDD validation..."
 	@tests/ch03/test_simple.sh > test-results/ch03/test_simple.log 2>&1 || { cat test-results/ch03/test_simple.log; exit 1; }
+	@echo "Running Chapter 3.4 MCP transport tests (CLI / stdio / HTTP)..."
+	@tests/ch03/test_04_mcp_transports.sh > test-results/ch03/test_04_mcp_transports.log 2>&1 || { cat test-results/ch03/test_04_mcp_transports.log; exit 1; }
+	@tail -4 test-results/ch03/test_04_mcp_transports.log
 	@echo "✅ Chapter 3 tests passed"
 
 test-ch04:
