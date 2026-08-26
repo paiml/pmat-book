@@ -107,6 +107,30 @@ The D72 remediation is one of three:
 
 Option (2) is the R8 recommendation as a tactical patch.
 
+### Update — D72 RESOLVED via Option (2) (R17-4 / PR #355 / KAIZEN-0191)
+
+Landed in the v3.15.0 R17 fix-wave. The stub no longer hangs; it fails loudly:
+
+```text
+$ pmat serve --transport http --port 58719
+Error: HTTP transport not yet implemented.
+  requested: http on 127.0.0.1:58719
+  workaround: PMAT_PMCP_MCP=1 pmat  (stdio transport is supported)
+  tracking:   KAIZEN-0191 (wire pmcp::StreamableHttpServer)
+$ echo $?
+2
+```
+
+All five `ServeTransport` variants (`http`, `web-socket`, `http-sse`, `both`, `all`)
+funnel through the same honest-failure path. No socket binds, no banner lies. The
+`http_stub_probe` harness now flips to `exit=0, "PORT NOT BOUND but process exited
+quickly — D72 FIXED (fail-loud mode)"`.
+
+Path B — real HTTP wiring via `pmcp::StreamableHttpServer` — remains open and is
+tracked as KAIZEN-0191. It was deferred from PR #355 because the `streamable-http`
+feature pulls in axum + hyper-rustls + rustls and would have exceeded a 300-LOC
+budget.
+
 ## 69.3 The "Structural Peer" Pattern
 
 A *structural peer* defect is one where two surfaces share enough of a codepath that one fix plausibly closes both. R8's headline structural peer:
@@ -164,7 +188,7 @@ Applying the 500 ms / 256 MB threshold from the PMAT hook contract:
 | Borderline (500 ms–2 s) | ~8 | `analyze complexity`, `infra-score`, `analyze dead-code` (p95 spike), `query dispatch` (p95 420 ms) |
 | Over wall, under memory (2–10 s, ≤256 MB) | ~6 | `analyze duplicates` (p95 15 s), `tdg .`, `rust-project-score`, `perfection-score`, `analyze dead-code` (p95) |
 | Over wall AND over memory (V++) | **2** | **`pmat score`** (56 s / 1.41 GB), **`pmat quality-gate`** (32 s / 319 MB) |
-| Silent hang (∞ wall, 0 work) | **4** | `pmat serve --transport {http,web-socket,http-sse,all}` — D72 |
+| Silent hang (∞ wall, 0 work) | **0** | ~~`pmat serve --transport *`~~ — D72 **RESOLVED** in v3.15.0 (R17-4 / PR #355); all five transports now exit 2 with a honest error message. |
 
 The scorecard is healthier than Chapter 67 suggested: the *help-class* and *query-class* commands comfortably meet the contract. The *score-class* does not, and the 2× V++ entries (score + quality-gate) consume disproportionate blame. Fix the WalkDir-dedup hotspot, and the scorecard moves from 2 V++ / 6 V / 8 borderline to 0 V++ / 2 V / 4 borderline overnight.
 
@@ -214,7 +238,7 @@ R8 was deliberately book-only. Three harnesses shipped with the R7 PR (#346 exam
 R8 added two durable findings:
 
 1. **`pmat score` = 56 s / 1.41 GB.** Structural peer of comply-check. The top-2 V++ slow paths share a hotspot. Fix one, close both.
-2. **D72 — the HTTP serve stub is a silent-hang defect.** Banner promises, port doesn't bind, process hangs. Exit-code-0-on-error's worst variant.
+2. **D72 — the HTTP serve stub is a silent-hang defect.** Banner promises, port doesn't bind, process hangs. Exit-code-0-on-error's worst variant. **Resolved in v3.15.0** via the R17-4 fix-wave (PR #355 / KAIZEN-0191, Path B tracked for wiring the real transport). §69.2 has the post-fix reproduction.
 
 The discipline holds from Chapter 68:
 
