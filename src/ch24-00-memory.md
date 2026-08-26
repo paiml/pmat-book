@@ -1,837 +1,407 @@
 # Chapter 24: Memory and Cache Management
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (16/16 examples)
+**Chapter Status**: ✅ Verified against pmat 3.32.0
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 16 | Ready for production use |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | 17 | Executed against pmat 3.32.0; output pasted verbatim |
+| ⚠️ Not Implemented | 0 | — |
+| ❌ Broken | 0 | — |
+| 📋 Planned | 0 | — |
 
-*Last updated: 2025-10-26*
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-08-25*
+*PMAT version: pmat 3.32.0*
 <!-- DOC_STATUS_END -->
 
-## The Problem
+> **What changed in this rewrite, and read the first bullet before you use these
+> commands for anything.**
+>
+> - **`pmat memory` measures the process you just started, which has done no
+>   work.** Every counter reads 0 B, always. `pmat` itself says so in the output:
+>   *"No allocations were recorded in this process: `pmat memory` reads the
+>   in-process pool manager, which starts empty, so these counters measure
+>   nothing."* It cannot observe a previous `pmat analyze` run, and it is not a
+>   profiler for your application. The one part of this chapter that reports a
+>   real number is `pmat cache stats`'s on-disk section.
+> - **`pmat cache` has exactly one subcommand: `stats`.** The 2025 edition
+>   documented `optimize`, `analyze`, `recommend`, `clear`, `warmup` and
+>   `configure`; none is a subcommand and each exits 2 with "unrecognized
+>   subcommand". There is no cache-clearing command — delete `.pmat/` by hand.
+> - **Six `pmat memory` subcommands never existed**: `profile`, `dump`,
+>   `monitor`, `analyze`, `track`, plus the `memory analyze --check-leaks` /
+>   `--leaks` forms. There is no leak detector and no heap dump.
+> - **Sixteen flags never existed** on the subcommands that do: `--force-gc`,
+>   `--max-heap`, `--string-pool`, `--object-pool`, `--gc-threshold`,
+>   `--detailed` (on `pools`), `--fragmentation`, `--monitor`, `--warning`,
+>   `--critical`, `--perf`, `--top-consumers`, `--aggressive`, `--reduce-pools`,
+>   `--type`, `--patterns`.
+>
+> The "Sprint 56 clippy optimization" section, with its per-project-size
+> performance tables, has been removed: it documented numbers no command in this
+> chapter can produce.
 
-Memory management and caching are critical for application performance, yet developers often lack visibility into memory usage patterns and cache effectiveness. Poor memory management leads to leaks, excessive garbage collection, and out-of-memory errors. Inefficient caching results in repeated expensive computations and degraded performance.
+## What These Commands Actually Report
 
-## Core Concepts
+pmat's CLI is one process per invocation. `pmat memory stats` starts a process,
+initialises an empty pool manager, prints its counters, and exits. There is no
+daemon, no shared memory, and no persisted allocation log, so the counters
+describe a process that has allocated nothing.
 
-### Memory Management Architecture
+`pmat` is candid about this rather than printing a confident zero, and that
+candour is the useful part: a `0 B` here means "not measured", not "your
+analysis used no memory".
 
-PMAT's memory system provides:
-- **Real-time Monitoring**: Live memory usage tracking
-- **Pool Management**: Efficient memory pool allocation
-- **Pressure Detection**: Early warning for memory issues
-- **Garbage Collection**: Controlled GC triggering
-- **Leak Detection**: Automatic memory leak identification
-- **Optimization**: Memory usage optimization strategies
-
-### Cache Strategy Framework
-
-```mermaid
-graph LR
-    A[Request] --> B{Cache Check}
-    B -->|Hit| C[Return Cached]
-    B -->|Miss| D[Compute]
-    D --> E[Store in Cache]
-    E --> F[Eviction Check]
-    F -->|Full| G[Evict LRU]
-    F -->|Space| H[Add Entry]
-    G --> H
-    H --> C
-```
-
-## Memory Management
-
-### Memory Statistics
+## Memory Statistics
 
 ```bash
-# Show current memory usage
 pmat memory stats
+```
 
-# Verbose memory statistics
+```
+PMAT Memory Statistics
+
+Overall Memory Usage:
+  Total Allocated: 0 B
+  Peak Usage: 0 B
+  Pressure: 0.0%
+  String Intern: 0 B
+
+Recommendations:
+  No allocations were recorded in this process: `pmat memory` reads the in-process pool manager, which starts empty, so these counters measure nothing.
+```
+
+`--verbose` adds tracing but not data:
+
+```bash
 pmat memory stats --verbose
-
-# Continuous monitoring
-watch -n 1 'pmat memory stats'
 ```
 
-**Memory Statistics Output:**
 ```
-💾 Memory Statistics
-===================
+2026-08-25T20:53:09.203296Z  INFO Starting PAIML MCP Agent Toolkit v3.32.0
+2026-08-25T20:53:09.203437Z  INFO Running in CLI mode
+2026-08-25T20:53:09.205430Z  INFO Initializing global memory manager
+PMAT Memory Statistics
 
-System Memory:
-├─ Total:     16.0 GB
-├─ Available: 8.4 GB (52.5%)
-└─ Used:      7.6 GB (47.5%)
-
-Process Memory:
-├─ Heap Size:       156 MB
-├─ Heap Used:       112 MB (71.8%)
-├─ Heap Free:       44 MB (28.2%)
-├─ Stack Size:      8 MB
-├─ Resident (RSS):  189 MB
-└─ Virtual (VSZ):   2.1 GB
-
-Memory Pools:
-┌──────────────┬──────────┬──────────┬──────────┐
-│ Pool         │ Size     │ Used     │ Free     │
-├──────────────┼──────────┼──────────┼──────────┤
-│ String Pool  │ 32 MB    │ 28 MB    │ 4 MB     │
-│ Object Pool  │ 64 MB    │ 45 MB    │ 19 MB    │
-│ Buffer Pool  │ 16 MB    │ 12 MB    │ 4 MB     │
-│ Cache Pool   │ 44 MB    │ 27 MB    │ 17 MB    │
-└──────────────┴──────────┴──────────┴──────────┘
-
-Allocations:
-- Active Allocations: 12,456
-- Total Allocated: 892 MB (lifetime)
-- Allocation Rate: 234 alloc/sec
-- Deallocation Rate: 232 dealloc/sec
+Overall Memory Usage:
+  Total Allocated: 0 B
+  Peak Usage: 0 B
+  Pressure: 0.0%
+  String Intern: 0 B
 ```
 
-### Memory Cleanup
+The `Initializing global memory manager` line is the whole story: the manager is
+created by this command, for this command.
+
+### To actually measure pmat's memory
+
+Use the operating system, or `pmat test memory` (see
+[Chapter 23](ch23-00-testing.md)), which forks a real workload and measures peak
+RSS:
 
 ```bash
-# Force memory cleanup
-pmat memory cleanup
-
-# Aggressive cleanup with GC
-pmat memory cleanup --force-gc
-
-# Cleanup with statistics
-pmat memory cleanup --verbose
+/usr/bin/time -v pmat analyze complexity 2>&1 | grep "Maximum resident"
+pmat test memory
 ```
 
-**Cleanup Output:**
-```
-🧹 Memory Cleanup
-=================
+`pmat test memory` reports a real figure — 186,620 KB for 20K LOC on the machine
+used for this book.
 
-Before Cleanup:
-- Heap Used: 156 MB
-- Active Objects: 12,456
-- Cache Entries: 2,341
-
-Cleanup Actions:
-✅ Expired cache entries removed: 892
-✅ Unused buffers deallocated: 23
-✅ String pool compacted: 4.2 MB freed
-✅ Object pool defragmented: 8.1 MB freed
-✅ Garbage collection triggered
-
-After Cleanup:
-- Heap Used: 98 MB (-37.2%)
-- Active Objects: 8,234 (-33.9%)
-- Cache Entries: 1,449 (-38.1%)
-
-Total Memory Freed: 58 MB
-Cleanup Time: 123ms
-```
-
-### Memory Configuration
+## Memory Pools
 
 ```bash
-# Configure memory limits
-pmat memory configure --max-heap 500
-
-# Set pool sizes
-pmat memory configure --string-pool 64 --object-pool 128
-
-# Configure GC threshold
-pmat memory configure --gc-threshold 80
-```
-
-**Configuration File:**
-```toml
-# .pmat/memory-config.toml
-[limits]
-max_heap_mb = 500
-max_stack_mb = 16
-max_resident_mb = 1000
-
-[pools]
-string_pool_mb = 64
-object_pool_mb = 128
-buffer_pool_mb = 32
-cache_pool_mb = 100
-
-[gc]
-threshold_percent = 80
-interval_seconds = 60
-aggressive_mode = false
-
-[monitoring]
-track_allocations = true
-detect_leaks = true
-profile_enabled = false
-```
-
-### Memory Pools
-
-```bash
-# Show pool statistics
 pmat memory pools
-
-# Detailed pool analysis
-pmat memory pools --detailed
-
-# Pool fragmentation analysis
-pmat memory pools --fragmentation
 ```
 
-**Pool Statistics Output:**
 ```
-🏊 Memory Pool Statistics
-========================
+Memory Pool Statistics
 
-String Pool:
-├─ Capacity: 64 MB
-├─ Used: 45.2 MB (70.6%)
-├─ Entries: 12,341
-├─ Avg Size: 3.7 KB
-├─ Fragmentation: 2.3%
-└─ Hit Rate: 94.5%
+No allocations were recorded in this process: `pmat memory` reads the in-process pool manager, which starts empty, so these counters measure nothing.
 
-Object Pool:
-├─ Capacity: 128 MB
-├─ Used: 89.7 MB (70.1%)
-├─ Objects: 4,567
-├─ Avg Size: 20.1 KB
-├─ Fragmentation: 5.8%
-└─ Reuse Rate: 87.2%
+AstParsing:
+  Buffers: 0
+  Total Size: 0 B
+  Allocations: 0
+  Reuses: 0
 
-Buffer Pool:
-├─ Capacity: 32 MB
-├─ Used: 18.4 MB (57.5%)
-├─ Buffers: 234
-├─ Avg Size: 80.3 KB
-├─ Fragmentation: 1.2%
-└─ Throughput: 450 MB/s
+FileContent:
+  Buffers: 0
+  Total Size: 0 B
+  Allocations: 0
+  Reuses: 0
 
-Allocation Patterns:
-┌─────────────────────────────────────┐
-│     ▂▄▆█▇▅▃▂  String Pool          │
-│    ▁      ▁▃▅▇█▇▅▃  Object Pool   │
-│   ▁▂▃▄▅▆▇█▇▆▅▄▃▂▁  Buffer Pool    │
-└─────────────────────────────────────┘
-  0h    2h    4h    6h    8h
+StringIntern:
+  Buffers: 0
+  Total Size: 0 B
+  Allocations: 0
 ```
 
-### Memory Pressure
+The pool names — `AstParsing`, `FileContent`, `StringIntern` — are the useful
+output here: they tell you how `pmat` partitions its allocations, even though the
+counts are all zero.
+
+`--pool <POOL>` focuses on one, and `--efficiency` adds derived ratios:
 
 ```bash
-# Check memory pressure
+pmat memory pools --efficiency
+```
+
+```
+  Buffers: 0
+  Total Size: 0 B
+  Allocations: 0
+  Reuses: 0
+  Reuse Ratio: 0.0%
+  Avg Buffer: 0 B
+  Efficiency: Poor
+```
+
+`Efficiency: Poor` is computed from a zero reuse ratio over zero allocations.
+Do not report it as a finding.
+
+## Memory Pressure
+
+```bash
 pmat memory pressure
-
-# Monitor pressure continuously
-pmat memory pressure --monitor
-
-# Set pressure thresholds
-pmat memory pressure --warning 70 --critical 90
 ```
 
-**Pressure Analysis Output:**
 ```
-⚠️ Memory Pressure Analysis
-==========================
-
-Current Status: MEDIUM
-Pressure Score: 68/100
-
-Indicators:
-✅ Heap Usage: 45% (Low)
-⚠️  Allocation Rate: 450/sec (Medium)
-✅ GC Frequency: 0.2/min (Low)
-⚠️  Page Faults: 234/sec (Medium)
-✅ Swap Usage: 0% (None)
-
-Pressure Trends:
-┌─────────────────────────────────────┐
-│                    ▄▆█▇▅▃           │ 100
-│                 ▂▄▆      ▁          │
-│              ▁▃▅          ▃▅        │ 50
-│           ▁▂▃              ▇█▇      │
-│ ▁▂▃▄▅▆▇█▇▆                          │ 0
-└─────────────────────────────────────┘
-  -1h    -45m   -30m   -15m   Now
-
-Recommendations:
-⚠️  Consider increasing heap size
-⚠️  Review allocation patterns in hot paths
-ℹ️  Enable object pooling for frequent allocations
+Current memory pressure: not measured
+No allocations were recorded in this process: `pmat memory` reads the in-process pool manager, which starts empty, so these counters measure nothing.
 ```
 
-## Cache Management
+Note that it prints **`not measured`**, not `0.0%`. That is the right answer,
+and it is the distinction the rest of this chapter turns on.
 
-### Cache Statistics
+`--threshold <0.0-1.0>` (default 0.8) sets the warning level and `--watch
+<SECONDS>` polls continuously:
 
 ```bash
-# Show cache statistics
+pmat memory pressure --threshold 0.5
+```
+
+```
+Current memory pressure: not measured
+No allocations were recorded in this process: `pmat memory` reads the in-process pool manager, which starts empty, so these counters measure nothing.
+```
+
+## Memory Cleanup
+
+```bash
+pmat memory cleanup
+```
+
+```
+Cleaned 0 B of memory
+```
+
+`--target-pressure <0.0-1.0>` and `--verbose` are the only options:
+
+```bash
+pmat memory cleanup --target-pressure 0.5
+```
+
+```
+Cleaned 0 B of memory
+```
+
+There is no `--force-gc` and no `--aggressive`; Rust has no runtime GC to force.
+
+## Memory Configuration
+
+`pmat memory configure` accepts three options — `--max-memory-mb`,
+`--pool-limits <pool:size_mb>` and `--enable-tracking <true|false>` — and tells
+you plainly that two of them do not take effect:
+
+```bash
+pmat memory configure --max-memory-mb 500
+```
+
+```
+Memory configuration:
+  Maximum memory: 500 MB
+  Note: Runtime reconfiguration not yet supported
+```
+
+```bash
+pmat memory configure --pool-limits "AstParsing:64"
+```
+
+```
+Memory configuration:
+  Pool limits:
+    AstParsing:64
+  Note: Runtime pool reconfiguration not yet supported
+```
+
+```bash
+pmat memory configure --enable-tracking true
+```
+
+```
+Memory configuration:
+  Memory tracking: enabled
+```
+
+Only the third produces no "not yet supported" note, and since the setting dies
+with the process it has no effect on a later invocation either.
+
+## Cache Statistics
+
+`pmat cache stats` is the one command in this chapter that reports something
+real — in its second section.
+
+```bash
 pmat cache stats
-
-# Detailed cache metrics
-pmat cache stats --verbose
-
-# Performance metrics
-pmat cache stats --perf
 ```
 
-**Cache Statistics Output:**
+In a project `pmat` has never analysed:
+
 ```
-📊 Cache Statistics
-==================
+PMAT Cache Statistics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Overall Performance:
-├─ Total Requests: 1,234,567
-├─ Cache Hits: 1,089,234 (88.2%)
-├─ Cache Misses: 145,333 (11.8%)
-├─ Avg Hit Time: 0.3ms
-├─ Avg Miss Time: 45.6ms
-└─ Effective Speedup: 15.2x
+Orchestrator (this process):
+   Strategy Switches: 0
+   Evaluations: 0
+   Overall Effectiveness: not measured (no cache evaluations in this process)
 
-Cache Breakdown:
-┌──────────────────┬─────────┬──────────┬──────────┐
-│ Cache Type       │ Entries │ Hit Rate │ Size     │
-├──────────────────┼─────────┼──────────┼──────────┤
-│ Analysis Cache   │ 2,345   │ 92.3%    │ 23.4 MB  │
-│ Template Cache   │ 567     │ 98.7%    │ 5.6 MB   │
-│ Complexity Cache │ 1,234   │ 85.4%    │ 12.3 MB  │
-│ AST Cache        │ 890     │ 79.2%    │ 34.5 MB  │
-│ Result Cache     │ 456     │ 94.5%    │ 8.9 MB   │
-└──────────────────┴─────────┴──────────┴──────────┘
-
-Hit Rate Trend:
-┌─────────────────────────────────────┐
-│ 100% ─────█████████─────────────    │
-│  90% ─────         ─────█████───    │
-│  80% ─────              ─────       │
-│  70% ─────                          │
-└─────────────────────────────────────┘
-       1h ago    30m ago    Now
-
-Top Cache Keys (by hits):
-1. complexity_analysis_main.rs: 12,345 hits
-2. template_rust_cli: 8,901 hits
-3. ast_parse_lib.rs: 7,654 hits
-4. quality_gate_check: 6,789 hits
-5. dependency_graph: 5,432 hits
+On-disk caches under /path/to/project:
+   none found
 ```
 
-### Cache Optimization
+In a project with caches on disk:
+
+```
+PMAT Cache Statistics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Orchestrator (this process):
+   Strategy Switches: 0
+   Evaluations: 0
+   Overall Effectiveness: not measured (no cache evaluations in this process)
+
+On-disk caches under /home/noah/src/paiml-mcp-agent-toolkit:
+   /home/noah/src/paiml-mcp-agent-toolkit/.pmat: 36 file(s), 725.6 MB
+   /home/noah/src/paiml-mcp-agent-toolkit/.pmat-cache: 1 file(s), 0.0 MB
+```
+
+**That is a real measurement**, and a useful one — 725.6 MB of cache is worth
+knowing about. The "Orchestrator (this process)" section above it is the same
+in-process illusion as `pmat memory`, and says so.
+
+### Options
+
+`--format json` for tooling:
 
 ```bash
-# Optimize cache
-pmat cache optimize
-
-# Analyze cache efficiency
-pmat cache analyze
-
-# Suggest improvements
-pmat cache recommend
+pmat cache stats --format json
 ```
 
-**Optimization Output:**
-```
-🔧 Cache Optimization
-====================
-
-Analysis Phase:
-- Analyzing access patterns...
-- Identifying cold entries...
-- Detecting inefficiencies...
-
-Issues Found:
-⚠️  234 entries never accessed (cold)
-⚠️  89 entries with single access
-⚠️  Cache thrashing detected in AST cache
-⚠️  Suboptimal TTL for template cache
-
-Optimization Actions:
-✅ Removed 234 cold entries (freed 12.3 MB)
-✅ Adjusted TTL for frequently accessed items
-✅ Increased AST cache size to reduce thrashing
-✅ Implemented 2-tier caching for hot items
-✅ Compacted cache storage (saved 8.7 MB)
-
-Results:
-- Hit Rate: 88.2% → 93.6% (+5.4%)
-- Memory Usage: 84.6 MB → 63.6 MB (-24.8%)
-- Avg Hit Time: 0.3ms → 0.2ms (-33.3%)
-- Cache Efficiency Score: 82 → 95
-
-Recommendations:
-1. Increase cache size for complexity analysis
-2. Implement cache warming for common templates
-3. Consider memory-mapped cache for large entries
+```json
+{
+  "orchestrator_stats": {
+    "strategy_switches": 0,
+    "evaluations_performed": 0,
+    "recommendations_generated": 0,
+    "performance_improvements": 0,
+    "overall_effectiveness": null
+  },
+  "on_disk_caches": []
+}
 ```
 
-### Cache Clear and Warmup
+`overall_effectiveness` is `null` rather than `0.0` — again, "not measured", not
+"zero".
+
+`--detailed` adds one line, which is another honest refusal:
 
 ```bash
-# Clear all caches
-pmat cache clear
-
-# Clear specific cache
-pmat cache clear --type analysis
-
-# Warmup cache
-pmat cache warmup
-
-# Warmup with specific patterns
-pmat cache warmup --patterns "*.rs" --depth 3
+pmat cache stats --detailed
 ```
 
-**Warmup Output:**
 ```
-🔥 Cache Warmup
-===============
-
-Warmup Configuration:
-- Patterns: *.rs
-- Depth: 3
-- Strategy: Predictive
-
-Phase 1: Scanning Files
-- Found 234 matching files
-- Total size: 12.3 MB
-
-Phase 2: Predictive Loading
-- Analyzing access patterns...
-- Loading frequently accessed items...
-- Pre-computing expensive operations...
-
-Progress:
-[████████████████████] 100% (234/234 files)
-
-Warmup Results:
-✅ Loaded 234 file ASTs
-✅ Pre-computed 156 complexity scores
-✅ Cached 89 template expansions
-✅ Generated 45 dependency graphs
-
-Cache Status After Warmup:
-- Entries: 524
-- Size: 34.5 MB
-- Predicted Hit Rate: 94.5%
-- Warmup Time: 2.3s
-
-Expected Performance Improvement:
-- First-request latency: -85%
-- Cache misses (first hour): -67%
-- Overall throughput: +23%
+Detailed Analysis:
+   Per-tier hit rates require a live cache session; the CLI process has none.
 ```
 
-## Advanced Memory Strategies
+`--history` includes historical data. The full option list is `--detailed`,
+`--format <json|table>` and `--history`. There is no `--perf`.
 
-### Memory Profiling
+## Clearing the Cache
+
+There is no `pmat cache clear`. To reclaim the 725.6 MB above:
 
 ```bash
-# Enable memory profiling
-pmat memory profile --enable
-
-# Generate memory report
-pmat memory profile --report
-
-# Heap dump for analysis
-pmat memory dump --output heap.dump
+rm -rf .pmat .pmat-cache
+pmat cache stats     # confirm: "none found"
 ```
 
-**Memory Profile Report:**
-```
-📈 Memory Profile Report
-=======================
+`pmat` rebuilds what it needs on the next analysis.
 
-Allocation Hotspots:
-┌────────────────────────┬──────────┬───────────┬──────────┐
-│ Function               │ Allocs   │ Total MB  │ % Total  │
-├────────────────────────┼──────────┼───────────┼──────────┤
-│ parse_ast             │ 45,234   │ 234.5     │ 35.2%    │
-│ analyze_complexity    │ 23,456   │ 156.7     │ 23.5%    │
-│ generate_template     │ 12,345   │ 89.3      │ 13.4%    │
-│ cache_operations      │ 34,567   │ 78.9      │ 11.8%    │
-│ string_operations     │ 56,789   │ 67.8      │ 10.2%    │
-│ other                 │ 18,234   │ 39.3      │ 5.9%     │
-└────────────────────────┴──────────┴───────────┴──────────┘
+## Complete Command Reference
 
-Leak Suspects:
-⚠️  Potential leak in template_cache: 2.3 MB growth/hour
-⚠️  Unbounded growth in analysis_results: 1.2 MB/hour
-
-Memory Timeline:
-┌─────────────────────────────────────┐
-│ 200MB ────────────▄▆█▇▅▃▂──────    │
-│ 150MB ──────▂▄▆█▇▅        ▁▂▃──    │
-│ 100MB ────▄▆                        │
-│  50MB ▂▄▆█                          │
-│   0MB ─────────────────────────     │
-└─────────────────────────────────────┘
-       Start    1h    2h    3h    Now
-
-Recommendations:
-1. Implement object pooling for AST nodes
-2. Add size limits to template cache
-3. Review string concatenation in hot paths
-4. Consider arena allocation for analysis
-```
-
-### Cache Strategies
-
-```bash
-# Configure cache strategy
-pmat cache configure --strategy lru --size 100
-
-# Set eviction policy
-pmat cache configure --eviction aggressive
-
-# Configure TTL
-pmat cache configure --ttl 3600
-```
-
-**Cache Strategy Configuration:**
-```toml
-# .pmat/cache-config.toml
-[strategy]
-type = "lru"          # lru, lfu, arc, fifo
-size_mb = 100
-max_entries = 10000
-
-[eviction]
-policy = "aggressive"  # aggressive, balanced, conservative
-threshold = 0.9       # Evict when 90% full
-batch_size = 100      # Evict 100 items at once
-
-[ttl]
-default_seconds = 3600
-analysis_cache = 7200
-template_cache = 86400
-ast_cache = 1800
-
-[performance]
-async_writes = true
-compression = true
-compression_threshold_kb = 10
-
-[warming]
-enabled = true
-patterns = ["*.rs", "*.toml", "*.md"]
-depth = 3
-on_startup = true
-```
+| Command | Options | Reports real data? |
+|---------|---------|--------------------|
+| `pmat memory stats` | `--verbose` | No — always 0 B |
+| `pmat memory pools` | `--pool`, `--efficiency` | No — pool *names* only |
+| `pmat memory pressure` | `--threshold`, `--watch` | No — "not measured" |
+| `pmat memory cleanup` | `--target-pressure`, `--verbose` | No — always 0 B |
+| `pmat memory configure` | `--max-memory-mb`, `--pool-limits`, `--enable-tracking` | Echoes input; two are no-ops |
+| `pmat cache stats` | `--detailed`, `--format`, `--history` | **Yes** — the on-disk section |
 
 ## Integration and Monitoring
 
-### Continuous Monitoring
+The only figure worth putting in CI is cache size:
 
 ```bash
-# Start memory monitor daemon
-pmat memory monitor --daemon
-
-# Monitor with alerts
-pmat memory monitor --alert-threshold 80
-
-# Export metrics
-pmat memory monitor --export prometheus
+pmat cache stats --format json > cache-stats.json
 ```
 
-**Monitoring Dashboard Output:**
-```
-📊 Memory & Cache Monitor
-========================
-[Refreshing every 5s...]
+Before-and-after captures work for the on-disk section:
 
-Memory:              Cache:
-├─ Heap: 156/500 MB  ├─ Hits: 1234 (92.3%)
-├─ RSS: 189 MB       ├─ Misses: 103 (7.7%)
-├─ Pressure: LOW     ├─ Size: 45.6 MB
-└─ GC: 0.1/min       └─ Entries: 2,345
-
-Live Graphs:
-Memory Usage         Cache Hit Rate
-200│    ▄▆█▇▅       100│█████████───
-150│  ▂▄      ▃      90│         ───
-100│▄▆          ▅    80│
- 50│             ▇   70│
-  0└───────────      60└───────────
-   -5m    Now         -5m    Now
-
-Alerts:
-ℹ️  [14:30:15] Cache hit rate optimal
-✅ [14:30:00] Memory cleanup completed
-⚠️  [14:29:45] String pool fragmentation: 8%
-
-[Press 'q' to quit, 'c' to clear cache, 'g' to force GC]
+```bash
+pmat cache stats --verbose > cache-before.txt
+pmat cache stats --verbose > cache-after.txt
+diff cache-before.txt cache-after.txt
 ```
 
-### CI/CD Integration
-
-```yaml
-# .github/workflows/memory-check.yml
-name: Memory and Cache Analysis
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  memory-analysis:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Install PMAT
-      run: cargo install pmat
-    
-    - name: Memory Baseline
-      run: |
-        pmat memory stats --verbose > memory-before.txt
-        pmat cache stats --verbose > cache-before.txt
-    
-    - name: Run Application Tests
-      run: |
-        # Run your test suite
-        cargo test --all
-    
-    - name: Memory Analysis
-      run: |
-        pmat memory stats --verbose > memory-after.txt
-        pmat cache stats --verbose > cache-after.txt
-        
-        # Check for leaks
-        pmat memory analyze --check-leaks
-        
-        # Verify cache efficiency
-        CACHE_HIT_RATE=$(pmat cache stats | grep "Hit Rate" | awk '{print $3}')
-        if (( $(echo "$CACHE_HIT_RATE < 80" | bc -l) )); then
-          echo "⚠️ Cache hit rate below threshold: $CACHE_HIT_RATE%"
-          exit 1
-        fi
-    
-    - name: Generate Report
-      run: |
-        pmat memory profile --report > memory-report.md
-        pmat cache analyze > cache-report.md
-    
-    - name: Upload Reports
-      uses: actions/upload-artifact@v3
-      with:
-        name: memory-cache-reports
-        path: |
-          memory-*.txt
-          cache-*.txt
-          *-report.md
-```
+For pmat's own memory behaviour, gate on `pmat test memory`
+([Chapter 23](ch23-00-testing.md)) or on `/usr/bin/time -v`, not on
+`pmat memory stats`.
 
 ## Troubleshooting
 
-### Common Issues
+### Every memory number is 0 B
 
-1. **High Memory Usage**
-```bash
-# Identify memory hogs
-pmat memory stats --top-consumers
+Working as designed. `pmat memory` reads the in-process pool manager of the
+command you just ran. Use `pmat test memory` or `/usr/bin/time -v`.
 
-# Force cleanup
-pmat memory cleanup --aggressive
+### `error: unrecognized subcommand` from `pmat cache clear`
 
-# Reduce pool sizes
-pmat memory configure --reduce-pools
-```
+`stats` is the only `cache` subcommand. Delete `.pmat/` and `.pmat-cache/`
+directly.
 
-2. **Low Cache Hit Rate**
-```bash
-# Analyze cache misses
-pmat cache analyze --misses
+### `Efficiency: Poor` from `memory pools --efficiency`
 
-# Increase cache size
-pmat cache configure --size 200
+Derived from a zero reuse ratio over zero allocations. It is not a finding.
 
-# Improve warmup
-pmat cache warmup --aggressive
-```
+### `pmat memory configure` says "not yet supported"
 
-3. **Memory Leaks**
-```bash
-# Detect leaks
-pmat memory analyze --leaks
-
-# Generate heap dump
-pmat memory dump --full
-
-# Track allocations
-pmat memory track --allocations
-```
-
-## Performance Optimizations (v2.173.0)
-
-### Sprint 56: Automated Clippy Optimizations
-
-PMAT v2.173.0 includes significant performance improvements through systematic code optimization using Cargo clippy's performance lints. These optimizations were applied across the entire codebase, resulting in measurable performance gains.
-
-#### Optimization Categories
-
-**1. Redundant Clone Elimination (17 fixes across 15 files)**
-
-Removed unnecessary `.clone()` operations in hot paths, particularly in:
-
-- **TDG Calculator** (Critical Hot Path): Vector clones before sorting eliminated
-- **Actor System**: Cache insertion and validation optimizations
-- **Cache Operations**: Reduced clones in content caching and adapters
-- **MCP Tools**: Improved Java and Scala tool response times
-
-```rust
-// Before (slower)
-let mut items = data.clone();
-items.sort();
-
-// After (faster)
-data.sort();
-```
-
-**2. Code Quality Improvements (4 fixes across 3 files)**
-
-Simplified struct initialization patterns:
-
-```rust
-// Before (verbose)
-MyStruct {
-    field: field.clone(),
-    name: name,
-}
-
-// After (simplified)
-MyStruct {
-    field,
-    name,
-}
-```
-
-#### Performance Impact by Project Size
-
-**Small Project (1,000 functions)**
-- Time Savings: 17-67 µs per analysis
-- Percentage: 0.5-2% faster
-- Memory: ~10 MB saved
-
-**Medium Project (5,000 functions)**
-- Time Savings: 130-635 µs per analysis
-- Percentage: 1-3% faster
-- Memory: ~20 MB saved
-
-**Large Project (50,000 functions)**
-- Time Savings: 1.3-6.2 ms per analysis
-- Percentage: 2-5% faster
-- Memory: ~50 MB saved
-
-**Long-Running Server**
-- Memory Savings: 200 MB over 10,000 analyses
-- CPU Savings: 5% reduction = 5% more throughput
-- GC Pressure: Reduced allocator overhead
-
-#### Memory Savings Breakdown
-
-**Temporary Allocations Eliminated:**
-- 20-30% reduction in temporary allocations
-- 10-50 MB saved per large codebase analysis
-- Reduced GC pressure on long-running servers
-
-**Hot Path Improvements:**
-- TDG complexity analysis: 10-15% faster
-- Cache operations: 2-5% speedup
-- Overall performance: 2-5% improvement
-
-#### Verification Commands
-
-You can verify these optimizations in your own codebase:
-
-```bash
-# Run performance-focused clippy lints
-cargo clippy -W clippy::perf -W clippy::nursery
-
-# Check for redundant clones
-cargo clippy -- -W clippy::redundant_clone
-
-# Identify allocation hotspots
-cargo clippy -- -W clippy::unnecessary_to_owned
-```
-
-#### Automated Optimization Workflow
-
-PMAT's performance optimizations were applied systematically:
-
-```bash
-# 1. Run automated fixes
-cargo clippy -W clippy::perf -W clippy::nursery --fix
-
-# 2. Verify no behavioral changes
-cargo test --all
-
-# 3. Validate release build
-cargo build --release
-
-# 4. Measure performance impact
-cargo bench
-```
-
-#### Best Practices
-
-Based on Sprint 56's optimizations, follow these best practices:
-
-1. **Avoid Redundant Clones**: Pass references instead of cloning unless ownership is required
-2. **Hot Path Analysis**: Profile critical paths and optimize allocation patterns
-3. **Struct Initialization**: Use field shorthand syntax for cleaner code
-4. **Cache Efficiency**: Minimize clones when inserting into caches
-5. **Regular Audits**: Run clippy performance lints regularly
-
-#### Key Improvements by Module
-
-```
-┌─────────────────────────┬───────────────┬──────────────┐
-│ Module                  │ Optimization  │ Impact       │
-├─────────────────────────┼───────────────┼──────────────┤
-│ TDG Calculator          │ Clone removal │ 10-15% ⚡     │
-│ Actor System            │ Clone removal │ 2-5% ⚡       │
-│ Cache Operations        │ Clone removal │ 2-5% ⚡       │
-│ MCP Tools               │ Clone removal │ Response ⚡   │
-│ Code Intelligence       │ Simplification│ Readability  │
-└─────────────────────────┴───────────────┴──────────────┘
-```
-
-#### Measuring Your Improvements
-
-```bash
-# Before optimization
-time pmat analyze . --format json > before.json
-
-# After running clippy fixes
-cargo clippy --fix -W clippy::perf
-
-# After optimization
-time pmat analyze . --format json > after.json
-
-# Compare results
-echo "Performance improvement:"
-# Calculate time difference
-```
+`--max-memory-mb` and `--pool-limits` are echoed and discarded. Nothing in this
+command persists past the process.
 
 ## Summary
 
-PMAT's memory and cache management system provides comprehensive control over application memory usage and caching strategies. By offering real-time monitoring, intelligent optimization, and proactive issue detection, it ensures optimal performance and resource utilization.
+`pmat memory` is a window onto an empty room, and it tells you so on every line.
+`pmat cache stats` is half useful: its on-disk section reports genuine cache
+sizes on disk, while its orchestrator section is the same in-process nothing.
 
-Key benefits include:
-- **Real-time Monitoring**: Live memory and cache statistics
-- **Intelligent Optimization**: Automatic memory cleanup and cache tuning
-- **Leak Detection**: Proactive identification of memory leaks
-- **Pool Management**: Efficient memory pool allocation
-- **Cache Strategies**: Flexible caching with multiple eviction policies
-- **Performance Profiling**: Detailed allocation and usage analysis
-
-The system transforms memory and cache management from reactive troubleshooting to proactive optimization, ensuring applications run efficiently with optimal resource utilization.
+Key takeaways:
+- `pmat memory` cannot measure a previous run, your application, or anything
+  else. Reach for `pmat test memory` or `/usr/bin/time -v`.
+- `pmat cache stats`'s on-disk section is the one real measurement here.
+- `cache` has one subcommand; `memory` has five. Everything else the previous
+  edition documented exits 2.
+- `pmat` distinguishes "not measured" from "zero" throughout this surface. Preserve
+  that distinction when you report these numbers onward.

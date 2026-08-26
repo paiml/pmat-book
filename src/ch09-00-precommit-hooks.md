@@ -210,7 +210,7 @@ echo "🔍 Running PMAT quality checks..."
 # Run quality gate with strict mode
 pmat quality-gate --strict || {
     echo "❌ Quality gate failed!"
-    echo "Run 'pmat analyze . --detailed' for more information"
+    echo "Run 'pmat analyze comprehensive --format detailed' for more information"
     exit 1
 }
 
@@ -567,8 +567,8 @@ jobs:
       - name: Generate quality report
         if: always()
         run: |
-          pmat analyze . --format markdown > quality-report.md
-          pmat analyze . --format json > quality-report.json
+          pmat analyze comprehensive --path . --format markdown > quality-report.md
+          pmat analyze comprehensive --path . --format json > quality-report.json
           
       - name: Comment PR with report
         if: github.event_name == 'pull_request'
@@ -671,7 +671,7 @@ skip_vendor = true
 git commit --no-verify -m "Emergency fix: bypass hooks"
 
 # But immediately follow up with:
-pmat analyze . --detailed
+pmat analyze comprehensive --format detailed
 pmat quality-gate --fix  # Auto-fix what's possible
 ```
 
@@ -713,7 +713,7 @@ cargo install pmat
 pmat hooks init
 
 # Run initial analysis
-pmat analyze . --detailed
+pmat analyze comprehensive --format detailed
 
 # Show team standards
 cat .pmat-hooks.yaml

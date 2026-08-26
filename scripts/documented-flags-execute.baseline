@@ -1,0 +1,12 @@
+129
+# Parse failures under `bash scripts/verify-documented-flags.sh --execute`,
+# which RUNS each command in a throwaway directory instead of appending --help.
+# Down-only. Read by the weekly `documented-flags-deep` CI job.
+#
+# Measured 2026-08-25 against pmat 3.32.0 over 967 commands; 70 more were held
+# back by the execute-mode denylist (servers, daemons, comply) and are covered
+# by the parse-mode gate instead.
+#
+# Necessarily a different number from documented-flags.baseline: it is measured
+# over a smaller corpus, and it additionally catches missing-required-argument,
+# which clap short-circuits past whenever it sees --help.

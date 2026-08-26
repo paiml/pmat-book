@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    # Weekly, for the one gate that has to RUN the commands rather than parse
+    # them. It is too slow and too side-effecting for the PR path, but a gate
+    # that never runs is not a gate.
+    - cron: '17 5 * * 1'
 
 jobs:
   documented-commands:
@@ -24,8 +29,54 @@ jobs:
       run: |
         cargo install pmat
         pmat --version
+    - name: Gate scripts must be shellcheck-clean
+      # Every hazard these gates guard against is a shell hazard. Linting them
+      # is not housekeeping, it is the gate on the gates.
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+        make lint-shell
+
+    - name: The flag gate must be able to FAIL
+      # Runs BEFORE the gate it validates. A green gate whose ability to go red
+      # was never demonstrated is exactly the MOCK_MODE defect this book already
+      # shipped once: 88 assertions, green, measuring nothing. If this step
+      # fails, the result of the next two proves nothing.
+      run: make test-flags-selftest
+
     - name: Every documented command must exist
       run: bash scripts/verify-documented-commands.sh
+
+    - name: Every documented command must PARSE
+      # POKA-YOKE II. The step above proves `pmat analyze tdg` is a real
+      # subcommand; this one proves `pmat analyze tdg .` is not a real way to
+      # call it. Hermetic — it appends `--help`, so nothing is executed — and
+      # it finishes in seconds, which is why it can sit on the PR path.
+      run: make test-flags
+
+  documented-flags-deep:
+    # The same corpus, RUN rather than parsed, in a throwaway directory.
+    #
+    # It is here and not in `documented-commands` because of a measurement, not
+    # a hunch. Against a frozen snapshot of the book, over the 1,120 commands
+    # both modes probe, `--execute` found 412 parse failures and `--help`
+    # probing found 401. The 11-command difference is entirely
+    # missing-required-argument and missing-subcommand — the one class clap
+    # short-circuits past when it sees `--help`. In the other direction the
+    # difference is zero: parse mode misses nothing else.
+    #
+    # 11 extra findings do not justify putting 285 real analysis runs, 4
+    # timeouts and a denylist of servers and daemons on every pull request. They
+    # do justify a weekly sweep.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install PMAT
+      run: |
+        cargo install pmat
+        pmat --version
+    - name: Run every documented command for real
+      run: bash scripts/verify-documented-flags.sh --execute --jobs 4 --budget 2700
 
   test-examples:
     runs-on: ${{ matrix.os }}

@@ -34,9 +34,13 @@ eslint --init
 sonarqube configure
 pylint --generate-rcfile
 
-# PMAT just works
-pmat analyze .
+# PMAT just works — no config file, no init step
+pmat analyze comprehensive
 ```
+
+(`analyze` is a parent command: the subcommand carries the analysis, and
+`comprehensive` is the one that runs them all. `--path` defaults to `.`, so
+there is nothing else to pass.)
 
 ### Instant Results
 
@@ -58,13 +62,14 @@ PMAT follows the Toyota Way principles:
 
 ### 1. Repository Analysis
 ```bash
-pmat analyze /path/to/repo
+pmat analyze comprehensive --path /path/to/repo
 ```
 Instant insights into any codebase - structure, languages, complexity, and patterns.
+The path goes through `--path`; a positional path is rejected.
 
 ### 2. Technical Debt Grading (TDG)
 ```bash
-pmat analyze tdg /path/to/repo
+pmat analyze tdg --path /path/to/repo
 ```
 Six orthogonal metrics provide comprehensive quality scoring:
 - Structural Complexity

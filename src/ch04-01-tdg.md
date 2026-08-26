@@ -138,30 +138,40 @@ Assesses business and security criticality:
 
 ```bash
 # Basic TDG analysis of current directory
-pmat analyze tdg .
+pmat analyze tdg -p .
 
 # Analyze specific path
-pmat analyze tdg src/
+pmat analyze tdg -p src/
 
 # Show only critical files (TDG > 2.5)
-pmat analyze tdg . --critical-only
+pmat analyze tdg -p . --critical-only
 
 # Custom threshold filtering
-pmat analyze tdg . --threshold 2.0
+pmat analyze tdg -p . --threshold 2.0
 
 # Include component breakdown
-pmat analyze tdg . --include-components
+pmat analyze tdg -p . --include-components
 
 # Limit to top 10 files
-pmat analyze tdg . --top-files 10
+pmat analyze tdg -p . --top-files 10
 
-# ML-based scoring (GH-97) - Uses aprender LinearRegression
-pmat analyze tdg . --ml
-pmat tdg . --ml  # Short form
-
-# Combined ML mode with other options
-pmat analyze tdg . --ml --include-components --format json
+# ML-based scoring (GH-97)
+pmat analyze tdg -p . --ml
 ```
+
+> **`--ml` is accepted but does nothing, and says so.** On `pmat analyze tdg` it
+> exits 1 with:
+>
+> ```
+> Error: --ml is not implemented: TDG scores are still computed by the heuristic
+> formulas, so this flag would relabel them without changing them. Re-run
+> `analyze tdg` without --ml (see GH-97).
+> ```
+>
+> That refusal is the feature: the flag will not quietly relabel heuristic
+> scores as model output. On the *top-level* `pmat tdg . --ml` the flag is
+> silently ignored and you get the ordinary heuristic grade. Do not build a
+> workflow on either form until GH-97 lands.
 
 ### Example Output
 
@@ -200,7 +210,7 @@ Understanding individual components helps target specific improvements:
 
 ```bash
 # Show detailed component breakdown
-pmat analyze tdg . --include-components --format json
+pmat analyze tdg -p . --include-components --format json
 ```
 
 ### Example Component Output
@@ -323,16 +333,22 @@ critical_paths:
 
 PMAT 2.68+ includes enterprise-grade features for large-scale analysis:
 
-```bash
-# Use persistent storage backend
-pmat analyze tdg . --storage-backend sled
-
-# Priority-based analysis
-pmat analyze tdg src/critical --priority high
-
-# Incremental analysis with caching
-pmat analyze tdg . --incremental --cache-enabled
-```
+> **Not available in pmat 3.32.0.** `--storage-backend`, `--priority`,
+> `--incremental` and `--cache-enabled` are not flags on `pmat analyze tdg`;
+> each exits 2 with `error: unexpected argument found`. Storage is managed
+> through the top-level `pmat tdg` command instead, which is a separate command
+> tree with its own subcommands:
+>
+> ```bash
+> pmat tdg storage --help       # storage backend management
+> pmat tdg config --help        # configuration, single source of truth
+> pmat tdg diagnostics --help   # system health
+> ```
+>
+> The complete flag list for the analyser is `pmat analyze tdg --help`:
+> `-p/--path`, `-t/--threshold`, `-n/--top-files`, `-f/--format`,
+> `--include-components`, `--critical-only`, `--ml`, `-o/--output`, and the
+> global logging flags. Nothing else.
 
 ### MCP Integration
 
@@ -383,18 +399,18 @@ jobs:
         
       - name: Run TDG Analysis
         run: |
-          pmat analyze tdg . \
+          pmat analyze tdg -p . \
             --format json \
             --output tdg-report.json
             
       - name: Check TDG Thresholds
         run: |
           # Fail if any file has TDG > 3.0
-          pmat analyze tdg . --threshold 3.0 || exit 1
+          pmat analyze tdg -p . --threshold 3.0 || exit 1
           
       - name: Generate TDG Report
         run: |
-          pmat analyze tdg . \
+          pmat analyze tdg -p . \
             --include-components \
             --format markdown > tdg-report.md
             
@@ -430,7 +446,7 @@ pmat quality-gate \
 
 ```bash
 # Analyze legacy module
-pmat analyze tdg src/legacy/ --include-components
+pmat analyze tdg -p src/legacy/ --include-components
 
 # Output
 File: src/legacy/order_processor.py
@@ -467,21 +483,40 @@ duplication = 0.10
 domain_risk = 0.10
 EOF
 
-pmat analyze tdg services/ --config tdg-micro.toml
+pmat analyze tdg -p services/
 ```
+
+> **Not available in pmat 3.32.0.** `pmat analyze tdg` has no `--config` flag,
+> so the weights file above is not read by it. TDG configuration lives behind
+> `pmat tdg config` — run `pmat tdg config --help` for the shape it expects.
 
 ### Example 3: Hotspot Detection
 
 ```bash
-# Find high-churn, high-complexity files
-pmat analyze tdg . \
+# Find the files that lost the most points on structure or duplication.
+# Every component is a score OUT OF its own maximum — higher is better — so a
+# hotspot is a LOW component score, not a high one.
+pmat analyze tdg -p . \
   --include-components \
   --format json | \
-  jq '.files[] | 
-    select(.components.churn.value > 0.5 and 
-           .components.complexity.value > 1.5) | 
-    {file: .path, tdg: .tdg_score, grade: .grade}'
+  jq -c '.files[] |
+    select(.structural_complexity < 25 or .duplication_ratio < 20) |
+    {file: .file_path, tdg: .total, grade: .grade}'
 ```
+
+Sample output:
+
+```json
+{"file":"./src/validate.py","tdg":91.5,"grade":"A"}
+{"file":"./src/payment_processor.py","tdg":98.420006,"grade":"A+"}
+```
+
+The per-file keys are `structural_complexity`, `semantic_complexity`,
+`duplication_ratio`, `coupling_score`, `doc_coverage`, `consistency_score`,
+`entropy_score`, `total`, `grade`, `file_path`, `language`,
+`penalties_applied`, `critical_defects_count`. There is no nested `components`
+object, no `path`, no `tdg_score`, and no churn component in this document —
+churn is its own analyser (`pmat analyze churn -p .`).
 
 ## Interpreting TDG Results
 
@@ -526,21 +561,29 @@ pmat analyze tdg . \
 
 ```bash
 # Create baseline for tracking
-pmat analyze tdg . --format json > tdg-baseline.json
-
-# Compare against baseline
-pmat analyze tdg . --compare-baseline tdg-baseline.json
+pmat analyze tdg -p . --format json > tdg-baseline.json
 ```
+
+> **Not available in pmat 3.32.0.** There is no `--compare-baseline` flag on
+> `pmat analyze tdg`. Baselines and regression checks are their own subcommands
+> of the top-level `pmat tdg` command:
+>
+> ```bash
+> pmat tdg baseline --help          # manage baselines
+> pmat tdg compare --help           # compare two files or directories
+> pmat tdg check-regression --help  # check for regressions against a baseline
+> ```
 
 ### 2. Incremental Improvement
 
 ```bash
 # Focus on worst files first
-pmat analyze tdg . --top-files 5 --critical-only
-
-# Track improvement over time
-pmat analyze tdg . --trend --period 30d
+pmat analyze tdg -p . --top-files 5 --critical-only
 ```
+
+> **Not available in pmat 3.32.0.** `--trend` and `--period` are not flags on
+> `pmat analyze tdg`. History over time is `pmat tdg history` — run
+> `pmat tdg history --help`.
 
 ### 3. Team Standards
 

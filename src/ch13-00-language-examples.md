@@ -1,18 +1,43 @@
 # Chapter 13: Multi-Language Project Examples
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ FULLY VALIDATED - All tests passing
+**Chapter Status**: ✅ Commands verified against pmat 3.32.0
 
 | Status | Count | Examples |
 |--------|-------|----------|
 | ✅ Full AST Support | 13 | Rust, Python, TypeScript, JavaScript, C, C++, Kotlin, WASM, Bash, PHP, Java, Scala, Lua |
 | ⚠️ Pattern-Based | 3 | Go, C#, Swift (regex/lexical, not full AST) |
 | ❌ Aspirational | 1 | Ruby (planned for future sprint) |
-| 📋 Tests Status | 100% | All test files passing with actual PMAT commands |
+| 📋 Commands | 100% | Every invocation executed against pmat 3.32.0 |
 
-*Last updated: 2026-02-10 (Sprint 60)*
-*PMAT version: pmat 3.0.3*
+*Last updated: 2026-08-25*
+*PMAT version: pmat 3.32.0*
 <!-- DOC_STATUS_END -->
+
+> **What changed in this rewrite.** The commands in this chapter were written
+> for a `pmat` that never shipped. Four subcommands used here **do not exist**:
+>
+> - **`pmat clippy`** (five occurrences). The real subcommand is
+>   `pmat analyze clippy`, it shells out to `cargo clippy`, and it therefore
+>   works only inside a Cargo project — `Error: Clippy failed: error: could not
+>   find Cargo.toml`. There is no JavaScript, Go or TypeScript linter in pmat,
+>   and no `--rules`, `--rust-edition`, `--go-version`, `--typescript-strict` or
+>   `--react-hooks` flag.
+> - **`pmat security-scan`**, with `--check-secrets` / `--check-hardcoded-values`.
+>   Never existed. `pmat` has no secrets scanner; the security check is
+>   `pmat quality-gate --checks security`.
+> - **`pmat complexity`** as a top-level command. It is `pmat analyze
+>   complexity`, and it has no `--threshold` (there are two: `--max-cyclomatic`
+>   and `--max-cognitive`) and no `--exclude`.
+> - **`pmat quality-gate <path> --enterprise-rules`**. The path goes in `-p`;
+>   `--enterprise-rules` does not exist.
+>
+> `pmat report` was also given a positional path throughout, which clap rejects;
+> it takes `-p`. And every per-language "Analysis Output" JSON block was
+> invented — no version of `pmat` emits `grade`, `recommendations`,
+> `pep8_violations` or `documentation_quality`. Those blocks have been removed
+> rather than rewritten, and the Lua section's output has been replaced with a
+> transcript that was actually executed.
 
 ## The Problem
 
@@ -131,52 +156,46 @@ class Calculator:
 ```
 
 **PMAT Analysis Command:**
+Run these from **inside** `python_example/` (`-p` takes the path if you prefer
+to stay put; `pmat report` has no positional argument):
+
 ```bash
-# Analyze Python project with specific configuration
-pmat analyze python_example/ --language python --include-tests
+# Complexity, scoped to the Python toolchain
+pmat analyze complexity --toolchain python
 
-# Generate detailed report
-pmat report python_example/ --format json --output python_analysis.json
+# Self-admitted debt — the TODO/FIXME/NOTE above
+pmat analyze satd
+
+# A consolidated report
+pmat report -f json -o python_analysis.json
 ```
 
-**Analysis Output:**
-```json
-{
-  "language": "python",
-  "files_analyzed": 3,
-  "functions_found": 7,
-  "technical_debt": {
-    "todo_comments": 1,
-    "fixme_comments": 1,
-    "note_comments": 1,
-    "code_smells": 2
-  },
-  "complexity": {
-    "average_complexity": 3.2,
-    "max_complexity": 8,
-    "high_complexity_functions": ["complex_calculation"]
-  },
-  "code_quality": {
-    "pep8_violations": 0,
-    "type_hints": "missing",
-    "dead_code": 1
-  },
-  "grade": "B-",
-  "recommendations": [
-    "Add input validation to functions",
-    "Replace print statements with logging",
-    "Add type hints for better maintainability",
-    "Reduce complexity in complex_calculation method"
-  ]
-}
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
+
+**What `pmat` actually measures on Python:**
+- **Cyclomatic and cognitive complexity**, per function, via tree-sitter AST
+- **Big-O class**, inferred per function
+- **SATD**: `TODO` / `FIXME` / `HACK` / `NOTE` comments, with severity
+- **Git churn**, per function
+- **Dead code**, reported per file as a percentage
+
+A `pmat context` line for a Python function looks like this:
+
+```
+- **Function**: `unused_import_demo` [complexity: 3] [cognitive: 3] [big-o: O(1)] [satd: 0] [churn: low(1)]
 ```
 
-**Key Python Analysis Features:**
-- **PEP Compliance**: Checks for Python Enhancement Proposal standards
-- **Type Hint Analysis**: Identifies missing type annotations
-- **Import Analysis**: Detects unused imports and circular dependencies
-- **Exception Handling**: Evaluates error handling patterns
-- **Dead Code Detection**: Finds unused functions and variables
+**What it does not do**, contrary to earlier printings of this section: there is
+no PEP-8 checker, no type-hint analysis, no unused-import detection and no
+exception-handling evaluation in pmat. Use `ruff`, `mypy` and `flake8` for
+those.
 
 ### JavaScript/Node.js Project Analysis
 
@@ -257,45 +276,27 @@ const processItem = async (item) => {
 ```
 
 **PMAT Analysis:**
+From inside `js_example/`:
+
 ```bash
-# Analyze JavaScript project
-pmat analyze js_example/ --language javascript
-
-# Check for modern patterns
-pmat clippy js_example/ --rules "prefer-const,no-var,async-await-patterns"
+pmat analyze complexity
+pmat analyze satd
 ```
 
-**Analysis Results:**
-```json
-{
-  "language": "javascript",
-  "files_analyzed": 2,
-  "functions_found": 5,
-  "technical_debt": {
-    "todo_comments": 1,
-    "hack_comments": 1,
-    "code_smells": 3
-  },
-  "modern_features": {
-    "arrow_functions": true,
-    "async_await": true,
-    "const_let_usage": "partial",
-    "template_literals": false
-  },
-  "code_quality": {
-    "var_usage": 1,
-    "console_usage": 2,
-    "duplicate_logic": 1
-  },
-  "grade": "C+",
-  "recommendations": [
-    "Replace var with const/let declarations",
-    "Use proper logging instead of console.log",
-    "Extract duplicate validation logic",
-    "Add proper error handling for async operations"
-  ]
-}
-```
+> **There is no `pmat clippy`, and no JavaScript linter in pmat.** The real
+> subcommand is `pmat analyze clippy`, which shells out to `cargo clippy` and
+> fails outside a Cargo project — `Error: Clippy failed: error: could not find
+> Cargo.toml`. For `prefer-const` / `no-var` / async-pattern rules, use ESLint.
+> `pmat` measures JavaScript complexity and debt; it does not lint it.
+
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
 
 ### Rust Project Analysis
 
@@ -398,50 +399,49 @@ pub mod utils {
 ```
 
 **PMAT Rust Analysis:**
-```bash
-# Analyze Rust project with Cargo integration
-pmat analyze rust_example/ --language rust --cargo-features
+From inside `rust_example/`:
 
-# Check for Rust-specific patterns
-pmat clippy rust_example/ --rust-edition 2021
+```bash
+# Complexity, scoped to the Rust toolchain
+pmat analyze complexity --toolchain rust
+
+# Clippy with confidence-filtered auto-fixes (Rust only)
+pmat analyze clippy --dry-run
 ```
 
-**Rust Analysis Output:**
+`pmat analyze clippy` is the real subcommand — there is no top-level `pmat
+clippy` and no `--rust-edition` flag. Its options are `-p/--path`,
+`-c/--confidence <high|medium|low>` (default `high`), `--dry-run`,
+`--fix-codes`, `-o/--output` and `--perf`. It reports honestly when its
+confidence filter hid everything:
+
 ```json
 {
-  "language": "rust",
-  "files_analyzed": 2,
-  "functions_found": 5,
-  "technical_debt": {
-    "todo_comments": 1,
-    "fixme_comments": 0,
-    "note_comments": 1
+  "action": "analyzed",
+  "diagnostics_found": 2,
+  "diagnostics_eligible": 0,
+  "diagnostics_filtered_out": 2,
+  "min_confidence": "High",
+  "results": {
+    "dry_run": true,
+    "total_fixes": 0,
+    "fixes": []
   },
-  "rust_patterns": {
-    "ownership_violations": 0,
-    "unsafe_blocks": 0,
-    "dead_code_warnings": 1,
-    "unused_imports": 0
-  },
-  "complexity": {
-    "average_complexity": 4.1,
-    "max_complexity": 12,
-    "high_complexity_functions": ["complex_logic"]
-  },
-  "cargo_integration": {
-    "dependencies": 1,
-    "dev_dependencies": 0,
-    "features_used": ["derive"]
-  },
-  "grade": "B",
-  "recommendations": [
-    "Reduce cyclomatic complexity in complex_logic",
-    "Consider using Result<T, E> for error handling",
-    "Remove duplicate functionality between process_data and count_items",
-    "Add documentation for public API functions"
-  ]
+  "message": "⚠️ clippy reported 2 diagnostic(s), and none met the required confidence (High) — 2 left untouched. This is NOT a clean result; re-run with --confidence low to see them."
 }
 ```
+
+`total_fixes: 0` next to `diagnostics_found: 2` is the point: a zero here is the
+filter's, not the code's.
+
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
 
 ### Java Enterprise Project Analysis
 
@@ -516,49 +516,26 @@ public class Calculator {
 ```
 
 **PMAT Java Analysis:**
+From inside `java_example/`:
+
 ```bash
-# Analyze Java project with Maven integration
-pmat analyze java_example/ --language java --maven-project
-
-# Check enterprise patterns
-pmat quality-gate java_example/ --enterprise-rules
+pmat analyze complexity
+pmat quality-gate --checks complexity,satd
 ```
 
-**Java Analysis Results:**
-```json
-{
-  "language": "java",
-  "files_analyzed": 1,
-  "functions_found": 4,
-  "technical_debt": {
-    "todo_comments": 1,
-    "fixme_comments": 1,
-    "hack_comments": 1
-  },
-  "enterprise_patterns": {
-    "deprecated_methods": 1,
-    "complex_conditionals": 2,
-    "system_out_usage": 1
-  },
-  "complexity": {
-    "average_complexity": 5.2,
-    "max_complexity": 9,
-    "methods_over_threshold": ["processRequest"]
-  },
-  "code_quality": {
-    "javadoc_coverage": "partial",
-    "exception_handling": "weak",
-    "design_patterns": []
-  },
-  "grade": "B-",
-  "recommendations": [
-    "Replace System.out with proper logging framework",
-    "Add comprehensive JavaDoc documentation",
-    "Implement proper exception handling with custom exceptions",
-    "Extract complex conditional logic into separate methods"
-  ]
-}
-```
+`pmat quality-gate` takes its path through `-p`/`--project-path`, never
+positionally, and there is no `--enterprise-rules`. Its `--checks` values are
+`dead-code`, `complexity`, `coverage`, `sections`, `provability`, `satd`,
+`entropy`, `security`, `duplicates` and `all`.
+
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
 
 ### Go Project Analysis
 
@@ -658,49 +635,24 @@ func (h *Handler) Calculate(w http.ResponseWriter, r *http.Request) {
 ```
 
 **PMAT Go Analysis:**
+From inside `go_example/`:
+
 ```bash
-# Analyze Go project with module awareness
-pmat analyze go_example/ --language go --go-modules
-
-# Check Go-specific patterns
-pmat clippy go_example/ --go-version 1.19
+pmat analyze complexity
+pmat analyze satd
 ```
 
-**Go Analysis Output:**
-```json
-{
-  "language": "go",
-  "files_analyzed": 2,
-  "functions_found": 4,
-  "technical_debt": {
-    "todo_comments": 1,
-    "fixme_comments": 1,
-    "note_comments": 0
-  },
-  "go_patterns": {
-    "error_handling": "good",
-    "goroutine_usage": false,
-    "channel_usage": false,
-    "interface_usage": false
-  },
-  "http_patterns": {
-    "handler_functions": 2,
-    "middleware_usage": false,
-    "json_handling": "present"
-  },
-  "complexity": {
-    "average_complexity": 3.8,
-    "max_complexity": 7
-  },
-  "grade": "B",
-  "recommendations": [
-    "Add input validation middleware",
-    "Consider using context for request handling",
-    "Add structured logging instead of fmt.Println",
-    "Implement proper configuration management"
-  ]
-}
-```
+There is no Go linter in `pmat` and no `--go-version` flag anywhere. Use
+`go vet` / `staticcheck` for Go-specific rules.
+
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
 
 ### TypeScript React Project Analysis
 
@@ -790,52 +742,26 @@ export const Calculator: React.FC<CalculatorProps> = ({ theme = 'light' }) => {
 ```
 
 **PMAT TypeScript Analysis:**
+From inside `ts_example/`:
+
 ```bash
-# Analyze TypeScript React project
-pmat analyze ts_example/ --language typescript --react-components
-
-# Check TypeScript patterns
-pmat clippy ts_example/ --typescript-strict --react-hooks
+pmat analyze complexity
+pmat analyze satd
 ```
 
-**TypeScript Analysis Results:**
-```json
-{
-  "language": "typescript",
-  "files_analyzed": 1,
-  "functions_found": 2,
-  "components_found": 1,
-  "technical_debt": {
-    "todo_comments": 1,
-    "fixme_comments": 1,
-    "code_smells": 2
-  },
-  "typescript_patterns": {
-    "type_safety": "good",
-    "interface_usage": true,
-    "strict_mode": true,
-    "any_usage": 0
-  },
-  "react_patterns": {
-    "functional_components": true,
-    "hooks_usage": ["useState"],
-    "prop_types": "typescript",
-    "component_complexity": 6
-  },
-  "code_quality": {
-    "console_usage": 1,
-    "alert_usage": 1,
-    "error_boundaries": false
-  },
-  "grade": "B-",
-  "recommendations": [
-    "Add proper error boundaries for error handling",
-    "Replace console.error and alert with proper UI feedback",
-    "Extract calculation logic into custom hook",
-    "Add unit tests for component behavior"
-  ]
-}
-```
+There is no TypeScript linter in pmat, and no `--typescript-strict` or
+`--react-hooks` flag. Use `tsc --strict` and
+`eslint-plugin-react-hooks` for those; `pmat` contributes complexity, debt and
+context.
+
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
 
 ### Lua Project Analysis
 
@@ -905,109 +831,77 @@ return Game
 ```
 
 **PMAT Lua Analysis:**
+From inside `lua_example/`:
+
 ```bash
-# TDG quality grading for a Lua file (full 7-component scoring)
-pmat analyze tdg --path game.lua --format json
+# TDG quality grading for one Lua file (full 7-component scoring)
+pmat analyze tdg -p game.lua -f json
 
-# Analyze complexity with per-function breakdown
-pmat analyze complexity --project-path lua_example/
-
-# Run CB-600 Lua best practices compliance checks
-pmat comply check
+# Complexity with per-function breakdown
+pmat analyze complexity
 
 # Search for Lua functions
 pmat query "collision" --include-source --limit 5
-
-# Run the Rust example demonstrating Lua AST + TDG
-cargo run --example lua_analysis
 ```
 
-**TDG Output (Lua game module):**
+`pmat comply check` also covers the CB-600 Lua best-practice rules, but it is a
+whole-repository scan that will saturate a workstation — run it deliberately,
+not as part of a per-language walkthrough.
+
+**TDG Output (a single Lua module):**
+
 ```
-$ pmat analyze tdg --path game.lua --format json
+$ pmat analyze tdg -p game.lua -f json
+🔍 Starting TDG (Technical Debt Grading) analysis...
 {
-  "structural_complexity": 24.1,
+  "structural_complexity": 25.0,
   "semantic_complexity": 20.0,
   "duplication_ratio": 20.0,
   "coupling_score": 15.0,
-  "doc_coverage": 7.3,
+  "doc_coverage": 0.0,
   "consistency_score": 10.0,
-  "total": 96.4,
-  "grade": "APLus",
+  "entropy_score": 10.0,
+  "total": 100.0,
+  "grade": "A+",
   "confidence": 0.9,
-  "language": "Lua"
+  "language": "Lua",
+  "file_path": "game.lua",
+  "penalties_applied": [],
+  "critical_defects_count": 0,
+  "has_critical_defects": false,
+  "has_contract_coverage": false
 }
+🔍 Checking for critical defects...
+✅ No critical defects found
+✅ TDG analysis complete
 ```
 
-**Context Output (4-file Lua project):**
-```
-$ pmat context --project-path lua_example/
-## Project Structure
-- Total Files: 4
-- Total Functions: 31
-- Median Cyclomatic: 1.00
-- Median Cognitive: 1.00
-```
+Seven scored components plus `entropy_score`, and `confidence: 0.9` — TDG tells
+you how sure it is, which matters on a file this small. `doc_coverage: 0.0` on a
+module with no comments is a real measurement, not a missing one.
 
-**Complexity Analysis Output:**
+**Complexity output, per function:**
+
 ```
-$ pmat analyze complexity --project-path lua_example/
-📊 Files analyzed: 4
-🔧 Total functions: 30
-- Median Cyclomatic: 2.5
-- Max Cyclomatic: 49
-- 90th Percentile Cyclomatic: 12
+$ pmat analyze complexity -p game.lua
+Top Files by Complexity
 
-## Top Files by Complexity
-1. src/json_parser.lua - Cyclomatic: 91, Cognitive: 250, Functions: 6
-2. lib/state_machine.lua - Cyclomatic: 32, Cognitive: 66, Functions: 7
-3. src/http_router.lua - Cyclomatic: 20, Cognitive: 23, Functions: 10
-4. lib/event_emitter.lua - Cyclomatic: 17, Cognitive: 22, Functions: 7
+  1. game.lua - Cyclomatic: 3, Cognitive: 2, Functions: 1
 
-## Top Complexity Hotspots
-1. JsonParser.parse json_parser.lua:9 - cyclomatic: 49
-2. parse_number json_parser.lua:63 - cyclomatic: 14
+Functions in File
+
+  1. M.hit (line 2-5) - Cyclomatic: 3, Cognitive: 2
 ```
 
-**Rust API Example Output:**
-```
-$ cargo run --example lua_analysis
+`pmat` resolves the `M.hit` table-function name rather than reporting an anonymous
+function, which is what makes Lua output usable.
 
-=== PMAT Lua Language Analysis ===
-
-1. Simple Function Parsing
-   Functions found: 2
-   Complexity: cyclomatic=2, cognitive=1
-
-2. Module Imports (require)
-   Imports detected: 3
-   Functions defined: 2
-
-3. Complex Control Flow Analysis
-   Complexity: cyclomatic=14, cognitive=13
-   Grade: B (moderate)
-
-4. Table Constructors (Lua OOP)
-   Table constructors: 5
-   Methods/functions: 2
-
-5. Language Detection
-   Language: Lua
-   Parses .lua files: true
-   Parses .py files: false
-
-6. TDG Quality Scoring
-   TDG Total:  97.3/100
-   Grade:      APLus
-   Confidence: 90%
-   Components:
-     Structural Complexity: 25.0/25
-     Semantic Complexity:   20.0/20
-     Duplication Ratio:     20.0/20
-     Coupling Score:        15.0/15
-     Doc Coverage:          7.3/10
-     Consistency Score:     10.0/10
-```
+The numbers above come from a two-function module; on a larger Lua tree the same
+commands report the whole project. Earlier printings of this section pasted
+figures from a four-file `lua_example/` that does not ship with the book, and a
+`cargo run --example lua_analysis` transcript whose TDG block reported
+`Grade: APLus` — an old serialization of `A+` that the current binary no longer
+emits. Both have been removed rather than reprinted.
 
 **Key Lua Analysis Features:**
 - **TDG Quality Grading**: Full 7-component scoring (structural, semantic, duplication, coupling, docs, consistency, entropy) with 90% confidence via tree-sitter AST
@@ -1090,63 +984,28 @@ docker run -d -p 5000:5000 app
 ```
 
 **PMAT Polyglot Analysis:**
+From inside `polyglot_example/`:
+
 ```bash
-# Analyze entire polyglot project
-pmat analyze polyglot_example/ --all-languages
+# Every analyser, across every language present
+pmat analyze comprehensive
 
-# Generate cross-language report
-pmat report polyglot_example/ --polyglot-summary --output polyglot_report.json
+# A consolidated report
+pmat report -f json -o polyglot_report.json
 ```
 
-**Polyglot Analysis Output:**
-```json
-{
-  "project_type": "polyglot",
-  "total_files": 4,
-  "languages_detected": {
-    "python": {
-      "files": 1,
-      "functions": 2,
-      "grade": "C+",
-      "primary_issues": ["configuration_management", "database_hardcoding"]
-    },
-    "javascript": {
-      "files": 1,
-      "functions": 1,
-      "grade": "B-",
-      "primary_issues": ["global_state", "error_handling"]
-    },
-    "shell": {
-      "files": 1,
-      "grade": "C",
-      "primary_issues": ["error_handling", "hardcoded_values"]
-    },
-    "toml": {
-      "files": 1,
-      "grade": "A",
-      "primary_issues": []
-    }
-  },
-  "cross_language_analysis": {
-    "api_consistency": "good",
-    "error_handling_consistency": "poor",
-    "configuration_management": "inconsistent",
-    "deployment_automation": "basic"
-  },
-  "overall_grade": "B-",
-  "architecture_insights": {
-    "service_architecture": "microservices",
-    "data_flow": "rest_api",
-    "deployment_model": "containerized"
-  },
-  "recommendations": [
-    "Standardize error handling across all languages",
-    "Implement consistent configuration management",
-    "Add proper logging to all components",
-    "Create unified deployment pipeline"
-  ]
-}
-```
+There is no `--polyglot-summary`. `pmat report` has no positional path either —
+use `-p`. See [Chapter 9](ch09-00-report.md) for what that report contains
+(SATD only) before relying on it for cross-language coverage.
+
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
 
 ## Configuration and Markup File Analysis
 
@@ -1208,60 +1067,31 @@ logging:
 ```
 
 **PMAT Configuration Analysis:**
+From inside `config_example/`:
+
 ```bash
 # Analyze configuration and documentation
-pmat analyze config_example/ --include-config --include-docs
+pmat context
 
 # Security-focused analysis
-pmat security-scan config_example/ --check-secrets --check-hardcoded-values
+pmat quality-gate --checks security
 ```
 
-**Configuration Analysis Results:**
-```json
-{
-  "markup_files": {
-    "markdown": {
-      "files": 1,
-      "documentation_quality": "good",
-      "todo_comments": 1,
-      "fixme_comments": 1,
-      "note_comments": 1,
-      "broken_links": 0
-    }
-  },
-  "config_files": {
-    "yaml": {
-      "files": 1,
-      "structure_validity": "valid",
-      "security_issues": [
-        "hardcoded_credentials",
-        "ssl_disabled",
-        "debug_enabled"
-      ],
-      "todo_comments": 1
-    },
-    "json": {
-      "files": 1,
-      "structure_validity": "valid",
-      "todo_comments": 1
-    }
-  },
-  "security_analysis": {
-    "credentials_exposed": true,
-    "ssl_configurations": "insecure",
-    "debug_mode_enabled": true,
-    "environment_variable_usage": "minimal"
-  },
-  "overall_config_grade": "C+",
-  "security_grade": "C-",
-  "recommendations": [
-    "Move credentials to environment variables",
-    "Enable SSL in all environments",
-    "Set appropriate logging levels per environment",
-    "Add configuration validation"
-  ]
-}
-```
+> **There is no `pmat security-scan`.** It is not a subcommand and never was;
+> `--check-secrets` and `--check-hardcoded-values` do not exist either. The
+> security check lives on the quality gate, and `pmat` has **no secrets
+> scanner** — use `gitleaks` or `trufflehog` for credentials in config files.
+> Read the gate's scope line before trusting a zero: it reports when it did not
+> descend into subdirectories.
+
+> **Removed: fabricated analysis output.** This section previously pasted a
+> JSON document with keys `pmat` does not emit — `grade`, `recommendations`,
+> `pep8_violations`, `code_smells`, `documentation_quality`,
+> `project_type` — from a project that does not ship with the book. No
+> version of `pmat` produces that schema. For the real shapes, see
+> [Chapter 5](ch05-00-analyze-suite.md) (`analyze comprehensive --format
+> json`), [Chapter 9](ch09-00-report.md) (`report -f json`) and the Lua
+> section below, whose output was executed against pmat 3.32.0.
 
 ## MCP Integration for Multi-Language Analysis
 
@@ -1403,15 +1233,22 @@ rules = [
 Use PMAT to understand how different languages interact:
 
 ```bash
-# Analyze API boundaries between services
-pmat analyze . --cross-language-apis
+# Module and call boundaries across the whole tree, as a Mermaid graph
+pmat analyze dag -p . --enhanced
 
-# Check for consistent error handling patterns
-pmat analyze . --error-handling-consistency
+# Self-admitted debt (TODO/FIXME/HACK), one pass over every language
+pmat analyze satd -p .
 
-# Validate configuration consistency
-pmat analyze . --config-consistency
+# Every analyser at once, with the summary first
+pmat analyze comprehensive -p . --executive-summary
 ```
+
+> **Not available in pmat 3.32.0.** Earlier printings of this chapter showed
+> `--cross-language-apis`, `--error-handling-consistency` and
+> `--config-consistency` flags on `pmat analyze`. No such flags exist, and
+> `pmat analyze` on its own is not runnable — it is a parent command that
+> requires a subcommand (`pmat analyze --help` lists them). The three commands
+> above are the real ones, and each was run to produce this section.
 
 ### 4. Graduated Quality Enforcement
 
@@ -1429,22 +1266,35 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Core Services Quality Gate
-        run: pmat quality-gate src/core/ --min-grade A-
-        
+        run: pmat quality-gate -p src/core/ --checks complexity --checks satd
+
   quality-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Frontend Quality Gate
-        run: pmat quality-gate frontend/ --min-grade B+
-        
+        run: pmat quality-gate -p frontend/ --checks complexity
+
   quality-scripts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Scripts Quality Gate
-        run: pmat quality-gate scripts/ --min-grade B
+        run: pmat quality-gate -p scripts/ --checks satd
 ```
+
+Two corrections worth noting, both verified against pmat 3.32.0:
+
+- **The path is a flag.** `pmat quality-gate src/core/` exits 2 with
+  `error: unexpected argument found`. Use `-p`/`--project-path`.
+- **There is no `--min-grade`.** It exits 2. Graduation between parts of a
+  codebase is expressed by which `--checks` you run there — the accepted values
+  are `dead-code`, `complexity`, `coverage`, `sections`, `provability`, `satd`,
+  `entropy`, `security`, `duplicates`, `all` — and by the thresholds in
+  `.pmat-metrics.toml`, which the gate reports as it starts
+  (`⚙️  Complexity thresholds: cyclomatic 30, cognitive 25 (from built-in
+  defaults)`). Since 3.32.0 a blocking violation exits 1 on its own; pass
+  `--report-only` if you want the report without the verdict.
 
 ## Common Multi-Language Patterns
 
@@ -1453,11 +1303,11 @@ jobs:
 Analyze service boundaries and dependencies:
 
 ```bash
-# Analyze service communication patterns
-pmat analyze . --microservices-analysis
+# Dependency graph of the whole tree; each service shows up as its own cluster
+pmat analyze dag -p . --enhanced
 
-# Check for consistent API patterns
-pmat analyze . --api-consistency-check
+# Centrality measures over that graph — which modules everything depends on
+pmat analyze graph-metrics -p .
 ```
 
 ### 2. Full-Stack Applications
@@ -1465,11 +1315,12 @@ pmat analyze . --api-consistency-check
 Coordinate quality between frontend and backend:
 
 ```bash
-# Analyze full-stack consistency
-pmat analyze . --fullstack-analysis
+# One report covering both halves of the tree
+pmat analyze comprehensive -p . --executive-summary
 
-# Check data flow patterns
-pmat analyze . --data-flow-analysis
+# Or scope a single analyser to one side at a time
+pmat analyze complexity -p ./frontend
+pmat analyze complexity -p ./backend
 ```
 
 ### 3. DevOps Integration
@@ -1477,35 +1328,68 @@ pmat analyze . --data-flow-analysis
 Ensure infrastructure code quality:
 
 ```bash
-# Analyze infrastructure as code
-pmat analyze . --include-iac --languages terraform,yaml,dockerfile
+# Makefile quality and compliance (this one takes a positional path, not -p)
+pmat analyze makefile Makefile
+
+# Machine-specific absolute paths baked into scripts and config.
+# Enumerates via `git ls-files`, so it must run inside a git checkout.
+pmat analyze hardcoded-paths -p .
 ```
+
+> **Not available in pmat 3.32.0.** Earlier printings showed
+> `--microservices-analysis`, `--api-consistency-check`, `--fullstack-analysis`,
+> `--data-flow-analysis` and `--include-iac --languages terraform,yaml,dockerfile`.
+> None of those flags exist. PMAT has no Terraform, YAML or Dockerfile analyser —
+> `pmat analyze complexity` on a directory of only YAML exits non-zero and says
+> so (`no complexity analyzer for: .yaml`). The commands above are what actually
+> ships.
 
 ## Troubleshooting Multi-Language Analysis
 
 ### Language Detection Issues
 
-If PMAT doesn't detect a language correctly:
+By default `pmat analyze complexity` auto-detects the project toolchain and then
+analyses every language it finds — the banner tells you which it picked
+(`🔍 Analyzing python-uv project complexity (all languages)...`). To override
+that guess and restrict the pass to one toolchain, use `--toolchain`:
 
 ```bash
-# Force language detection
-pmat analyze . --force-language-detection
+# Only the Python files, whatever else is in the tree
+pmat analyze complexity -p . --toolchain python-uv
 
-# Specify custom file patterns
-pmat analyze . --language-patterns "*.custom:python,*.special:rust"
+# Only the Rust files
+pmat analyze complexity -p . --toolchain rust
+
+# Only the Deno/TypeScript files
+pmat analyze complexity -p . --toolchain deno
 ```
+
+The banner changes to `🔍 Analyzing python-uv files only (--toolchain python-uv)...`
+so you can confirm the filter took effect. If the filter leaves nothing to
+measure, PMAT exits non-zero rather than reporting a clean zero — an empty
+result is not a passing result.
 
 ### Performance with Large Codebases
 
 For large polyglot projects:
 
 ```bash
-# Parallel analysis
-pmat analyze . --parallel-languages --workers 4
+# Raise the walk budget (default 300s); the limit is reported on stderr
+pmat analyze complexity -p . --timeout 900
 
-# Incremental analysis
-pmat analyze . --incremental --changed-files-only
+# Report only the worst offenders instead of every file
+pmat analyze complexity -p . --top-files 20
+
+# Narrow the walk with a glob instead of analysing the whole tree
+pmat analyze complexity -p . --include "src/**"
 ```
+
+> **Not available in pmat 3.32.0.** Earlier printings showed
+> `--force-language-detection`, `--language-patterns`, `--parallel-languages`,
+> `--workers` and `--incremental --changed-files-only`. None of those flags
+> exist. Exclusion is driven by `.pmatignore`/`.gitignore` (see
+> [Chapter 30](ch30-00-file-exclusions.md)), not by a language-pattern flag, and
+> there is no user-facing worker count.
 
 ### Custom Language Support
 
@@ -1576,7 +1460,7 @@ pmat query "kernel" --faults --limit 10
 
 ### PTX Instruction Tags (v3.6+)
 
-PMAT extracts PTX instruction mnemonics from inline `asm()` blocks as searchable tags. When a CUDA function contains inline PTX like `asm("mma.sync.aligned...")`, pmat generates fault annotations like `PTX:mma.sync` that can be found via semantic or literal search.
+PMAT extracts PTX instruction mnemonics from inline `asm()` blocks as searchable tags. When a CUDA function contains inline PTX like `asm("mma.sync.aligned...")`, `pmat` generates fault annotations like `PTX:mma.sync` that can be found via semantic or literal search.
 
 Supported PTX opcodes: `mma.sync`, `ldmatrix`, `movmatrix`, `cp.async`, `bar.sync`, `bar.arrive`, `membar`, `ld.shared`, `st.shared`, `ld.global`, `st.global`, `atom.shared`, `red.shared`, `shfl.sync`, `vote.sync`, `match.sync`.
 
@@ -1715,24 +1599,35 @@ When a `compile_commands.json` file exists (generated by CMake with `-DCMAKE_EXP
 
 ```bash
 # Analyze a C project
-pmat analyze ./path/to/c/project
+pmat analyze complexity -p ./path/to/c/project
 
 # Analyze a C++ project with detailed output
-pmat analyze --verbose ./path/to/cpp/project
+pmat analyze complexity -p ./path/to/cpp/project --verbose
 
 # Generate deep context for a mixed C/C++ project
-pmat context --output cpp_context.md ./path/to/cpp/project
+pmat context -p ./path/to/cpp/project --output cpp_context.md
 ```
+
+Note that both of these take the project path through a **flag**, not as a
+positional argument. `pmat context ./path` and `pmat analyze complexity ./path`
+both fail with `error: unexpected argument found` — `-p` (`--path` for
+`analyze`, `--project-path` for `context`) is required.
 
 ### Finding Complexity Issues in C/C++
 
+There is no top-level `pmat complexity`, and `analyze complexity` has no
+`--threshold` or `--exclude`. The real forms:
+
 ```bash
-# Identify complex functions
-pmat complexity --threshold 10 ./path/to/cpp/project
+# Identify complex functions (two thresholds, one per metric)
+pmat analyze complexity -p ./path/to/cpp/project --max-cyclomatic 10
 
 # Focus on specific file types
-pmat complexity --include "*.cpp" --exclude "*test*" ./path/to/cpp/project
+pmat analyze complexity -p ./path/to/cpp/project --include "**/*.cpp"
 ```
+
+`--include` exists on `analyze complexity`; `--exclude` does not. To skip test
+files, point `-p` at the source subtree.
 
 ## Summary
 

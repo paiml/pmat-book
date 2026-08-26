@@ -1,792 +1,528 @@
-# Chapter 21: Template Generation and Project Scaffolding
+# Chapter 21: Templates and Scaffolding
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (16/16 examples)
+**Chapter Status**: ✅ Verified against pmat 3.32.0
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 16 | Ready for production use |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | 24 | Executed against pmat 3.32.0; output pasted verbatim |
+| ⚠️ Not Implemented | 0 | — |
+| ❌ Broken | 0 | — |
+| 📋 Planned | 0 | — |
 
-*Last updated: 2025-09-12*  
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-08-25*
+*PMAT version: pmat 3.32.0*
 <!-- DOC_STATUS_END -->
 
-## The Problem
+> **What changed in this rewrite.** The 2025 edition documented a template
+> registry that `pmat` does not have. Three corrections dominate:
+>
+> - **There are nine templates, not a catalogue.** They are Makefile, README and
+>   .gitignore for three toolchains (`rust`, `deno`, `python-uv`). There is no
+>   `rust/cli` application template, no `python/api`, no `rust-api`, no
+>   `python-ml`, no `polyglot`. Every `pmat generate rust cli` in the old
+>   chapter failed with `Error: Invalid template URI: template://rust/cli`,
+>   because that URI names nothing. Run `pmat list` — the full inventory fits on
+>   one screen and is printed below.
+> - **`pmat scaffold project` takes a `<TOOLCHAIN>` positional and `-t` /
+>   `-p`.** It has no `--name`, `--path`, `--git`, `--interactive`, `--config`,
+>   `--languages`, `--author`, `--force` or `--backup`. The old chapter used
+>   all nine.
+> - **Six scaffold subcommands never existed**: `create-template`,
+>   `publish-template`, `compose`, `cache-warm`, `cache-clear`, `cache-stats`,
+>   `update-registry`. There is no template cache and no registry to publish to.
+>
+> Also removed: `pmat list --refresh`, `pmat generate --dry-run`, `pmat generate
+> --use-defaults`, `pmat generate custom --template-path`, and `pmat
+> quality-gate --strict` (the gate is strict by default in 3.32.0; the flag that
+> exists is `--report-only`).
 
-Starting new projects involves repetitive boilerplate setup, configuration files, directory structures, and dependency management. Teams often copy existing projects and manually modify them, leading to inconsistency, outdated patterns, and missed best practices. Developers need a standardized, efficient way to generate projects with quality standards built-in from the start.
+## The Inventory
 
-## Core Concepts
-
-### Template System Architecture
-
-PMAT's template generation provides:
-- **Curated Templates**: Production-ready templates for various project types
-- **Parameter Validation**: Type-safe template parameters with validation
-- **Multi-Language Support**: Templates for Rust, Python, TypeScript, Go, and more
-- **Agent Scaffolding**: MCP agent templates with deterministic behavior
-- **Quality Standards**: Built-in best practices and quality gates
-- **Customization**: Flexible configuration and parameter overrides
-
-### Template Categories
-
-```
-Templates
-├── Languages
-│   ├── Rust (cli, web, lib, agent)
-│   ├── Python (api, ml, cli, package)
-│   ├── TypeScript (react, node, deno, lib)
-│   ├── Go (api, cli, grpc, lambda)
-│   └── Java (spring, quarkus, lib)
-├── Frameworks
-│   ├── Web (actix, fastapi, express, gin)
-│   ├── ML (pytorch, tensorflow, sklearn)
-│   └── Mobile (flutter, react-native)
-└── Specialized
-    ├── MCP Agents (tool, analyzer, converter)
-    ├── Microservices (rest, grpc, graphql)
-    └── Data (etl, streaming, batch)
-```
-
-## Listing and Searching Templates
-
-### List All Available Templates
+Start here. `pmat list` prints everything the binary ships:
 
 ```bash
-# List all templates in table format
 pmat list
+```
 
-# List with detailed information
-pmat list --verbose
+```
+┌──────────────────────────────────────────┬───────────┬───────────┬──────────────────────────────────────────────────────────────┐
+│                   Name                   │ Toolchain │ Category  │                         Description                          │
+├──────────────────────────────────────────┼───────────┼───────────┼──────────────────────────────────────────────────────────────┤
+│ Rust CLI Makefile                        │ rust      │ Makefile  │ Makefile for building Rust command-line applications with ca... │
+│ Rust CLI README                          │ rust      │ Readme    │ README template for Rust command-line applications           │
+│ Rust CLI .gitignore                      │ rust      │ Gitignore │ Gitignore template for Rust CLI projects                     │
+│ Deno TypeScript CLI Application Makefile │ deno      │ Makefile  │ Makefile for Deno TypeScript CLI applications                │
+│ Deno CLI Application README              │ deno      │ Readme    │ README template for Deno CLI applications                    │
+│ Deno CLI Application .gitignore          │ deno      │ Gitignore │ .gitignore template for Deno projects                        │
+│ Python UV CLI Application Makefile       │ python-uv │ Makefile  │ Makefile for Python CLI applications using UV package manage... │
+│ Python UV CLI Application README         │ python-uv │ Readme    │ README template for Python UV CLI applications               │
+│ Python UV CLI Application .gitignore     │ python-uv │ Gitignore │ .gitignore template for Python UV projects                   │
+└──────────────────────────────────────────┴───────────┴───────────┴──────────────────────────────────────────────────────────────┘
+```
 
-# JSON format for automation
+Nine templates, three per toolchain. This is a **project-hygiene** generator —
+build file, readme, ignore file — not an application scaffolder. Nothing here
+writes `main.rs` or a web server.
+
+The JSON form carries the URIs and, crucially, each template's parameter list:
+
+```bash
 pmat list --format json
-
-# YAML format
-pmat list --format yaml
 ```
 
-**Example Output:**
-```
-📚 Available Templates
-=====================
-
-Rust Templates:
-┌─────────────┬──────────────┬─────────────────────────────────┐
-│ Template    │ Category     │ Description                     │
-├─────────────┼──────────────┼─────────────────────────────────┤
-│ rust/cli    │ Application  │ CLI app with clap and tokio    │
-│ rust/web    │ Web          │ Actix-web REST API server      │
-│ rust/lib    │ Library      │ Rust library with tests        │
-│ rust/agent  │ MCP          │ Deterministic MCP agent        │
-│ rust/wasm   │ WebAssembly  │ WASM module with bindings      │
-└─────────────┴──────────────┴─────────────────────────────────┘
-
-Python Templates:
-┌─────────────┬──────────────┬─────────────────────────────────┐
-│ Template    │ Category     │ Description                     │
-├─────────────┼──────────────┼─────────────────────────────────┤
-│ python/api  │ Web          │ FastAPI with async support     │
-│ python/ml   │ ML           │ ML project with PyTorch        │
-│ python/cli  │ Application  │ Click CLI with rich output     │
-│ python/pkg  │ Library      │ Python package with Poetry     │
-└─────────────┴──────────────┴─────────────────────────────────┘
-
-Total: 25 templates available
-```
-
-### Search Templates
-
-```bash
-# Search for web-related templates
-pmat search "web"
-
-# Search with result limit
-pmat search "api" --limit 10
-
-# Search within specific toolchain
-pmat search "server" --toolchain rust
-```
-
-**Search Results Example:**
-```
-🔍 Search Results for "web"
-==========================
-
-Found 8 matching templates:
-
-1. rust/web - Actix-web REST API server
-   Tags: [rust, web, api, async, actix]
-   
-2. python/api - FastAPI with async support
-   Tags: [python, web, api, fastapi, async]
-   
-3. typescript/react - React SPA with TypeScript
-   Tags: [typescript, web, frontend, react]
-   
-4. go/gin - Gin web framework API
-   Tags: [go, web, api, gin, middleware]
-
-Use 'pmat generate <category> <template>' to create project
-```
-
-### Filter by Category
-
-```bash
-# List only Rust templates
-pmat list --category rust
-
-# List only web frameworks
-pmat list --category web
-
-# Filter by toolchain
-pmat list --toolchain python
-```
-
-## Generating Single Templates
-
-### Basic Template Generation
-
-```bash
-# Generate a Rust CLI application
-pmat generate rust cli --param name=my-cli --output main.rs
-
-# Short form with aliases
-pmat gen rust cli -p name=my-cli -o main.rs
-
-# Generate with multiple parameters
-pmat generate python api \
-  --param name=my-api \
-  --param port=8000 \
-  --param database=postgres \
-  --output app.py
-```
-
-**Generated Template Example (Rust CLI):**
-```rust
-use clap::{Parser, Subcommand};
-use anyhow::Result;
-
-#[derive(Parser)]
-#[command(name = "my-cli")]
-#[command(about = "A CLI application generated by PMAT", long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-    
-    /// Enable verbose output
-    #[arg(short, long)]
-    verbose: bool,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Process data with specified options
-    Process {
-        /// Input file path
-        #[arg(short, long)]
-        input: String,
-        
-        /// Output file path
-        #[arg(short, long)]
-        output: Option<String>,
+```json
+[
+  {
+    "uri": "template://makefile/rust/cli",
+    "name": "Rust CLI Makefile",
+    "description": "Makefile for building Rust command-line applications with cargo",
+    "toolchain": {
+      "type": "rust",
+      "cargo_features": []
     },
-    
-    /// Analyze and report metrics
-    Analyze {
-        /// Target directory
-        #[arg(short, long, default_value = ".")]
-        path: String,
-    },
-}
-
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-    
-    if cli.verbose {
-        env_logger::Builder::from_env(env_logger::Env::default()
-            .default_filter_or("debug"))
-            .init();
-    }
-    
-    match cli.command {
-        Commands::Process { input, output } => {
-            process_data(&input, output.as_deref())?;
-        }
-        Commands::Analyze { path } => {
-            analyze_directory(&path)?;
-        }
-    }
-    
-    Ok(())
-}
-
-fn process_data(input: &str, output: Option<&str>) -> Result<()> {
-    println!("Processing: {}", input);
-    // Implementation here
-    Ok(())
-}
-
-fn analyze_directory(path: &str) -> Result<()> {
-    println!("Analyzing: {}", path);
-    // Implementation here
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_process_data() {
-        assert!(process_data("test.txt", None).is_ok());
-    }
-    
-    #[test]
-    fn test_analyze_directory() {
-        assert!(analyze_directory(".").is_ok());
-    }
-}
+    "category": "makefile",
+    "parameters": [
+      {
+        "name": "project_name",
+        "param_type": "string",
+        "required": true,
+        "default_value": null,
+        "validation_pattern": null,
+        "description": "The name of the Rust project"
+      },
+      {
+        "name": "has_tests",
+        "param_type": "boolean",
+        "required": false,
+        "default_value": "true",
+        "validation_pattern": null,
+        "description": "Whether the project has tests"
+      }
+    ]
+  }
+]
 ```
 
-### Parameter Validation
+(Abridged.) `--format yaml` and `--verbose` also work. Filter with
+`--toolchain` or `--category`:
 
 ```bash
-# Validate parameters before generation
-pmat validate rust cli --param name=my-cli
-
-# Check required parameters
-pmat validate python api
-
-# Output:
-# ❌ Missing required parameters:
-# - name: Project name (string, required)
-# - port: Server port (integer, default: 8000)
-# - database: Database type (enum: postgres|mysql|sqlite)
+pmat list --toolchain rust
+pmat list --category makefile
 ```
 
-### Advanced Generation Options
+```
+┌─────────────────────┬───────────┬───────────┬───────────────────────────────────
+│        Name         │ Toolchain │ Category  │            Description
+├─────────────────────┼───────────┼───────────┼───────────────────────────────────
+│ Rust CLI Makefile   │ rust      │ Makefile  │ Makefile for building Rust comm...
+│ Rust CLI README     │ rust      │ Readme    │ README template for Rust comman...
+│ Rust CLI .gitignore │ rust      │ Gitignore │ Gitignore template for Rust CLI...
+```
+
+The nine URIs, in full:
+
+```
+template://makefile/rust/cli        template://readme/rust/cli        template://gitignore/rust/cli
+template://makefile/deno/cli        template://readme/deno/cli        template://gitignore/deno/cli
+template://makefile/python-uv/cli   template://readme/python-uv/cli   template://gitignore/python-uv/cli
+```
+
+## Searching
 
 ```bash
-# Create parent directories if needed
-pmat generate rust web \
-  --param name=api-server \
-  --output src/servers/api/main.rs \
-  --create-dirs
-
-# Generate from custom template path
-pmat generate custom my-template \
-  --template-path ./templates/custom.hbs \
-  --param version=1.0.0
+pmat search "cli"
 ```
 
-## Scaffolding Complete Projects
+```
+ 1. template://gitignore/rust/cli (score: 8.00)
+    Matches: name: Rust CLI .gitignore, description
+ 2. template://makefile/deno/cli (score: 8.00)
+    Matches: name: Deno TypeScript CLI Application Makefile, description
+ 3. template://readme/deno/cli (score: 8.00)
+    Matches: name: Deno CLI Application README, description
+```
 
-### Project Scaffolding
+`--limit` and `--toolchain` narrow it:
 
 ```bash
-# Scaffold a complete Rust web API project
-pmat scaffold project rust-api \
-  --name my-api \
-  --path ./my-api-project
-
-# Scaffold with Git initialization
-pmat scaffold project python-ml \
-  --name ml-pipeline \
-  --path ./ml-project \
-  --git
-
-# Interactive scaffolding
-pmat scaffold project rust-cli --interactive
+pmat search "makefile" --limit 2
+pmat search "cli" --toolchain deno
 ```
 
-**Scaffolded Project Structure:**
 ```
-my-api-project/
-├── Cargo.toml
-├── README.md
-├── .gitignore
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── release.yml
-├── src/
-│   ├── main.rs
-│   ├── config.rs
-│   ├── handlers/
-│   │   ├── mod.rs
-│   │   ├── health.rs
-│   │   └── api.rs
-│   ├── models/
-│   │   └── mod.rs
-│   └── utils/
-│       └── mod.rs
-├── tests/
-│   └── integration_test.rs
-├── migrations/
-│   └── .gitkeep
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-└── docs/
-    ├── API.md
-    └── CONTRIBUTING.md
+ 1. template://makefile/deno/cli (score: 8.00)
+    Matches: name: Deno TypeScript CLI Application Makefile, description
+ 2. template://readme/deno/cli (score: 8.00)
+    Matches: name: Deno CLI Application README, description
+ 3. template://gitignore/deno/cli (score: 5.00)
+    Matches: name: Deno CLI Application .gitignore
 ```
 
-### Configuration-Driven Scaffolding
+## Generating One File
 
-```toml
-# scaffold-config.toml
-[project]
-name = "enterprise-api"
-version = "1.0.0"
-author = "Engineering Team"
-license = "MIT"
+`pmat generate <CATEGORY> <TEMPLATE>` — two positionals. The category is the
+first URI segment (`makefile`, `readme`, `gitignore`) and the template is the
+rest (`rust/cli`). Getting this pair backwards is what produced the old
+chapter's `Invalid template URI` errors.
 
-[features]
-enable_tests = true
-enable_benchmarks = true
-enable_docs = true
-enable_ci = true
-enable_docker = true
+```bash
+pmat generate makefile rust/cli -p project_name=my-cli
+```
 
-[dependencies]
-actix-web = "4.0"
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio"] }
+```makefile
+# my-cli - Rust CLI Binary Makefile
+# Generated by Pragmatic AI Labs MCP Agent Toolkit (pmat)
 
-[dev-dependencies]
-criterion = "0.5"
-proptest = "1.0"
+.PHONY: all check format lint test bench build build-release run clean install help
 
-[quality]
-min_test_coverage = 80
-max_complexity = 10
-enforce_clippy = true
+# Default target: run all checks and build
+all: format check lint test build
+
+# Type check the code
+check:
+	cargo check
+
+# Format code with rustfmt
+format:
+	cargo fmt --all
+
+# Lint with clippy
+lint:
+	cargo clippy --all-targets -- -D warnings
+```
+
+Output goes to stdout. `-o` writes a file, and `--create-dirs` makes the
+parents:
+
+```bash
+pmat generate readme rust/cli -p project_name=my-cli -p description="A demo CLI" -o out/nested/README.md --create-dirs
+```
+
+```
+✅ Generated: out/nested/README.md
+```
+
+```markdown
+# my-cli
+
+A demo CLI
+```
+
+### Missing parameters name themselves
+
+Omit a required parameter and `pmat` tells you the flag to add, not just that
+something is wrong:
+
+```bash
+pmat generate makefile rust/cli
+```
+
+```
+Error: Parameter validation failed: project_name - required parameter(s) missing. Add:
+  -p project_name=<value>  (The name of the Rust project)
+```
+
+This is the fastest way to discover a template's parameters — faster than the
+JSON. The README template needs two:
+
+```
+Error: Parameter validation failed: description - required parameter(s) missing. Add:
+  -p description=<value>  (A brief description of the project)
+```
+
+For the record, `template://readme/rust/cli` accepts eleven parameters, nine of
+them optional with defaults: `project_name` (required), `description`
+(required), `features` (`[]`), `rust_version` (`1.75`), `install_command`
+(`cargo install --path .`), `usage_example`, `prerequisites` (`[]`),
+`build_command` (`make build`), `test_command` (`make test`), `license` (`MIT`),
+`author`.
+
+## Validating Before Generating
+
+`pmat validate <URI>` checks a parameter set without writing anything. The
+argument is the **full URI**, not a category/template pair:
+
+```bash
+pmat validate template://makefile/rust/cli -p project_name=my-cli
+```
+
+```
+✅ All parameters valid
 ```
 
 ```bash
-# Use configuration file
-pmat scaffold project rust-api \
-  --config scaffold-config.toml \
-  --path ./enterprise-api
+pmat validate template://makefile/rust/cli
 ```
 
-### Multi-Language Projects
+```
+❌ Validation errors:
+  - project_name: Required parameter missing
+```
+
+`pmat validate` exits 0 when the parameter set is complete and 1 when it is
+not, so it is usable directly as a gate:
 
 ```bash
-# Scaffold polyglot microservice project
-pmat scaffold project polyglot \
-  --languages "rust,python,typescript" \
-  --name microservices \
-  --path ./microservices-project
+pmat validate template://makefile/rust/cli -p project_name=my-cli && echo "safe to generate"
 ```
 
-**Polyglot Project Structure:**
-```
-microservices-project/
-├── services/
-│   ├── rust-api/
-│   │   ├── Cargo.toml
-│   │   └── src/
-│   ├── python-ml/
-│   │   ├── pyproject.toml
-│   │   └── src/
-│   └── typescript-frontend/
-│       ├── package.json
-│       └── src/
-├── shared/
-│   ├── protos/
-│   ├── schemas/
-│   └── configs/
-├── docker-compose.yml
-├── Makefile
-└── README.md
-```
+## Scaffolding a Whole Project
 
-## MCP Agent Scaffolding
-
-### Deterministic Agent Creation
+`pmat scaffold project <TOOLCHAIN>` writes all three files for a toolchain at
+once. The toolchain is a positional; templates are selected with `-t` (repeat
+it) and parameters with `-p`:
 
 ```bash
-# Scaffold deterministic MCP agent
-pmat scaffold agent deterministic \
-  --name code-analyzer \
-  --path ./analyzer-agent
+pmat scaffold project rust -t makefile -t readme -t gitignore -p project_name=my-cli -p description="A demo CLI"
+```
 
-# List available agent templates
+```
+✅ Created: my-cli/README.md
+✅ Created: my-cli/.gitignore
+✅ Created: my-cli/Makefile
+
+🚀 Project scaffolded successfully!
+```
+
+```
+my-cli/.gitignore
+my-cli/Makefile
+my-cli/README.md
+```
+
+**The output directory is `project_name`**, not a `--path` flag — there is no
+`--path` on this command. Omit `-t` entirely and you get all three anyway:
+
+```bash
+pmat scaffold project rust -p project_name=demo2 -p description=d
+```
+
+```
+✅ Created: demo2/Makefile
+✅ Created: demo2/README.md
+✅ Created: demo2/.gitignore
+
+🚀 Project scaffolded successfully!
+```
+
+`--parallel <N>` sets the parallelism level; it defaults to the machine's core
+count. Valid toolchains are `rust`, `deno` and `python-uv` — the same three
+`pmat list` shows.
+
+## Scaffolding an MCP Agent
+
+`pmat scaffold agent` is a different generator: it writes a complete, buildable
+Rust MCP agent, not a config file. Four templates:
+
+```bash
 pmat scaffold list-templates
-
-# Validate agent template
-pmat scaffold validate-template agent-template.yaml
 ```
 
-**Agent Template Structure:**
-```yaml
-# agent-template.yaml
-name: code-analyzer
-version: 1.0.0
-description: Deterministic code analysis agent
-author: PMAT Team
+```
+📦 Available Agent Templates:
 
-capabilities:
-  - code_analysis
-  - complexity_detection
-  - quality_reporting
+  • calculator - Deterministic calculator agent with verified operations
+  • hybrid - Hybrid agent with deterministic core and probabilistic wrapper
+  • mcp-server - MCP tool server with async handlers and resource management
+  • state-machine - State machine agent with transitions and invariants
 
-tools:
-  - name: analyze_file
-    description: Analyze a single file
-    parameters:
-      - name: file_path
-        type: string
-        required: true
-        description: Path to file to analyze
-      
-  - name: analyze_directory
-    description: Analyze entire directory
-    parameters:
-      - name: directory
-        type: string
-        required: true
-      - name: recursive
-        type: boolean
-        default: true
-        
-  - name: generate_report
-    description: Generate analysis report
-    parameters:
-      - name: format
-        type: enum
-        values: [json, html, markdown]
-        default: json
-
-configuration:
-  max_file_size_mb: 10
-  timeout_seconds: 30
-  cache_enabled: true
-  
-quality_standards:
-  min_test_coverage: 80
-  max_complexity: 10
-  enforce_documentation: true
+Total: 4 templates available
 ```
 
-**Generated Agent Code:**
-```rust
-// src/main.rs - Generated MCP Agent
-use serde::{Deserialize, Serialize};
-use async_trait::async_trait;
-
-#[derive(Debug, Clone)]
-pub struct CodeAnalyzerAgent {
-    config: AgentConfig,
-    state: AgentState,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct AgentConfig {
-    max_file_size_mb: usize,
-    timeout_seconds: u64,
-    cache_enabled: bool,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct AgentState {
-    files_analyzed: usize,
-    total_complexity: usize,
-    cache: HashMap<String, AnalysisResult>,
-}
-
-#[async_trait]
-impl MCPAgent for CodeAnalyzerAgent {
-    async fn initialize(&mut self, config: Value) -> Result<()> {
-        self.config = serde_json::from_value(config)?;
-        self.state = AgentState::default();
-        Ok(())
-    }
-    
-    async fn execute_tool(&mut self, tool: &str, params: Value) -> Result<Value> {
-        match tool {
-            "analyze_file" => self.analyze_file(params).await,
-            "analyze_directory" => self.analyze_directory(params).await,
-            "generate_report" => self.generate_report(params).await,
-            _ => Err(Error::UnknownTool(tool.to_string())),
-        }
-    }
-    
-    async fn get_state(&self) -> Value {
-        json!({
-            "files_analyzed": self.state.files_analyzed,
-            "total_complexity": self.state.total_complexity,
-            "cache_size": self.state.cache.len(),
-        })
-    }
-}
-
-impl CodeAnalyzerAgent {
-    async fn analyze_file(&mut self, params: Value) -> Result<Value> {
-        let file_path: String = params["file_path"]
-            .as_str()
-            .ok_or(Error::InvalidParameter("file_path"))?
-            .to_string();
-        
-        // Check cache
-        if self.config.cache_enabled {
-            if let Some(cached) = self.state.cache.get(&file_path) {
-                return Ok(serde_json::to_value(cached)?);
-            }
-        }
-        
-        // Perform analysis
-        let result = self.perform_analysis(&file_path).await?;
-        
-        // Update state
-        self.state.files_analyzed += 1;
-        self.state.total_complexity += result.complexity;
-        
-        // Cache result
-        if self.config.cache_enabled {
-            self.state.cache.insert(file_path.clone(), result.clone());
-        }
-        
-        Ok(serde_json::to_value(result)?)
-    }
-    
-    // Additional implementation...
-}
-```
-
-## Enterprise Integration Patterns
-
-### Template Registry
-
-```toml
-# .pmat/templates.toml - Custom template registry
-[registry]
-url = "https://templates.company.com"
-auth_token = "${TEMPLATE_REGISTRY_TOKEN}"
-
-[custom_templates]
-"company/microservice" = {
-    path = "templates/microservice",
-    version = "2.0.0",
-    requires_approval = true
-}
-
-"company/lambda" = {
-    path = "templates/lambda", 
-    version = "1.5.0",
-    tags = ["serverless", "aws"]
-}
-
-[validation]
-enforce_naming = true
-naming_pattern = "^[a-z][a-z0-9-]*$"
-max_name_length = 50
-
-[quality_gates]
-min_test_coverage = 80
-require_documentation = true
-enforce_security_scan = true
-```
-
-### CI/CD Template Pipeline
-
-```yaml
-# .github/workflows/template-validation.yml
-name: Template Validation
-
-on:
-  push:
-    paths:
-      - 'templates/**'
-      - '.pmat/templates.toml'
-
-jobs:
-  validate-templates:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Install PMAT
-      run: cargo install pmat
-    
-    - name: Validate All Templates
-      run: |
-        for template in templates/*; do
-          echo "Validating $template..."
-          pmat scaffold validate-template "$template/template.yaml"
-        done
-    
-    - name: Test Template Generation
-      run: |
-        # Test each template generates successfully
-        pmat generate rust cli --param name=test --dry-run
-        pmat generate python api --param name=test --dry-run
-        
-    - name: Quality Check Generated Code
-      run: |
-        # Generate and analyze
-        pmat generate rust web --param name=quality-test --output test-project
-        cd test-project
-        pmat analyze complexity --path .
-        pmat quality-gate --strict
-```
-
-### Team Template Workflow
+Preview with `--dry-run`:
 
 ```bash
-# Create team-specific template
-pmat scaffold create-template \
-  --name "team/service" \
-  --base rust-api \
-  --customizations team-config.yaml
-
-# Share template with team
-pmat scaffold publish-template \
-  --template "team/service" \
-  --registry internal
-
-# Team members use shared template
-pmat scaffold project team/service \
-  --name new-service \
-  --author "Developer Name"
+pmat scaffold agent -n code_analyzer -t mcp-server --dry-run
 ```
 
-## Template Customization
-
-### Custom Template Variables
-
-```handlebars
-{{!-- custom-template.hbs --}}
-# {{project_name}}
-
-{{#if description}}
-{{description}}
-{{/if}}
-
-## Configuration
-
-```toml
-[package]
-name = "{{name}}"
-version = "{{version}}"
-authors = ["{{author}}"]
-edition = "{{edition}}"
-
-{{#if features}}
-[features]
-{{#each features}}
-{{this.name}} = {{this.deps}}
-{{/each}}
-{{/if}}
-
-[dependencies]
-{{#each dependencies}}
-{{@key}} = "{{this}}"
-{{/each}}
+```
+🔍 Dry run mode - would generate the following:
+  Agent: code_analyzer
+  Template: MCPToolServer
+  Quality: Strict
+  Features: 0 enabled
+  Output: code_analyzer
 ```
 
-{{#if enable_tests}}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_{{name}}() {
-        // Test implementation
-    }
-}
-{{/if}}
-```
-
-### Template Composition
+Then create it:
 
 ```bash
-# Compose multiple templates
-pmat scaffold compose \
-  --templates "rust-api,monitoring,security" \
-  --name composite-service \
-  --merge-strategy overlay
+pmat scaffold agent -n code_analyzer -t mcp-server -o ./agent_out
 ```
 
-## Performance and Optimization
+The command prints nothing on success and exits 0. The tree it wrote:
 
-### Template Caching
+```
+agent_out/README.md
+agent_out/Cargo.toml
+agent_out/src/main.rs
+agent_out/src/agent/mod.rs
+agent_out/src/agent/handlers.rs
+agent_out/src/quality/mod.rs
+agent_out/src/quality/invariants.rs
+agent_out/src/quality/validators.rs
+agent_out/tests/integration.rs
+agent_out/tests/deterministic.rs
+agent_out/.pmat/agent.toml
+agent_out/.pmat/quality-gates.toml
+```
+
+### The name must be a Rust identifier
 
 ```bash
-# Warm template cache
-pmat scaffold cache-warm
-
-# Clear template cache
-pmat scaffold cache-clear
-
-# Show cache statistics
-pmat scaffold cache-stats
+pmat scaffold agent -n code-analyzer -t mcp-server
 ```
 
-**Cache Statistics Output:**
 ```
-📊 Template Cache Statistics
-===========================
-Cache Size: 45.2 MB
-Templates Cached: 127
-Average Load Time: 0.3ms
-Cache Hit Rate: 94.5%
-Last Updated: 2025-09-12 14:30:00
+Error: Agent name must be alphanumeric with underscores only
+```
 
-Most Used Templates:
-1. rust/cli - 342 uses
-2. python/api - 298 uses
-3. typescript/react - 156 uses
+Exit code 1. A hyphen is rejected because the name becomes a crate and module
+name. Use `code_analyzer`.
+
+Other options: `-l` / `--quality` (`standard`, `strict` (default), `extreme`),
+`-f` / `--features` (comma-separated), `--force` to overwrite an existing
+directory, `-i` / `--interactive` for guided creation, and
+`--deterministic-core <SPEC>` for hybrid agents.
+
+### Validating an agent template
+
+```bash
+pmat scaffold validate-template nope.yaml
 ```
+
+```
+🔍 Validating template: nope.yaml
+❌ Template validation failed:
+   Template not found: nope.yaml
+```
+
+The path argument is a template *file*, not a template name.
+
+## Claude Code Sub-Agents
+
+`pmat scaffold` also generates Claude Code sub-agent definitions:
+
+```bash
+pmat scaffold list-subagents
+```
+
+```
+Available PMAT Sub-Agents
+
+  ✓ MVP complexity-analyst - Expert in cyclomatic and cognitive complexity analysis, suggests refactorings
+    Tools: analyze_complexity, analyze_cognitive_complexity
+
+  ✓ MVP mutation-tester - Mutation testing specialist with ML prediction and test improvement suggestions
+    Tools: mutation_test, mutation_predict, equivalent_detector
+
+  ✓ MVP satd-detector - Technical debt identifier tracking TODO, FIXME, and HACK comments
+    Tools: analyze_satd, analyze_context
+
+  ✓ MVP dead-code-eliminator - Unused code removal specialist identifying safe-to-delete code
+    Tools: analyze_dead_code, analyze_imports
+```
+
+The related subcommands are `create-subagent`, `create-all-subagents`,
+`validate-subagent`, `show-tool-mapping` and `export-tool-mapping`.
+
+## Scaffolding a WASM Project
+
+```bash
+pmat scaffold wasm -n my_wasm_project
+```
+
+Options: `-w` / `--framework` (`wasm-labs` (default), `pure-wasm`), `-f` /
+`--features`, `-l` / `--quality`, `-o` / `--output`, `--force`.
+
+## Checking What You Generated
+
+The generated project is ordinary code; analyse it like any other:
+
+```bash
+pmat analyze complexity --path .
+pmat quality-gate
+```
+
+There is no `pmat quality-gate --strict`. Since 3.32.0 the gate exits non-zero
+on a blocking violation by default, so no flag is needed to make it strict.
+
+On a freshly scaffolded project it will fail, and the reason is worth reading:
+
+```
+Quality Gate: FAILED
+Total violations: 1
+Blocking violations: 1
+
+## coverage (1 violations)
+  - project - Code coverage was NOT measured (no coverage report at .pmat/coverage-cache.json or .pmat-metrics/coverage.json), so the 80.0% minimum is unverified — this gate does not cover coverage
+    Factors: coverage: not measured
+
+❌ Quality gate FAILED
+```
+
+"Not measured" is treated as a blocking violation rather than a pass — the gate
+refuses to let an unmeasured 80% minimum read as a met one. Run your coverage
+tool first, or scope the run with `--checks`.
+`--fail-on-violation` is still accepted and `pmat` says on stderr that it does
+nothing:
+
+```
+note: --fail-on-violation is a no-op since 3.32.0 — blocking violations exit non-zero by default; pass --report-only for the old report-and-exit-0 behaviour
+```
+
+Use `--report-only` (alias `--no-fail`) for the report-and-exit-0 behaviour.
+
+## Complete Command Reference
+
+| Command | Positionals | Key options |
+|---------|-------------|-------------|
+| `pmat list` | — | `--format json\|yaml`, `--toolchain`, `--category`, `--verbose` |
+| `pmat search <QUERY>` | query | `--limit`, `--toolchain` |
+| `pmat generate <CATEGORY> <TEMPLATE>` | e.g. `makefile rust/cli` | `-p k=v` (repeat), `-o`, `--create-dirs` |
+| `pmat validate <URI>` | e.g. `template://makefile/rust/cli` | `-p k=v` |
+| `pmat scaffold project <TOOLCHAIN>` | `rust`\|`deno`\|`python-uv` | `-t` (repeat), `-p k=v`, `--parallel` |
+| `pmat scaffold agent` | — | `-n`, `-t`, `-o`, `-l`, `-f`, `--force`, `--dry-run`, `-i` |
+| `pmat scaffold wasm` | — | `-n`, `-w`, `-o`, `-l`, `-f`, `--force` |
+| `pmat scaffold list-templates` | — | — |
+| `pmat scaffold validate-template <PATH>` | template file | — |
+| `pmat scaffold list-subagents` | — | — |
 
 ## Troubleshooting
 
-### Common Issues
+### `Error: Invalid template URI: template://rust/cli`
 
-1. **Missing Required Parameters**
-```bash
-# Check what parameters are needed
-pmat validate rust web
+You passed the toolchain as the category. The category is `makefile`, `readme`
+or `gitignore`; the template is `rust/cli`. Run `pmat list --format json` and
+read the `uri` field.
 
-# Use defaults where available
-pmat generate rust web --use-defaults
-```
+### `error: unexpected argument found` on `scaffold project`
 
-2. **Template Not Found**
-```bash
-# Update template registry
-pmat scaffold update-registry
+You used `--name` or `--path`. The toolchain is positional, the project name is
+`-p project_name=…`, and the output directory is that name.
 
-# List available templates
-pmat list --refresh
-```
+### `Agent name must be alphanumeric with underscores only`
 
-3. **Generation Conflicts**
-```bash
-# Force overwrite existing files
-pmat scaffold project rust-api --force
+Hyphens are rejected; the name becomes a Rust crate name.
 
-# Backup before overwriting
-pmat scaffold project rust-api --backup
-```
+### `pmat quality-gate --strict` is rejected
+
+That flag never existed. The gate is strict by default in 3.32.0; use
+`--report-only` if you want findings without a non-zero exit.
 
 ## Summary
 
-PMAT's template generation and scaffolding system eliminates the friction of starting new projects by providing production-ready, quality-assured templates. The system supports everything from single file generation to complete multi-language project scaffolding, with built-in quality standards and customization options.
+pmat's template system is small and honest about its size: nine project-hygiene
+templates across three toolchains, plus two code generators (`scaffold agent`,
+`scaffold wasm`) that write complete, buildable trees.
 
-Key benefits include:
-- **Rapid Project Creation**: From idea to running code in seconds
-- **Consistency**: Standardized structure across all projects
-- **Quality Built-in**: Best practices and standards from the start
-- **MCP Agent Support**: Deterministic agent scaffolding for AI tools
-- **Enterprise Ready**: Custom registries, validation, and team workflows
-- **Multi-Language**: Support for polyglot architectures
-
-The template system ensures every new project starts with a solid foundation, incorporating lessons learned and best practices automatically.
+Key takeaways:
+- `pmat list` is the whole inventory. Trust it over any prose, including this
+  chapter.
+- `generate` takes `<CATEGORY> <TEMPLATE>`; `validate` takes a full
+  `template://` URI; `scaffold project` takes a bare toolchain.
+- Missing parameters print the exact `-p` flag to add.
+- There is no registry, no cache, no template composition, and no `--dry-run` on
+  `generate` (only on `scaffold agent`).
