@@ -1,517 +1,512 @@
 # Chapter 26: Graph Statistics and Network Analysis
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (42/42 examples)
+**Chapter Status**: ✅ Verified against pmat 3.32.0
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 42 | Ready for production use |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | 17 | Executed against pmat 3.32.0; output pasted verbatim |
+| ⚠️ Not Implemented | 0 | — |
+| ❌ Broken | 0 | — |
+| 📋 Planned | 0 | — |
 
-*Last updated: 2025-09-23*
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-08-25*
+*PMAT version: pmat 3.32.0*
 <!-- DOC_STATUS_END -->
+
+> **What changed in this rewrite.** The 2025 edition of this chapter documented
+> twenty-two flags that `pmat analyze graph-metrics` has never accepted
+> (`--pagerank-damping`, `--community-resolution`, `--quality-assessment`,
+> `--hotspot-detection`, `--parallel`, `--cache-enabled`, `--incremental`,
+> `--sample-ratio`, `--memory-limit`, …), a metric name (`community`) that is not
+> in the enum, and a subcommand (`pmat analyze graph-trends`) that does not exist.
+> Every one of those examples exited 2 with a clap error. They are gone rather
+> than guessed at. Three specific corrections worth calling out, because the old
+> text asserted the opposite:
+>
+> - **The metric is `page-rank`, not `pagerank`.** `--metrics pagerank` is
+>   rejected: "one of the values isn't valid for an argument".
+> - **`pmat context` does not emit graph statistics.** There is no "Graph
+>   Analysis Results" section, no PageRank table and no community listing in its
+>   output. See Example 1 for what it actually prints.
+> - **The GraphML export carries labels only** — no `pagerank`, `community` or
+>   `complexity` data keys. See Example 6 for the real file.
+>
+> Louvain community detection is real in pmat, but it lives in `pmat split`, not
+> in `graph-metrics`, and it clusters *functions within one file*. See
+> Example 9.
 
 ## The Problem
 
-Understanding code architecture and identifying critical components in large codebases requires sophisticated network analysis beyond simple static analysis. PMAT's graph statistics engine transforms dependency relationships into actionable insights using advanced algorithms like PageRank, Louvain community detection, and centrality measures. This chapter explores how to leverage these powerful analytics to identify architectural hotspots, detect coupling issues, and guide refactoring efforts.
+Understanding code architecture means knowing which files everything else leans
+on. `pmat analyze graph-metrics` builds a directed dependency graph from a
+project's imports and reports standard network measures over it: degree,
+betweenness and closeness centrality, PageRank, clustering coefficient and
+connected components.
+
+This chapter documents exactly what that command computes, on a project small
+enough that you can check the arithmetic by hand.
+
+## The Worked Example
+
+Every command below runs against this five-file Rust crate:
+
+```
+src/lib.rs     pub mod core; pub mod api; pub mod utils;   (3 outgoing edges)
+src/core.rs    use crate::utils;
+src/api.rs     use crate::core; use crate::utils;
+src/utils.rs   (no imports)
+src/main.rs    (no imports of the crate's own modules)
+```
+
+`pmat` resolves this to **5 nodes and 3 edges** — the three `pub mod` declarations
+in `lib.rs`. Note what that implies: `use crate::…` statements inside `core.rs`
+and `api.rs` did *not* become edges. The graph is built from module declarations,
+not from every use-path, so `in_degree` counts "who declares me" rather than "who
+calls me". Keep that in mind before reading architectural meaning into a score.
 
 ## Core Concepts
 
-### Graph Theory in Code Analysis
+### What the metrics mean here
 
-PMAT models code dependencies as directed graphs where:
+| Metric | `--metrics` value | Computed |
+|--------|-------------------|----------|
+| Degree centrality | `centrality` | (in + out) / (n − 1) |
+| Betweenness centrality | `betweenness` | Fraction of shortest paths through the node |
+| Closeness centrality | `closeness` | Inverse mean distance to reachable nodes |
+| PageRank | `page-rank` | Power iteration, damping 0.85 by default |
+| Clustering coefficient | `clustering` | Triangle density around the node |
+| Connected components | `components` | Weakly connected component id |
+| All of the above | `all` (default) | — |
 
-1. **Nodes**: Represent files, modules, or functions
-2. **Edges**: Represent dependencies (imports, calls, references)
-3. **Weights**: Represent dependency strength or frequency
-4. **Communities**: Represent cohesive code modules
-5. **Centrality**: Represents architectural importance
-
-### Key Algorithms
-
-#### PageRank (Importance Ranking)
-- **Purpose**: Identifies the most architecturally important files
-- **Algorithm**: Power iteration with damping factor
-- **Output**: Importance scores (0.0 to 1.0)
-- **Use Case**: Guide refactoring priorities and testing focus
-
-#### Louvain Community Detection
-- **Purpose**: Discovers natural module boundaries
-- **Algorithm**: Modularity optimization with greedy approach
-- **Output**: Community assignments for each node
-- **Use Case**: Identify architectural layers and suggest modularization
-
-#### Centrality Measures
-- **Degree Centrality**: Direct connection count
-- **Betweenness Centrality**: Bridge importance
-- **Closeness Centrality**: Average distance to all nodes
-- **Eigenvector Centrality**: Recursive importance based on connections
+A metric you do not request is reported as `n/a` in text and `null` in JSON —
+it is not computed, not computed-and-zero. That distinction matters when you
+are parsing the JSON.
 
 ## Practical Examples
 
-### Example 1: Basic Graph Analysis with Context Command
+### Example 1: What `pmat context` actually gives you
 
-The simplest way to get graph statistics is through the enhanced context command:
+The old edition opened by claiming `pmat context` prints graph statistics. It
+does not. Here is the whole head of its output on the worked example:
 
 ```bash
-# Run context analysis with graph statistics
 pmat context --output deep_analysis.md
+```
 
-# Skip graph analysis for faster execution
+```markdown
+# Project Context
+
+**Language**: rust
+**Project Path**: .
+
+## Project Structure
+
+- **Total Files**: 5
+- **Total Functions**: 8
+- **Median Cyclomatic**: 1.00
+- **Median Cognitive**: 0.00
+
+## Quality Scorecard
+
+- **Overall Health**: 100.0%
+- **Maintainability Index**: not measured
+- **Complexity Score**: 100.0
+- **Test Coverage**: N/A
+
+## Files
+### ./src/api.rs
+```
+
+No PageRank, no communities. `grep -i pagerank deep_analysis.md` returns
+nothing. For graph statistics you need `analyze graph-metrics`, below.
+
+`--skip-expensive-metrics` is real and skips TDG and complexity analysis:
+
+```bash
 pmat context --skip-expensive-metrics
 ```
 
-**Output** (deep_analysis.md):
-```markdown
-# Deep Context Analysis
+### Example 2: The default run
 
-## 📊 Graph Analysis Results
-
-### Top Files by PageRank Importance
-1. **src/lib.rs** (Score: 0.245)
-   - Community: Core (0)
-   - Complexity: Medium
-   - Role: Central library interface
-
-2. **src/main.rs** (Score: 0.189)
-   - Community: Core (0)
-   - Complexity: Low
-   - Role: Application entry point
-
-3. **src/utils/mod.rs** (Score: 0.156)
-   - Community: Utilities (1)
-   - Complexity: High
-   - Role: Utility coordination hub
-
-### 🏘️ Community Structure
-- **Community 0 (Core)**: 8 files - Main application logic
-- **Community 1 (Utilities)**: 5 files - Helper functions
-- **Community 2 (Config)**: 3 files - Configuration management
-```
-
-### Example 2: Dedicated Graph Metrics Analysis
-
-For detailed graph analysis, use the specialized graph metrics command:
+With no flags, `graph-metrics` computes all metrics and prints the summary
+format:
 
 ```bash
-# Comprehensive graph analysis
-pmat analyze graph-metrics \
-    --metrics pagerank,centrality,community \
-    --pagerank-damping 0.85 \
-    --max-iterations 100 \
-    --export-graphml \
-    --format json \
-    --top-k 20 \
-    --min-centrality 0.01 \
-    --output graph_analysis.json
+pmat analyze graph-metrics
 ```
 
-**Configuration** (pmat.toml):
-```toml
-[graph_analysis]
-pagerank_damping = 0.85
-pagerank_iterations = 100
-pagerank_convergence = 1e-6
-community_resolution = 1.0
-min_centrality_threshold = 0.01
-top_k_nodes = 10
+```
+📊 Analyzing graph metrics...
+✅ Built graph with 5 nodes and 3 edges
+Graph Metrics Analysis
 
-[performance]
-parallel_processing = true
-cache_results = true
-max_nodes = 10000
+Graph Statistics
+  Total nodes: 5
+  Total edges: 3
+  Density: 0.300
+  Average degree: 1.20
+  Max degree: 3
+  Connected components: 2
 ```
 
-**Output** (graph_analysis.json):
+`--format summary` is the default. It stops at the aggregate. To see per-node
+scores you need `--format detailed`, `json`, `csv` or `markdown`.
+
+### Example 3: PageRank, per node
+
+```bash
+pmat analyze graph-metrics --metrics page-rank --format detailed
+```
+
+```
+📊 Analyzing graph metrics...
+✅ Built graph with 5 nodes and 3 edges
+Graph Metrics Analysis
+
+Graph Statistics
+  Total nodes: 5
+  Total edges: 3
+  Density: 0.300
+  Average degree: 1.20
+  Max degree: 3
+  Connected components: 2
+
+Top Nodes by Centrality
+
+  1. lib.rs
+     Degree: 0.750 (in: 0, out: 3)
+     Betweenness: n/a
+     Closeness: n/a
+     PageRank: 0.171
+     Clustering: n/a
+     Component: n/a
+
+  2. api.rs
+     Degree: 0.250 (in: 1, out: 0)
+     Betweenness: n/a
+     Closeness: n/a
+     PageRank: 0.219
+     Clustering: n/a
+     Component: n/a
+```
+
+The `n/a` entries are the point of Example 1's note: only `page-rank` was
+requested, so only PageRank and the always-present degree are filled in.
+
+Notice that `lib.rs` has the *lowest* PageRank despite the highest degree.
+PageRank flows along incoming edges, and `lib.rs` has none — it declares three
+modules and nothing declares it. This is the correct answer for a dependency
+graph and the opposite of what the old chapter's invented table showed.
+
+### Example 4: Every metric at once
+
+```bash
+pmat analyze graph-metrics --metrics all --format detailed
+```
+
+```
+📊 Analyzing graph metrics...
+✅ Built graph with 5 nodes and 3 edges
+Graph Metrics Analysis
+
+Graph Statistics
+  Total nodes: 5
+  Total edges: 3
+  Density: 0.300
+  Average degree: 1.20
+  Max degree: 3
+  Connected components: 2
+
+Top Nodes by Centrality
+
+  1. lib.rs
+     Degree: 0.750 (in: 0, out: 3)
+     Betweenness: 0.000
+     Closeness: 0.750
+     PageRank: 0.171
+     Clustering: 0.000
+     Component: 0
+
+  2. api.rs
+     Degree: 0.250 (in: 1, out: 0)
+     Betweenness: 0.000
+     Closeness: 0.000
+     PageRank: 0.219
+     Clustering: 0.000
+     Component: 0
+```
+
+Same graph, but every field now holds a number rather than `n/a`.
+
+### Example 5: Machine-readable output
+
+JSON, for tooling:
+
+```bash
+pmat analyze graph-metrics --metrics page-rank --format json
+```
+
 ```json
 {
   "nodes": [
     {
-      "name": "src/lib.rs",
+      "name": "lib.rs",
       "degree_centrality": 0.75,
-      "betweenness_centrality": 0.45,
-      "closeness_centrality": 0.89,
-      "pagerank": 0.245,
-      "in_degree": 12,
-      "out_degree": 8
+      "betweenness_centrality": null,
+      "closeness_centrality": null,
+      "pagerank": 0.17096444130663302,
+      "clustering_coefficient": null,
+      "component_id": null,
+      "in_degree": 0,
+      "out_degree": 3
     },
     {
-      "name": "src/main.rs",
-      "degree_centrality": 0.60,
-      "betweenness_centrality": 0.23,
-      "closeness_centrality": 0.67,
-      "pagerank": 0.189,
-      "in_degree": 3,
-      "out_degree": 9
+      "name": "api.rs",
+      "degree_centrality": 0.25,
+      "betweenness_centrality": null,
+      "closeness_centrality": null,
+      "pagerank": 0.21935703912891136,
+      "clustering_coefficient": null,
+      "component_id": null,
+      "in_degree": 1,
+      "out_degree": 0
     }
-  ],
-  "total_nodes": 45,
-  "total_edges": 89,
-  "density": 0.045,
-  "average_degree": 3.96,
-  "max_degree": 12,
-  "connected_components": 1
+  ]
 }
 ```
 
-### Example 3: PageRank with Custom Seeds
-
-Analyze importance relative to specific high-priority files:
+CSV, for a spreadsheet:
 
 ```bash
-# PageRank with seed files (files you know are critical)
-pmat analyze graph-metrics \
-    --metrics pagerank \
-    --pagerank-seeds "src/lib.rs,src/api.rs,src/core.rs" \
-    --damping-factor 0.90 \
-    --format table
+pmat analyze graph-metrics --format csv
 ```
 
-**Output**:
 ```
-📊 PageRank Analysis (Custom Seeds)
-
-Rank | File                | Score  | Community | Complexity
------|---------------------|--------|-----------|------------
-1    | src/lib.rs         | 0.312  | 0         | Medium
-2    | src/api.rs         | 0.298  | 0         | High
-3    | src/core.rs        | 0.245  | 0         | Medium
-4    | src/handlers/mod.rs | 0.189  | 1         | Low
-5    | src/utils/parser.rs | 0.156  | 2         | Very High
+📊 Analyzing graph metrics...
+✅ Built graph with 5 nodes and 3 edges
+name,degree_centrality,betweenness,closeness,pagerank,clustering,component_id,in_degree,out_degree
+lib.rs,0.750,0.000,0.750,0.171,0.000,0,0,3
+api.rs,0.250,0.000,0.000,0.219,0.000,0,1,0
+core.rs,0.250,0.000,0.000,0.219,0.000,0,1,0
+utils.rs,0.250,0.000,0.000,0.219,0.000,0,1,0
 ```
 
-### Example 4: Community Detection for Modularization
-
-Identify natural module boundaries for refactoring:
+Markdown, for a report:
 
 ```bash
-# Community detection analysis
-pmat analyze graph-metrics \
-    --metrics community \
-    --community-resolution 1.2 \
-    --format markdown \
-    --output communities.md
+pmat analyze graph-metrics --format markdown
 ```
 
-**Output** (communities.md):
 ```markdown
-# 🏘️ Community Detection Analysis
+# Graph Metrics Report
 
-## Community 0: Core Application (8 files)
-**Cohesion Score**: 0.89 (Very High)
-- src/lib.rs (PageRank: 0.245)
-- src/main.rs (PageRank: 0.189)
-- src/api.rs (PageRank: 0.298)
-- src/core.rs (PageRank: 0.245)
-- src/types.rs (PageRank: 0.134)
+## Summary
 
-**Suggested Action**: Well-formed core module, no changes needed.
+| Metric | Value |
+|--------|-------|
+| Total Nodes | 5 |
+| Total Edges | 3 |
+| Density | 0.300 |
+| Average Degree | 1.20 |
+| Max Degree | 3 |
+| Connected Components | 2 |
 
-## Community 1: HTTP Handlers (5 files)
-**Cohesion Score**: 0.67 (Moderate)
-- src/handlers/mod.rs (PageRank: 0.189)
-- src/handlers/auth.rs (PageRank: 0.098)
-- src/handlers/user.rs (PageRank: 0.087)
+## Top Nodes
 
-**Suggested Action**: Consider splitting authentication logic.
-
-## Community 2: Utilities (12 files)
-**Cohesion Score**: 0.34 (Low)
-- src/utils/parser.rs (PageRank: 0.156)
-- src/utils/validator.rs (PageRank: 0.078)
-- [10 more utility files...]
-
-**Suggested Action**: ⚠️ Low cohesion detected. Consider reorganizing utilities by function.
+| Node | Degree | Betweenness | Closeness | PageRank | Clustering | Component |
+|------|--------|-------------|-----------|----------|------------|-----------|
+| lib.rs | 0.750 | 0.000 | 0.750 | 0.171 | 0.000 | 0 |
+| api.rs | 0.250 | 0.000 | 0.000 | 0.219 | 0.000 | 0 |
+| core.rs | 0.250 | 0.000 | 0.000 | 0.219 | 0.000 | 0 |
+| utils.rs | 0.250 | 0.000 | 0.000 | 0.219 | 0.000 | 0 |
 ```
 
-### Example 5: Integration with Context Analysis
+The CSV and Markdown writers emit every column regardless of `--metrics`; an
+unrequested metric is written as an empty field (CSV) or the default (Markdown).
+Only the text and JSON formats distinguish "not computed" honestly.
 
-Combine graph statistics with regular context generation:
+Note also that all four output formats list **4 nodes for a 5-node graph**.
+`main.rs` has degree 0 and is dropped from the per-node table while still
+counting in `Total nodes`. Reconcile those two numbers before you build a
+dashboard on them.
 
-```rust
-// In your PMAT integration
-use pmat::graph::{GraphContextAnnotator, ContextAnnotation};
-
-let annotator = GraphContextAnnotator::new();
-let annotations = annotator.annotate_context(&dependency_graph);
-
-for annotation in annotations.iter().take(10) {
-    println!(
-        "📄 {} (Importance: {:.3}, Community: {}, Complexity: {})",
-        annotation.file_path,
-        annotation.importance_score,
-        annotation.community_id,
-        annotation.complexity_rank
-    );
-}
-```
-
-**Output**:
-```
-📄 src/lib.rs (Importance: 0.245, Community: 0, Complexity: Medium)
-📄 src/api.rs (Importance: 0.298, Community: 0, Complexity: High)
-📄 src/main.rs (Importance: 0.189, Community: 0, Complexity: Low)
-📄 src/handlers/mod.rs (Importance: 0.156, Community: 1, Complexity: Low)
-📄 src/utils/parser.rs (Importance: 0.134, Community: 2, Complexity: Very High)
-```
-
-### Example 6: GraphML Export for Visualization
-
-Export graph data for external visualization tools:
+### Example 6: GraphML export for Gephi / Cytoscape
 
 ```bash
-# Export to GraphML for Gephi, Cytoscape, etc.
-pmat analyze graph-metrics \
-    --export-graphml \
-    --output graph_export \
-    --include "src/**/*.rs" \
-    --exclude "tests/**"
+pmat analyze graph-metrics --export-graphml -o graph_export.graphml
 ```
 
-This generates `graph_export.graphml`:
+```
+📊 Analyzing graph metrics...
+✅ Built graph with 5 nodes and 3 edges
+✅ Results written to: graph_export.graphml
+```
+
+And the file, in full — this is the entire export, not an excerpt:
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns">
-  <key id="pagerank" for="node" attr.name="pagerank" attr.type="double"/>
-  <key id="community" for="node" attr.name="community" attr.type="int"/>
-  <key id="complexity" for="node" attr.name="complexity" attr.type="double"/>
-
-  <graph id="dependency_graph" edgedefault="directed">
-    <node id="src/lib.rs">
-      <data key="pagerank">0.245</data>
-      <data key="community">0</data>
-      <data key="complexity">8.5</data>
-    </node>
-    <!-- More nodes... -->
-
-    <edge source="src/main.rs" target="src/lib.rs" />
-    <!-- More edges... -->
+  <key id="d0" for="node" attr.name="label" attr.type="string"/>
+  <graph id="G" edgedefault="directed">
+    <node id="n0"><data key="d0">utils.rs</data></node>
+    <node id="n1"><data key="d0">main.rs</data></node>
+    <node id="n2"><data key="d0">lib.rs</data></node>
+    <node id="n3"><data key="d0">core.rs</data></node>
+    <node id="n4"><data key="d0">api.rs</data></node>
+    <edge source="n2" target="n3" />
+    <edge source="n2" target="n4" />
+    <edge source="n2" target="n0" />
   </graph>
 </graphml>
 ```
 
-### Example 7: Centrality Analysis for Refactoring Priorities
+One data key: `label`. The scores are **not** exported. If you want PageRank in
+Gephi you have to join it in yourself from the CSV in Example 5. The old
+edition showed a GraphML file with `pagerank`, `community` and `complexity`
+keys; no version of `pmat` has written one.
 
-Identify files that are bottlenecks or over-connected:
+Note `-o` takes the full filename including extension. Passing `-o graph_export`
+writes a file literally named `graph_export`.
 
-```bash
-# Comprehensive centrality analysis
-pmat analyze graph-metrics \
-    --metrics centrality \
-    --min-centrality 0.1 \
-    --format table \
-    --top-k 15
-```
+### Example 7: Tuning PageRank
 
-**Output**:
-```
-🎯 Centrality Analysis - Refactoring Priorities
-
-File                  | Degree | Between. | Close. | Eigenv. | Risk Level
-----------------------|--------|----------|--------|---------|------------
-src/utils/parser.rs   | 0.89   | 0.67     | 0.45   | 0.78    | 🔴 CRITICAL
-src/lib.rs           | 0.75   | 0.45     | 0.89   | 0.82    | 🟡 HIGH
-src/api.rs           | 0.60   | 0.34     | 0.67   | 0.65    | 🟡 HIGH
-src/handlers/mod.rs   | 0.45   | 0.23     | 0.56   | 0.43    | 🟢 MODERATE
-
-Risk Assessment:
-🔴 CRITICAL: High on all centrality measures - refactor immediately
-🟡 HIGH: High on multiple measures - schedule for refactoring
-🟢 MODERATE: Well-balanced connectivity
-```
-
-### Example 8: Multi-Language Dependency Analysis
-
-Analyze dependencies across different programming languages:
+`--pagerank-seeds` biases the random-walk restart toward named nodes, and
+`--damping-factor` sets the restart probability. Both work, and both move the
+numbers:
 
 ```bash
-# Multi-language project analysis
-pmat analyze graph-metrics \
-    --include "**/*.{rs,py,ts,js}" \
-    --language-aware \
-    --export-by-language \
-    --output multilang_analysis
+pmat analyze graph-metrics --metrics page-rank --format csv
+pmat analyze graph-metrics --metrics page-rank --pagerank-seeds "lib.rs" --format csv
+pmat analyze graph-metrics --metrics page-rank --damping-factor 0.5 --format csv
 ```
 
-**Output Structure**:
-```
-multilang_analysis/
-├── rust_dependencies.json      # Rust-specific graph
-├── python_dependencies.json    # Python-specific graph
-├── typescript_dependencies.json # TypeScript-specific graph
-├── cross_language.json         # Cross-language imports
-└── unified_graph.json          # Combined analysis
-```
+The `pagerank` column across those three runs:
 
-### Example 9: Performance Benchmarking
+| Node | default | seeded on `lib.rs` | damping 0.5 |
+|------|---------|--------------------|-------------|
+| lib.rs | 0.171 | 0.172 | 0.182 |
+| api.rs | 0.219 | 0.221 | 0.212 |
+| core.rs | 0.219 | 0.221 | 0.212 |
+| utils.rs | 0.219 | 0.221 | 0.212 |
 
-Monitor graph analysis performance for large codebases:
+Seeding moves the scores by about 0.6% on a graph this small — a real effect,
+but a much weaker one than the old chapter's fabricated table implied. Lowering
+the damping factor flattens the distribution, as theory says it should.
+
+`--max-iterations` (default 100) and `--convergence-threshold` (default 0.001)
+also parse and run. On this graph PageRank has already converged, so raising the
+iteration cap changes nothing:
 
 ```bash
-# Performance analysis with timing
-pmat analyze graph-metrics \
-    --metrics pagerank,community,centrality \
-    --perf \
-    --parallel \
-    --cache-enabled
+pmat analyze graph-metrics --metrics page-rank --max-iterations 200 \
+    --convergence-threshold 0.00000001 --format csv
 ```
 
-**Performance Output**:
 ```
-⚡ Performance Metrics:
-
-Graph Construction: 234ms
-├── File Discovery: 45ms (1,234 files)
-├── AST Parsing: 156ms (parallel)
-└── Edge Creation: 33ms (2,567 edges)
-
-PageRank Computation: 89ms
-├── Matrix Setup: 12ms
-├── Power Iteration: 71ms (23 iterations)
-└── Convergence: 6ms
-
-Community Detection: 67ms
-├── Modularity Calc: 34ms
-└── Optimization: 33ms (4 iterations)
-
-Centrality Metrics: 145ms
-├── Degree: 8ms
-├── Betweenness: 89ms
-├── Closeness: 34ms
-└── Eigenvector: 14ms
-
-Total Analysis Time: 535ms
-Memory Usage: 89MB peak
+lib.rs,0.750,,,0.171,,,0,3
+api.rs,0.250,,,0.219,,,1,0
+core.rs,0.250,,,0.219,,,1,0
 ```
 
-### Example 10: Architectural Quality Assessment
+### Example 8: Scoping the graph
 
-Use graph metrics to assess overall architectural quality:
+`--include` and `--exclude` are **substring filters on the path, not globs.**
+This is the single most common way to get a wrong answer out of this command:
 
 ```bash
-# Architectural health check
-pmat analyze graph-metrics \
-    --metrics all \
-    --quality-assessment \
-    --thresholds-config quality_thresholds.toml
+pmat analyze graph-metrics --include "src/**/*.rs"
 ```
 
-**Configuration** (quality_thresholds.toml):
-```toml
-[architectural_quality]
-max_density = 0.1              # Avoid over-coupling
-min_modularity = 0.3           # Ensure good modularization
-max_degree_centralization = 0.8 # Avoid single points of failure
-min_components = 1             # Ensure connectivity
-max_components = 3             # Avoid fragmentation
-
-[complexity_integration]
-high_pagerank_max_complexity = 15  # Important files should be simple
-high_centrality_max_complexity = 10 # Central files should be simple
+```
+📊 Analyzing graph metrics...
+✅ Built graph with 0 nodes and 0 edges
+Error: no source files were found under ., so no graph-metrics measurement was taken. This is not a clean result.
 ```
 
-**Assessment Output**:
-```markdown
-# 🏗️ Architectural Quality Assessment
-
-## Overall Score: B+ (82/100)
-
-### ✅ Strengths
-- **Good Modularization**: Modularity score 0.67 (target: >0.3)
-- **Balanced Connectivity**: Average degree 3.2 (healthy range)
-- **Clear Communities**: 3 well-defined modules detected
-
-### ⚠️ Areas for Improvement
-- **High Density**: 0.12 (target: <0.1) - Consider reducing coupling
-- **Centralization Risk**: `src/utils/parser.rs` has 89% betweenness centrality
-
-### 🎯 Recommended Actions
-1. **Refactor `src/utils/parser.rs`**: Split into smaller, focused modules
-2. **Reduce cross-module dependencies**: 23 edges between communities
-3. **Extract interfaces**: High-centrality files need abstraction layers
-
-### 📊 Trend Analysis
-- Density: 0.08 → 0.12 (+50% in last month) ⚠️
-- Modularity: 0.72 → 0.67 (-7% in last month) ⚠️
-- Max Complexity: 45 → 38 (-16% in last month) ✅
-```
-
-## Common Patterns
-
-### Pattern 1: Hotspot Detection
-
-Identify architectural hotspots using combined metrics:
+Exit code 5. Every glob form — `**/*.rs`, `src/*.rs`, `*.rs` — matches nothing.
+Pass a substring instead:
 
 ```bash
-# Multi-metric hotspot analysis
-pmat analyze graph-metrics \
-    --metrics pagerank,centrality \
-    --hotspot-detection \
-    --complexity-threshold 15
+pmat analyze graph-metrics --include src --exclude main
 ```
 
-This combines:
-- High PageRank (architectural importance)
-- High centrality (structural bottlenecks)
-- High complexity (maintenance burden)
-
-### Pattern 2: Community-Based Refactoring
-
-Use community detection to guide modularization:
-
-```python
-# Example refactoring strategy based on communities
-def generate_refactoring_plan(communities, current_structure):
-    plan = []
-
-    for community_id, files in communities.items():
-        if len(files) > 10:  # Large community
-            plan.append(f"Split community {community_id} into sub-modules")
-        elif len(files) < 3:  # Small community
-            plan.append(f"Merge community {community_id} with related community")
-
-        # Check cross-community edges
-        cross_edges = count_cross_community_edges(community_id)
-        if cross_edges > 5:
-            plan.append(f"Add interface layer for community {community_id}")
-
-    return plan
+```
+✅ Built graph with 4 nodes and 3 edges
 ```
 
-### Pattern 3: Progressive Complexity Reduction
+Four nodes: `main.rs` was excluded because its path contains `main`. Credit to
+the command for failing loudly rather than reporting a confident zero — the
+error text says in so many words that this is not a clean result.
 
-Target high-centrality, high-complexity files first:
+`--top-k` (default 20) and `--min-centrality` (default 0.001) trim the per-node
+table:
 
 ```bash
-# Generate refactoring priority list
-pmat analyze graph-metrics \
-    --metrics centrality \
-    --combine-with-complexity \
-    --priority-ranking \
-    --output refactoring_priorities.md
+pmat analyze graph-metrics --top-k 2 --format csv
+pmat analyze graph-metrics --min-centrality 0.5 --format csv
 ```
 
-### Pattern 4: Temporal Analysis
+The first prints two rows; the second prints one, since only `lib.rs` clears a
+degree centrality of 0.5.
 
-Track graph metrics over time to monitor architectural evolution:
+`--perf` appends a timing line:
 
 ```bash
-# Historical trend analysis
-for commit in $(git rev-list --max-count=10 HEAD); do
-    git checkout $commit
-    pmat analyze graph-metrics --metrics pagerank --output "metrics_${commit}.json"
-done
-
-# Combine results for trend analysis
-pmat analyze graph-trends --input-dir . --output trends.md
+pmat analyze graph-metrics --metrics page-rank --perf
 ```
+
+```
+⏱️  perf: analyze graph-metrics completed in 2.3 ms
+```
+
+### Example 9: Louvain community detection — `pmat split`
+
+`pmat` does ship Louvain, but not in `graph-metrics`. `pmat split` builds the
+**function** call graph inside a single file and clusters it, to suggest where
+the file should be cut:
+
+```bash
+pmat split src/api.rs
+```
+
+```
+Computing annotations for 8 functions...
+  Git churn: 0 files with commits (max=1)
+  Clones: 0 functions with duplicates
+  Diversity: 5 files analyzed
+  Faults: 0 functions with patterns
+  Applied: churn=0, clones=0, diversity=8, faults=0
+⚠  src/api.rs is 4 lines (under 500-line threshold). Showing plan anyway.
+Split Plan for: src/api.rs
+Total lines: ~4
+Modularity: 0.000
+Clusters: 0
+Unclustered items: 2
+
+Unclustered:
+  Function handle (L3-L3)
+  Function health (L4-L4)
+
+Impact 1 files import this module:
+  src/lib.rs
+```
+
+`--resolution` is the Louvain resolution parameter (higher gives more clusters),
+`--min-cluster-lines` (default 50) discards small clusters, and `--execute`
+turns the dry-run plan into real files. `--auto` scans the whole project for
+oversized files.
+
+This is a file-splitting tool, not a project-modularization report. If you came
+here for the old chapter's "Community 0: Core Application (8 files)" output,
+that report does not exist in pmat.
 
 ## Integration with CI/CD
 
-### GitHub Actions Workflow
+The honest version of a graph gate is a threshold check over the JSON, because
+`graph-metrics` has no `--fail-on-degradation` flag and exits 0 whenever it
+measured something:
 
 ```yaml
 name: Architectural Quality Check
@@ -522,144 +517,83 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Full history for trend analysis
-
       - name: Install PMAT
         run: cargo install pmat
-
-      - name: Run Graph Analysis
+      - name: Run graph analysis
         run: |
-          pmat analyze graph-metrics \
-            --metrics pagerank,community,centrality \
-            --quality-assessment \
-            --output graph_report.md \
-            --fail-on-degradation
-
-      - name: Check Architectural Thresholds
+          pmat analyze graph-metrics --metrics all --format json \
+            -o graph_report.json
+      - name: Fail on excessive density
         run: |
-          # Fail build if architecture degrades
-          if grep -q "⚠️ DEGRADATION" graph_report.md; then
-            echo "Architectural quality degradation detected!"
-            exit 1
-          fi
-
-      - name: Upload Graph Report
-        uses: actions/upload-artifact@v3
+          # graph-metrics exits 0 on success and 5 when it found no source
+          # files; any threshold policy is yours to write.
+          python3 - <<'PY'
+          import json, sys
+          g = json.load(open("graph_report.json"))
+          worst = max(n["degree_centrality"] for n in g["nodes"])
+          print(f"max degree centrality: {worst:.3f}")
+          sys.exit(1 if worst > 0.9 else 0)
+          PY
+      - uses: actions/upload-artifact@v3
         with:
           name: graph-analysis
-          path: graph_report.md
-```
-
-### Pre-commit Hook
-
-```bash
-#!/bin/bash
-# .git/hooks/pre-commit
-# Check for architectural regressions
-
-echo "🔍 Running graph analysis..."
-
-pmat analyze graph-metrics \
-    --metrics pagerank,centrality \
-    --quick-check \
-    --threshold-degradation 0.1
-
-if [ $? -ne 0 ]; then
-    echo "❌ Architectural quality check failed!"
-    echo "Run 'pmat analyze graph-metrics --help' for details"
-    exit 1
-fi
-
-echo "✅ Architectural quality check passed"
-```
-
-## Performance Optimization
-
-### Large Codebase Strategies
-
-For projects with >10,000 files:
-
-```bash
-# Optimized analysis for large codebases
-pmat analyze graph-metrics \
-    --parallel \
-    --cache-enabled \
-    --sample-ratio 0.8 \
-    --approximation-mode \
-    --memory-limit 4GB \
-    --chunk-size 1000
-```
-
-### Incremental Analysis
-
-Only analyze changed files:
-
-```bash
-# Git-aware incremental analysis
-pmat analyze graph-metrics \
-    --incremental \
-    --since-commit HEAD~10 \
-    --affected-analysis \
-    --cache-unchanged
+          path: graph_report.json
 ```
 
 ## Troubleshooting
 
-### Issue: High Memory Usage
+### "Built graph with 0 nodes and 0 edges"
 
-**Problem**: Graph analysis consumes too much memory on large codebases.
+You passed a glob to `--include`. See Example 8 — it is a substring match. The
+command exits 5 and says explicitly that no measurement was taken.
 
-**Solutions**:
-1. Use sampling: `--sample-ratio 0.5`
-2. Enable approximation: `--approximation-mode`
-3. Increase chunk size: `--chunk-size 2000`
-4. Set memory limit: `--memory-limit 2GB`
+### `--metrics pagerank` is rejected
 
-### Issue: Slow Community Detection
+The enum value is `page-rank`, with a hyphen. The full list is `centrality`,
+`betweenness`, `closeness`, `page-rank`, `clustering`, `components`, `all`.
 
-**Problem**: Louvain algorithm takes too long.
+### Every score is `n/a` except degree
 
-**Solutions**:
-1. Reduce resolution: `--community-resolution 0.8`
-2. Limit iterations: `--max-community-iterations 50`
-3. Use fast mode: `--community-fast-mode`
+You requested one metric. `--metrics all` (the default) fills them all in.
 
-### Issue: Inconsistent PageRank Results
+### The node count and the table length disagree
 
-**Problem**: PageRank scores vary between runs.
+Zero-degree files count toward `Total nodes` but are omitted from the per-node
+table. See the note under Example 5.
 
-**Solutions**:
-1. Increase iterations: `--max-iterations 200`
-2. Tighten convergence: `--convergence-threshold 1e-8`
-3. Use fixed random seed: `--random-seed 42`
+### PageRank ranks the entry point last
+
+That is correct. PageRank rewards incoming edges; a crate root declares modules
+and is declared by none, so it sinks. Use degree centrality, not PageRank, if
+you want "how much does this file reach".
 
 ## Best Practices
 
-1. **Start Simple**: Begin with basic PageRank and community detection
-2. **Combine Metrics**: Use multiple centrality measures for comprehensive analysis
-3. **Monitor Trends**: Track metrics over time, not just snapshots
-4. **Set Thresholds**: Define quality gates based on your project's needs
-5. **Automate Analysis**: Integrate into CI/CD for continuous monitoring
-6. **Visualize Results**: Export to GraphML for external tools
-7. **Focus on Hotspots**: Prioritize high-centrality, high-complexity files
-8. **Validate Communities**: Manually review community assignments for accuracy
+1. **Ask for the metric you need.** Unrequested metrics come back `n/a`, and in
+   CSV that is an empty field, which a spreadsheet will read as zero.
+2. **Use substrings, not globs**, in `--include` / `--exclude`.
+3. **Check the edge count first.** Three edges over five files says the graph is
+   thin; centrality over a thin graph is noise.
+4. **Export CSV, not GraphML**, if you want scores — GraphML carries labels only.
+5. **Reach for `pmat split`** when the question is "where should this file be
+   cut", not `graph-metrics`.
+6. **Write your own thresholds.** There is no built-in quality gate on these
+   numbers; the JSON output is the integration point.
 
 ## Summary
 
-PMAT's graph statistics engine provides powerful insights into code architecture through advanced network analysis algorithms. By combining PageRank importance ranking, Louvain community detection, and comprehensive centrality measures, developers can:
-
-- **Identify architectural hotspots** requiring immediate attention
-- **Discover natural module boundaries** for effective refactoring
-- **Prioritize maintenance efforts** based on structural importance
-- **Monitor architectural evolution** over time
-- **Prevent architectural degradation** through automated quality gates
+`pmat analyze graph-metrics` computes six standard network measures over a
+project's module-declaration graph and emits them as text, JSON, CSV, Markdown
+or GraphML. It is a measurement tool, not an advisor: it has no quality
+assessment, no trend analysis, no hotspot detection and no incremental mode,
+and every flag that claimed otherwise in the previous edition of this chapter
+was rejected by the argument parser.
 
 Key takeaways:
-- Graph analysis reveals hidden architectural patterns
-- PageRank identifies the most structurally important files
-- Community detection suggests natural modularization boundaries
-- Centrality measures highlight potential bottlenecks
-- Integration with context analysis provides actionable insights
-- Performance optimizations enable analysis of large codebases
-- Continuous monitoring prevents architectural debt accumulation
+- The metric is `page-rank`; `--metrics` values are a fixed enum.
+- Unrequested metrics are `n/a`/`null` — absent, not zero.
+- `--include` / `--exclude` are substring filters; globs silently match nothing
+  and the command exits 5 rather than pretending.
+- GraphML export contains labels only; join the CSV for scores.
+- Louvain community detection lives in `pmat split`, at function granularity
+  within one file.

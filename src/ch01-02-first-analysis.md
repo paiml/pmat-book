@@ -23,119 +23,144 @@ Let's start by analyzing a simple project to understand what PMAT can do.
 The simplest way to use PMAT:
 
 ```bash
-pmat analyze .
+pmat analyze comprehensive
 ```
 
-**Output:**
-```json
-{
-  "repository": {
-    "path": "/home/user/my-project",
-    "total_files": 42,
-    "total_lines": 3847,
-    "languages": {
-      "Python": {
-        "files": 15,
-        "lines": 2103,
-        "percentage": 54.7
-      },
-      "JavaScript": {
-        "files": 10,
-        "lines": 892,
-        "percentage": 23.2
-      },
-      "Markdown": {
-        "files": 8,
-        "lines": 652,
-        "percentage": 16.9
-      },
-      "JSON": {
-        "files": 9,
-        "lines": 200,
-        "percentage": 5.2
-      }
-    },
-    "complexity": {
-      "average": 3.2,
-      "max": 15,
-      "high_complexity_functions": 2
-    }
-  }
-}
+`analyze` is a parent command — `pmat analyze .` exits 2 with
+`error: unrecognized subcommand`. `comprehensive` is the subcommand that runs
+every analyser in one pass, and its `--path` defaults to `.`, so the bare form
+above analyses the current directory.
+
+**Output** (from a four-file Python/JavaScript project; progress lines go to
+stderr, the report to stdout):
+
 ```
+🔍 Running comprehensive analysis...
+Warning: dead_code analysis failed: Cargo check failed: error: could not find `Cargo.toml` in /path/to/project
+
+ℹ️  Duplicate detection is not part of comprehensive analysis; run `pmat analyze duplicates` for clone results.
+🐛 Predicting defects...
+✓ Comprehensive analysis completed
+Comprehensive Code Analysis Report
+
+Executive Summary
+
+  Project analysis completed with 4 total files analyzed.
+
+  Quality Score: 90.0%
+  Total Files:   4
+  Total Issues:  4
+  Critical:      0
+
+  Key Recommendations
+
+    - Consider refactoring high-complexity functions
+    - Address technical debt items (TODO/FIXME comments)
+
+Complexity Analysis
+
+  Files Analyzed:     4
+  Average Complexity: 4.3
+  Max Complexity:     39
+  Violations:         1
+
+  Top Complexity Violations
+
+    1. ./src/payment_processor.py - process (complexity: 39)
+
+Technical Debt (SATD) Analysis
+
+  Files Analyzed: 2
+  Violations:     3
+```
+
+Note the second line. Dead-code analysis is Rust-only, and on a Python project
+it does not quietly report zero — it tells you it could not run. A `0` that
+means "never measured" is the one number a quality tool must never print.
 
 ### Example 2: Analyzing a Specific Directory
 
 Target a specific directory:
 
 ```bash
-pmat analyze /path/to/project
+pmat analyze comprehensive --path /path/to/project
 ```
+
+The path goes through `--path` (short `-p`). A positional path is rejected:
+`pmat analyze comprehensive /path/to/project` fails with
+`error: unexpected argument found`.
 
 ### Example 3: Analyzing with Technical Debt Grading
 
 Get comprehensive quality metrics:
 
 ```bash
-pmat analyze tdg .
+pmat analyze tdg -p . --include-components
 ```
 
 **Output:**
-```json
-{
-  "grade": "B+",
-  "overall_score": 82.5,
-  "components": {
-    "structural_complexity": {
-      "score": 85.0,
-      "grade": "B+",
-      "details": {
-        "cyclomatic_complexity_avg": 3.2,
-        "cognitive_complexity_avg": 4.1,
-        "nesting_depth_max": 3
-      }
-    },
-    "code_duplication": {
-      "score": 90.0,
-      "grade": "A-",
-      "details": {
-        "duplication_ratio": 0.02,
-        "duplicate_blocks": 3
-      }
-    },
-    "documentation_coverage": {
-      "score": 75.0,
-      "grade": "C+",
-      "details": {
-        "documented_functions": 45,
-        "total_functions": 60,
-        "coverage_percentage": 75.0
-      }
-    }
-  },
-  "recommendations": [
-    "Add documentation to 15 undocumented functions",
-    "Refactor high-complexity function at src/analyzer.py:142",
-    "Consider extracting duplicate code block found in 3 locations"
-  ]
-}
 ```
+🔍 Starting TDG (Technical Debt Grading) analysis...
+╭─────────────────────────────────────────────────╮
+│  Project TDG Score Report                       │
+├─────────────────────────────────────────────────┤
+│  Average Score: 97.2/100 (A+)                   │
+│  Total Files: 4                                 │
+│                                                 │
+│  Language Distribution:                         │
+│  ├─ Python      :   3 files (75.0%)             │
+│  ├─ JavaScript  :   1 files (25.0%)             │
+│                                                 │
+│  Grade Distribution:                            │
+│  ├─ A+:   3 files (75.0%)                       │
+│  ├─ A:   1 files (25.0%)                        │
+╰─────────────────────────────────────────────────╯
+
+Component Breakdown (--include-components; points earned per metric):
+  ./src/validate.py            structural  25.0  semantic  20.0  duplication  12.5  coupling  15.0  documentation   0.0  consistency  10.0
+  ./src/payment_processor.py   structural  23.8  semantic  17.0  duplication  20.0  coupling  15.0  documentation   3.6  consistency  10.0
+  ./lib/util.py                structural  25.0  semantic  19.0  duplication  20.0  coupling  15.0  documentation   0.0  consistency  10.0
+  ./web/app.js                 structural  25.0  semantic  20.0  duplication  20.0  coupling  15.0  documentation  10.0  consistency  10.0
+
+🔍 Checking for critical defects...
+✅ No critical defects found
+✅ TDG analysis complete
+```
+
+`analyze tdg` takes its path through `-p`/`--path` — `pmat analyze tdg .` fails
+with `error: unexpected argument found`. For the whole-project one-line grade
+without the per-file breakdown, the top-level `pmat tdg` command *does* take a
+positional path: `pmat tdg .`.
 
 ### Example 4: Quick Analysis with Summary
 
 For a quick overview without details:
 
 ```bash
-pmat analyze . --summary
+pmat analyze comprehensive --executive-summary
 ```
 
 **Output:**
 ```
-Repository: /home/user/project
-Files: 42 | Lines: 3,847 | Languages: 4
-Grade: B+ (82.5/100)
-Top Issues: Missing docs (15), High complexity (2), Duplicates (3)
+Comprehensive Code Analysis Report
+
+Executive Summary
+
+  Project analysis completed with 4 total files analyzed.
+
+  Quality Score: 90.0%
+  Total Files:   4
+  Total Issues:  4
+  Critical:      0
+
+  Key Recommendations
+
+    - Consider refactoring high-complexity functions
+    - Address technical debt items (TODO/FIXME comments)
 ```
+
+(`--summary` is not a flag. `--executive-summary` is, and `--format summary` is
+the default anyway.)
 
 ### Example 5: Analyzing a GitHub Repository
 
@@ -144,7 +169,7 @@ Analyze any public GitHub repository:
 ```bash
 # Clone and analyze
 git clone https://github.com/user/repo.git /tmp/repo
-pmat analyze /tmp/repo
+pmat analyze comprehensive --path /tmp/repo
 
 # Or use the web demo
 curl -X POST https://pmat-demo.paiml.com/api/analyze \
@@ -180,12 +205,20 @@ Add to your git hooks:
 ```bash
 #!/bin/bash
 # .git/hooks/pre-commit
-pmat analyze . --threshold B
+# quality-gate is the command that has a verdict. Since 3.32.0 it exits 1 on
+# blocking violations by default, so the `if` below is belt-and-braces.
+pmat quality-gate -p . --checks complexity --checks satd
 if [ $? -ne 0 ]; then
   echo "Code quality below threshold. Please improve before committing."
   exit 1
 fi
 ```
+
+`pmat analyze ...` reports; `pmat quality-gate` judges. There is no
+`--threshold B` on either — `quality-gate` reads its thresholds from
+`.pmat-metrics.toml` when one exists and from built-in defaults otherwise, and
+it says which it used (`⚙️  Complexity thresholds: cyclomatic 30, cognitive 25
+(from built-in defaults)`).
 
 ### Scenario 2: CI/CD Integration
 
@@ -195,7 +228,7 @@ Add to your GitHub Actions:
 - name: Run PMAT Analysis
   run: |
     cargo install pmat
-    pmat analyze . --format json > pmat-report.json
+    pmat analyze comprehensive -p . --format json > pmat-report.json
     
 - name: Upload PMAT Report
   uses: actions/upload-artifact@v2
@@ -209,9 +242,12 @@ Add to your GitHub Actions:
 Generate HTML reports:
 
 ```bash
-pmat analyze . --format html > report.html
-open report.html  # Opens in browser
+pmat analyze comprehensive -p . --format markdown > report.md
 ```
+
+There is no HTML output format. `analyze comprehensive` accepts `summary`,
+`detailed`, `json`, `markdown` and `sarif`; `--format html` exits 2 with a clap
+error listing those five.
 
 ## Tips for Effective Analysis
 
@@ -225,23 +261,30 @@ open report.html  # Opens in browser
 
 ### Large Repository Taking Too Long
 
-Use sampling for quick overview:
+Narrow the walk, or raise the budget. There is no sampling flag.
 ```bash
-pmat analyze . --sample 1000  # Analyze first 1000 files
+# Only the directories you care about
+pmat analyze comprehensive -p . --include "src/**"
+
+# Or raise the 300-second default walk budget
+pmat analyze complexity -p . --timeout 900
 ```
 
 ### Binary Files Causing Issues
 
-Exclude binary files:
+Exclude them by glob:
 ```bash
-pmat analyze . --exclude "*.bin,*.exe,*.jpg"
+pmat analyze comprehensive -p . --exclude "**/*.bin"
 ```
+
+For exclusions you want to apply to *every* analyser rather than one command,
+put them in `.pmatignore` — see [Chapter 30](ch30-00-file-exclusions.md).
 
 ### Need More Detail
 
 Increase verbosity:
 ```bash
-pmat analyze . --verbose
+pmat analyze comprehensive -p . --verbose
 ```
 
 ## Next Steps

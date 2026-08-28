@@ -36,7 +36,7 @@ make test-ch01
 
 ## Example 1: Basic Analysis (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 45
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 83
 
 This test creates a controlled environment with known files:
 
@@ -62,99 +62,122 @@ def validate_input(value):
 
 **Command Tested**:
 ```bash
-pmat analyze .
+pmat analyze comprehensive
 ```
+
+`analyze` is a parent command. `pmat analyze .`, which earlier printings of
+this chapter presented as the first command a reader runs, exits 2 with
+`error: unrecognized subcommand`.
+`comprehensive` is the subcommand that runs the suite, and `--path` defaults to
+`.`. The test now asserts *both* directions: that `pmat analyze comprehensive`
+succeeds, and that `pmat analyze .` fails, so the old form cannot creep back in
+unnoticed.
 
 **Test Validation**:
 - ✅ Command executes successfully (exit code 0)
-- ✅ Output is valid JSON
-- ✅ Contains repository metadata
-- ✅ Detects Python files correctly
+- ✅ `pmat analyze .` is rejected (exit code 2)
+- ✅ JSON output carries a `summary` section
+- ✅ At least one file is analyzed
 
-**Verified Output Structure**:
+**Verified Output Structure** (`--format json`, trimmed):
 ```json
 {
-  "repository": {
-    "path": "/tmp/test_project_xyz",
-    "total_files": 4,
-    "total_lines": 35
+  "summary": {
+    "total_files": 3,
+    "total_issues": 0,
+    "critical_issues": 0,
+    "quality_score": 100,
+    "recommendations": [
+      "Code quality looks good! Continue following best practices."
+    ]
   },
-  "languages": {
-    "Python": {
-      "files": 2,
-      "percentage": 50.0
-    },
-    "Markdown": {
-      "files": 1,
-      "percentage": 25.0  
+  "dead_code": null,
+  "satd": {
+    "census": {
+      "discovered": 3,
+      "analyzed": 2,
+      "not_read": { "tests": 1, "out_of_scope": 0, "minified_or_vendor": 0, "too_large": 0, "unreadable": 0 }
     }
   }
 }
 ```
+
+`"dead_code": null` is load-bearing. Dead-code analysis is Rust-only, and on a
+Python project PMAT reports that it did not run rather than reporting `0`. The
+test asserts `null` specifically — a `0` there would be a metric that measures
+nothing while looking clean.
 
 ## Example 2: Technical Debt Grading (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 78
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 130
 
 **Command Tested**:
 ```bash
-pmat analyze tdg .
+pmat analyze tdg --path .
 ```
+
+`analyze tdg` takes its path through `-p`/`--path`. `pmat analyze tdg .` fails
+with `error: unexpected argument found` — the test asserts that too. (The
+*top-level* `pmat tdg` command does accept a positional path: `pmat tdg .`.)
 
 **Test Validation**:
 - ✅ TDG analysis completes
-- ✅ Grade field exists in output
-- ✅ Overall score is present
-- ✅ Grade is in valid range (A+ through F)
+- ✅ `average_grade` exists in output
+- ✅ `average_score` is present
+- ✅ `pmat analyze tdg .` is rejected
 
-**Verified Output Structure**:
+**Verified Output Structure** (project summary; `.files[]` omitted here):
 ```json
 {
-  "grade": "B+",
-  "overall_score": 87.5,
-  "components": {
-    "structural_complexity": {
-      "score": 92.0,
-      "grade": "A-"
-    },
-    "code_duplication": {
-      "score": 95.0,
-      "grade": "A"
-    },
-    "documentation_coverage": {
-      "score": 75.0,
-      "grade": "C+"
-    }
-  }
+  "average_score": 96.45316,
+  "average_grade": "A+",
+  "not_measured": [],
+  "total_files": 3,
+  "language_distribution": { "Python": 2, "Markdown": 1 },
+  "grade_distribution": { "A+": 2, "A": 1 },
+  "f_grade_count": 0,
+  "grade_capped": false,
+  "files_reported": 3,
+  "files_truncated": false,
+  "ungraded_files": [],
+  "cross_file_duplication_ratio": 0,
+  "cross_file_duplication_coverage": { "measured": 2, "total": 3 }
 }
 ```
 
+The keys are `average_grade`/`average_score`, not `grade`/`overall_score`, and
+the per-file component breakdown lives under `.files[]` (or in the table printed
+by `--include-components`), not under a top-level `components` object.
+
 ## Example 3: JSON Output Format (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 55
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 105
 
 **Command Tested**:
 ```bash
-pmat analyze . --format json
+pmat analyze comprehensive --path . --format json
 ```
 
 **Test Validation**:
 - ✅ Output is valid JSON (parsed by `jq`)
-- ✅ Repository section exists
-- ✅ Languages section exists
-- ✅ Metrics section exists
+- ✅ `summary` section exists
+- ✅ `complexity` section exists
+- ✅ `satd.census` reports the population that was read
 
 **JSON Schema Validation**:
 ```bash
 # Test verifies these fields exist
-echo "$OUTPUT" | jq -e '.repository.total_files'
-echo "$OUTPUT" | jq -e '.languages.Python.files' 
-echo "$OUTPUT" | jq -e '.metrics.complexity'
+echo "$OUTPUT" | jq -e '.summary.total_files'
+echo "$OUTPUT" | jq -e '.complexity.summary'
+echo "$OUTPUT" | jq -e '.satd.census.analyzed'
 ```
+
+Progress lines go to stderr and the JSON document to stdout, so no `grep '^{'`
+filtering is needed before piping into `jq`.
 
 ## Example 4: Language Detection (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 95
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 171
 
 **Test Setup**: Creates multi-language project:
 - Python files (`.py`)
@@ -167,27 +190,24 @@ echo "$OUTPUT" | jq -e '.metrics.complexity'
 - ✅ File counts accurate
 - ✅ Percentages calculated correctly
 
-**Verified Language Detection**:
+**Verified Language Detection** — from `pmat analyze tdg --path . --format json`:
 ```json
 {
-  "languages": {
-    "Python": {
-      "files": 2,
-      "lines": 25,
-      "percentage": 71.4
-    },
-    "Markdown": {
-      "files": 1, 
-      "lines": 10,
-      "percentage": 28.6
-    }
-  }
+  "language_distribution": {
+    "Python": 2,
+    "Markdown": 1
+  },
+  "total_files": 3
 }
 ```
 
+The distribution is a plain file count per language. There is no per-language
+line count and no percentage field; percentages appear only in the human-readable
+table that `pmat analyze tdg` prints without `--format json`.
+
 ## Example 5: Complexity Metrics (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 112
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 180
 
 **Test Creates Functions With Known Complexity**:
 ```python
@@ -214,7 +234,7 @@ def complex_function(x):
 
 ## Example 6: Recommendations Engine (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 125
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 189
 
 **Test Creates Code With Known Issues**:
 ```python
@@ -238,36 +258,38 @@ def very_complex_function(a, b, c, d):
 - ✅ Recommendations have priority levels
 - ✅ Effort estimates included
 
-**Verified Recommendations**:
+**Verified Recommendations** — `recommendations` lives under `summary` in the
+`analyze comprehensive` document, and is a list of plain strings:
 ```json
 {
-  "recommendations": [
-    {
-      "priority": "MEDIUM",
-      "type": "documentation",
-      "message": "Add docstring to 'undocumented_function'",
-      "location": "src/main.py:15",
-      "effort": "5 minutes"
-    },
-    {
-      "priority": "HIGH", 
-      "type": "complexity",
-      "message": "Refactor high-complexity function",
-      "location": "src/main.py:20",
-      "effort": "30 minutes"
-    }
-  ]
+  "summary": {
+    "total_issues": 4,
+    "critical_issues": 4,
+    "quality_score": 90.0,
+    "recommendations": [
+      "Consider refactoring high-complexity functions",
+      "Address technical debt items (TODO/FIXME comments)"
+    ]
+  }
 }
 ```
 
+There are no per-recommendation `priority`, `location` or `effort` fields.
+Locations come from the violation lists — `complexity.violations[]` and
+`satd.violations[]` — each of which carries `file_path`, `line_number` and a
+severity.
+
 ## Example 7: Single File Analysis (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 140
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 163
 
 **Command Tested**:
 ```bash
-pmat analyze src/main.py
+pmat analyze complexity --file src/main.py
 ```
+
+A single file goes through `--file`, not as a positional argument. The banner
+confirms the scope: `🔍 Analyzing complexity of file: src/main.py`.
 
 **Test Validation**:
 - ✅ Single file analysis works
@@ -276,24 +298,37 @@ pmat analyze src/main.py
 
 ## Example 8: Summary Format (TDD Verified)
 
-**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 90
+**Test Location**: `tests/ch01/test_02_first_analysis.sh` line 155
 
 **Command Tested**:
 ```bash
-pmat analyze . --summary
+pmat analyze comprehensive --path . --executive-summary
 ```
 
+There is no `--summary` flag. `--executive-summary` is the real one, and
+`--format summary` is the default anyway.
+
 **Test Validation**:
-- ✅ Summary contains "Files:" keyword
+- ✅ Summary contains "Total Files:" keyword
 - ✅ Human-readable format
 - ✅ Concise output for quick overview
 
 **Verified Summary Output**:
 ```
-Repository: /tmp/test_project_xyz
-Files: 4 | Lines: 35 | Languages: 2
-Grade: B+ (87.5/100)
-Top Issues: Missing docs (1), Complexity (1)
+Comprehensive Code Analysis Report
+
+Executive Summary
+
+  Project analysis completed with 3 total files analyzed.
+
+  Quality Score: 100.0%
+  Total Files:   3
+  Total Issues:  0
+  Critical:      0
+
+  Key Recommendations
+
+    - Code quality looks good! Continue following best practices.
 ```
 
 ## Running the Tests Yourself

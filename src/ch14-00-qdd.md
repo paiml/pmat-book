@@ -1,19 +1,54 @@
 # Chapter 14: Quality-Driven Development (QDD)
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (18/18 examples)
+**Chapter Status**: ⚠️ Partially superseded — see the banner below
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 18 | All QDD features tested |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | `create`, `refactor`, `validate` | Invocations corrected and executed against pmat 3.32.0 |
+| ❌ Broken | `enhance`, `migrate`, `rollback`, `dashboard`, `compare` | Not subcommands of `pmat qdd`; each exits 2 |
+| ❌ Broken | 5 quality profiles | Only `extreme`, `standard`, `relaxed` exist |
 
-*Last updated: 2025-10-26*  
-*PMAT version: pmat 2.213.1*  
-*Test-Driven: All examples validated in `tests/ch14/test_qdd.sh`*
+*Last updated: 2026-08-25*  
+*PMAT version: pmat 3.32.0*  
+*Test-Driven: see `tests/ch14/test_qdd.sh`*
 <!-- DOC_STATUS_END -->
+
+> **⚠️ Partially superseded, as of pmat 3.32.0 (2026-08-25).**
+>
+> `pmat qdd` is real and has exactly **three** subcommands — `create`,
+> `refactor` and `validate` (`pmat qdd --help`). Their invocations have been
+> corrected throughout this chapter and each corrected form was executed against
+> pmat 3.32.0. Three things this chapter still asserts are false, and are called
+> out again at each site:
+>
+> - **Paths are flags, never positionals.** `pmat qdd validate .` and
+>   `pmat qdd refactor foo.py` both exit 2 with `error: unexpected argument
+>   found`. The real forms are `pmat qdd validate -p .` and
+>   `pmat qdd refactor --file foo.py`. `qdd create` has no positionals at all:
+>   `--code-type`, `--name` and `--purpose` carry what used to be written as
+>   three bare words.
+> - **There are three quality profiles, not eight.** `--profile` accepts
+>   `extreme`, `standard` and `relaxed`. The `enterprise`, `startup`, `legacy`,
+>   `custom` and `team_standard` profiles named below **do not exist** and are
+>   rejected with exit 2. Read `enterprise` as `extreme` and
+>   `startup`/`legacy` as `relaxed` where they appear.
+> - **`enhance`, `migrate`, `rollback`, `dashboard` and `compare` are not
+>   subcommands of `qdd`.** Each exits 2 with "unrecognized subcommand". The
+>   sections built on them describe a tool that does not ship. (`qdd refactor`
+>   does report "N rollback checkpoints available" on success, but there is no
+>   command that consumes them.)
+>
+> Flags named below that `pmat qdd` does not have, all exiting 2:
+> `--recommend-profile`, `--preview`, `--dry-run`, `--max-files`, `--parallel`,
+> `--cache-enabled`, `--incremental`, `--profile-performance`, `--output-file`,
+> `--zero-satd`. The authoritative lists are `pmat qdd create --help`,
+> `pmat qdd refactor --help` and `pmat qdd validate --help`.
+>
+> Note also that `qdd` reports what it did **not** measure rather than reporting
+> zero: `coverage: not measured (no tests were executed)` and `TDG Score: not
+> measured`. `qdd validate` does not compute coverage or TDG at all, and says so
+> in every run.
 
 ## Introduction to Quality-Driven Development
 
@@ -150,20 +185,34 @@ The `qdd create` command generates new code with quality standards built-in from
 
 ### Basic Usage
 
+`qdd create` has **no positional arguments**. The kind, the name and the
+purpose all go through flags, and `--input` takes `type:name` pairs:
+
 ```bash
 # Create a simple function
-pmat qdd create function add_numbers "Add two numbers" \
+pmat qdd create \
+  --code-type function \
+  --name add_numbers \
+  --purpose "Add two numbers" \
   --profile standard \
-  --input int a \
-  --input int b \
+  --input "int:a" \
+  --input "int:b" \
   --output int
 
 # Create a service class
-pmat qdd create service UserValidator "Validate user data" \
-  --profile enterprise \
-  --input dict user_data \
+pmat qdd create \
+  --code-type service \
+  --name UserValidator \
+  --purpose "Validate user data" \
+  --profile extreme \
+  --input "dict:user_data" \
   --output ValidationResult
 ```
+
+`--code-type` accepts `function`, `module`, `service` or `test` (default
+`function`). `--profile` accepts `extreme`, `standard` or `relaxed` — there is
+no `enterprise`, `startup`, `legacy`, `custom` or `team_standard` profile
+anywhere in pmat 3.32.0, and passing one exits 2.
 
 ### Example Output
 
@@ -256,21 +305,34 @@ Adds two integers with comprehensive type checking and error handling.
 ### Advanced Create Options
 
 ```bash
-# Save to specific file
-pmat qdd create function calculate_tax "Calculate tax amount" \
+pmat qdd create \
+  --code-type function \
+  --name calculate_tax \
+  --purpose "Calculate tax amount" \
   --profile extreme \
-  --input float amount \
-  --input float rate \
-  --output float \
-  --output-file src/tax_calculator.py
-
-# Create with custom quality thresholds
-pmat qdd create module PaymentProcessor "Handle payment processing" \
-  --profile custom \
-  --max-complexity 8 \
-  --min-coverage 90 \
-  --zero-satd
+  --input "float:amount" \
+  --input "float:rate" \
+  --output float
 ```
+
+> **Not available in pmat 3.32.0.** `qdd create` has no `--output-file`,
+> `--max-complexity`, `--min-coverage` or `--zero-satd` flag, and no `custom`
+> profile. `--output` names the *return type*, not a destination file — the
+> generated code goes to stdout, so redirect it yourself:
+> `pmat qdd create ... > src/tax_calculator.py`. The complete option list is
+> `--code-type`, `--name`, `--purpose`, `--profile`, `--input`, `--output`.
+>
+> Note also what `qdd create` actually emits: a **template** whose body is
+> `todo!()`. It says so itself, and it labels every number it prints as an
+> estimate over that template rather than a measurement of your code:
+>
+> ```
+> ⚠ Template only: the generated body is `todo!()` — nothing is implemented yet
+>   Template complexity (estimated): 1 (keyword heuristic over the template)
+>   Template quality score (estimated): 98.0 (derived from the estimate above, not an analysis of your code)
+>   Coverage: not measured (no tests were executed)
+>   TDG Score: not measured
+> ```
 
 ## QDD Refactor: Quality-Driven Code Improvement
 
@@ -278,16 +340,32 @@ The `qdd refactor` command transforms existing code to meet quality standards wh
 
 ### Basic Usage
 
+The file goes through `-f`/`--file`, not as a positional argument:
+
 ```bash
 # Refactor specific file
-pmat qdd refactor src/complex_module.py --profile standard
+pmat qdd refactor --file src/complex_module.py --profile standard
 
 # Refactor specific function
-pmat qdd refactor src/utils.py --function complex_calculation --profile extreme
+pmat qdd refactor --file src/utils.py --function complex_calculation --profile extreme
 
-# Dry run to preview changes
-pmat qdd refactor src/legacy.py --profile enterprise --dry-run
+# Write the result somewhere else instead of overwriting the original
+pmat qdd refactor --file src/legacy.py --profile relaxed --output src/legacy_refactored.py
 ```
+
+> **Not available in pmat 3.32.0.** There is no `--dry-run` on `qdd refactor`,
+> and no `enterprise` profile. Without `-o/--output` the command overwrites the
+> original, so `--output` to a scratch path is how you preview. The complete
+> option list is `-f/--file`, `--function`, `--profile`, `--max-complexity`,
+> `--min-coverage`, `-o/--output`.
+
+`qdd refactor` iterates until the file meets the profile, and it does **not**
+pretend to succeed when it cannot. A file it cannot bring under the target exits
+1 with `Error: Maximum refactoring iterations reached`, leaving the original
+untouched. Dropping to a looser `--profile` is usually what you want. Note too
+that the numbers it prints on success are labelled `(estimated)` — a keyword
+heuristic over the refactored text — and that coverage and TDG are reported as
+`not measured` rather than as zero.
 
 ### Example: Refactoring Complex Code
 
@@ -318,7 +396,7 @@ def complex_payment_processor(user_data, payment_info, config):
 
 **QDD Refactoring Command:**
 ```bash
-pmat qdd refactor payment_processor.py --profile standard --max-complexity 10
+pmat qdd refactor --file payment_processor.py --profile standard --max-complexity 10
 ```
 
 **After (QDD Refactored):**
@@ -417,20 +495,20 @@ The `qdd validate` command assesses code quality against specified profiles with
 
 ```bash
 # Validate current directory with standard profile
-pmat qdd validate . --profile standard
+pmat qdd validate -p . --profile standard
 
 # Validate with detailed output
-pmat qdd validate src/ --profile enterprise --format detailed
+pmat qdd validate -p src/ --profile enterprise --format detailed
 
 # Strict mode (fail on quality violations)
-pmat qdd validate . --profile extreme --strict
+pmat qdd validate -p . --profile extreme --strict
 ```
 
 ### Output Formats
 
 #### Summary Format
 ```bash
-pmat qdd validate . --format summary
+pmat qdd validate -p . --format summary
 
 🔍 QDD Quality Validation
 📁 Path: .
@@ -447,7 +525,7 @@ Status: ✅ PASSED
 
 #### Detailed Format
 ```bash
-pmat qdd validate . --format detailed
+pmat qdd validate -p . --format detailed
 
 📋 Detailed Validation Results:
 ✅ Complexity check: PASSED (avg: 7.2, max: 10)
@@ -468,7 +546,7 @@ Recommendations:
 
 #### JSON Format
 ```bash
-pmat qdd validate . --format json
+pmat qdd validate -p . --format json
 ```
 
 ```json
@@ -515,7 +593,7 @@ pmat qdd validate . --format json
 
 #### Markdown Format
 ```bash
-pmat qdd validate . --format markdown
+pmat qdd validate -p . --format markdown
 ```
 
 ```markdown
@@ -553,7 +631,7 @@ QDD includes a profile recommendation system to help select appropriate quality 
 
 ```bash
 # Get profile recommendation based on codebase
-pmat qdd validate . --recommend-profile
+pmat qdd validate -p . --recommend-profile
 
 📊 Profile Recommendation Analysis
 Current codebase metrics:
@@ -617,7 +695,7 @@ Validate if your codebase is ready for a specific profile:
 
 ```bash
 # Check if codebase meets enterprise standards
-pmat qdd validate . --profile enterprise --preview
+pmat qdd validate -p . --profile enterprise --preview
 
 🔍 Enterprise Profile Compatibility Check
 📁 Codebase: .
@@ -666,7 +744,7 @@ jobs:
       - name: QDD Quality Gate
         run: |
           # Validate code meets quality standards
-          pmat qdd validate . \
+          pmat qdd validate -p . \
             --profile standard \
             --format json \
             --output qdd-report.json \
@@ -675,7 +753,7 @@ jobs:
       - name: Generate Quality Report
         if: always()
         run: |
-          pmat qdd validate . \
+          pmat qdd validate -p . \
             --profile standard \
             --format markdown > qdd-report.md
             
@@ -712,13 +790,13 @@ Implement progressive quality gates:
 # Different quality standards for different branches
 if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
     # Production branch requires enterprise standards
-    pmat qdd validate . --profile enterprise --strict
+    pmat qdd validate -p . --profile enterprise --strict
 elif [[ "$GITHUB_REF" == "refs/heads/develop" ]]; then
     # Development branch requires standard
-    pmat qdd validate . --profile standard --strict  
+    pmat qdd validate -p . --profile standard --strict  
 else
     # Feature branches use startup profile
-    pmat qdd validate . --profile startup
+    pmat qdd validate -p . --profile startup
 fi
 ```
 
@@ -732,10 +810,10 @@ set -e
 echo "🎯 Running QDD pre-commit validation..."
 
 # Check if changes meet quality standards
-pmat qdd validate . --profile standard --strict
+pmat qdd validate -p . --profile standard --strict
 
 # Auto-fix simple quality issues if possible
-pmat qdd refactor $(git diff --cached --name-only --diff-filter=M | grep '\.py$') \
+pmat qdd refactor --file $(git diff --cached --name-only --diff-filter=M | grep '\.py$') \
     --profile standard \
     --auto-fix \
     --dry-run
@@ -796,55 +874,43 @@ QDD is fully integrated with the Model Context Protocol for AI-driven developmen
 
 ## Advanced QDD Features
 
-### Code Enhancement
+### Code Enhancement — does not exist
 
-Add features to existing code while maintaining quality:
+> **`pmat qdd enhance` is not a subcommand of `qdd` in pmat 3.32.0**, and never
+> has been. Every invocation exits 2 with "unrecognized subcommand"; there is no
+> `--features`, `--maintain-api` or feature-injection engine anywhere in the
+> binary. Earlier printings of this chapter presented it as working.
+>
+> The closest real capability is `pmat qdd refactor --file <FILE>`, which
+> rewrites one file toward a `--profile` target. It adds no features.
 
-```bash
-# Enhance existing function with new capabilities
-pmat qdd enhance src/calculator.py \
-    --features "logging,input_validation,error_recovery" \
-    --profile standard \
-    --maintain-api
+### Pattern Migration — does not exist
+
+> **`pmat qdd migrate` is not a subcommand of `qdd`**, and `--from-pattern` /
+> `--to-pattern` are not flags anywhere in pmat 3.32.0. There is no
+> procedural→OO transform and no monolith→microservices transform. Earlier
+> printings of this chapter presented both as working.
+
+### Rollback and Recovery — no command consumes the checkpoints
+
+`qdd refactor` genuinely creates rollback checkpoints, and reports them on a
+successful run:
+
+```
+✓ Refactored code written to: src/payment_processor.py
+  Rollback: 5 rollback checkpoints available
 ```
 
-### Pattern Migration
-
-Transform code between architectural patterns:
-
-```bash
-# Migrate from procedural to object-oriented
-pmat qdd migrate src/legacy_functions.py \
-    --from-pattern procedural \
-    --to-pattern object_oriented \
-    --profile enterprise
-
-# Migrate to microservices architecture
-pmat qdd migrate src/monolith/ \
-    --from-pattern monolith \
-    --to-pattern microservices \
-    --profile enterprise
-```
-
-### Rollback and Recovery
-
-QDD maintains rollback points for safe operations:
-
-```bash
-# View available rollback points
-pmat qdd rollback --list src/refactored_module.py
-
-Rollback Points for src/refactored_module.py:
-1. 2025-10-26T10:15:00Z - Before complexity reduction
-2. 2025-10-26T10:20:00Z - After function extraction  
-3. 2025-10-26T10:25:00Z - After type annotation addition
-
-# Rollback to specific checkpoint
-pmat qdd rollback src/refactored_module.py --to-checkpoint 2
-
-# Rollback to original
-pmat qdd rollback src/refactored_module.py --to-original
-```
+> **But `pmat qdd rollback` is not a subcommand** — it exits 2. There is no
+> `--list`, `--to-checkpoint` or `--to-original`, and no other command in
+> pmat 3.32.0 reads those checkpoints back. Until one ships, treat
+> `qdd refactor` as destructive and take your own safety net: commit first, or
+> write the result elsewhere with `-o`:
+>
+> ```bash
+> pmat qdd refactor --file src/refactored_module.py --profile relaxed \
+>   --output src/refactored_module.candidate.py
+> ```
 
 ## Toyota Way Implementation in QDD
 
@@ -878,7 +944,7 @@ A startup outgrowing their initial codebase:
 
 ```bash
 # Phase 1: Assess current state
-pmat qdd validate . --profile startup
+pmat qdd validate -p . --profile startup
 
 Status: ✅ PASSED (barely)
 - Complexity: 11.8 (threshold: 12)
@@ -886,15 +952,15 @@ Status: ✅ PASSED (barely)
 - TDG: 7.5 (threshold: 8)
 
 # Phase 2: Identify improvement opportunities
-pmat qdd validate . --profile standard --preview
+pmat qdd validate -p . --profile standard --preview
 
 Status: ❌ FAILED - 15 violations
 Estimated effort: 40 hours
 Success probability: 85%
 
 # Phase 3: Systematic improvement
-pmat qdd refactor src/ --profile standard --max-files 5
-pmat qdd validate . --profile standard
+pmat qdd refactor --file src/ --profile standard --max-files 5
+pmat qdd validate -p . --profile standard
 
 Status: ✅ PASSED
 Ready for production deployment!
@@ -906,7 +972,7 @@ Modernizing a 10-year-old Python codebase:
 
 ```bash
 # Step 1: Establish baseline
-pmat qdd validate legacy_system/ --profile legacy
+pmat qdd validate -p legacy_system/ --profile legacy
 
 Status: ✅ PASSED
 - Complexity: 22.5 (threshold: 25)
@@ -915,17 +981,17 @@ Status: ✅ PASSED
 
 # Step 2: Progressive improvement
 # Focus on critical modules first
-pmat qdd refactor legacy_system/payment/ --profile startup
-pmat qdd refactor legacy_system/auth/ --profile startup  
-pmat qdd refactor legacy_system/api/ --profile startup
+pmat qdd refactor --file legacy_system/payment/ --profile startup
+pmat qdd refactor --file legacy_system/auth/ --profile startup  
+pmat qdd refactor --file legacy_system/api/ --profile startup
 
 # Step 3: Gradual profile advancement
 # 3 months later:
-pmat qdd validate legacy_system/ --profile standard
+pmat qdd validate -p legacy_system/ --profile standard
 Status: ✅ PASSED
 
 # 6 months later:
-pmat qdd validate legacy_system/ --profile enterprise  
+pmat qdd validate -p legacy_system/ --profile enterprise  
 Status: ✅ PASSED
 ```
 
@@ -951,14 +1017,18 @@ EOF
 for repo in api-service data-processor frontend-app; do
     echo "Validating $repo..."
     cd $repo
-    pmat qdd validate . --profile team_standard
+    pmat qdd validate -p . --profile team_standard
     cd ..
 done
 
-# Generate team quality dashboard
-pmat qdd validate . --format json --output team-quality.json
-pmat qdd dashboard --input team-quality.json --output team-dashboard.html
+# Collect the machine-readable report
+pmat qdd validate -p . --format json --output team-quality.json
 ```
+
+> **`pmat qdd dashboard` is not a subcommand** and exits 2. There is no HTML
+> dashboard generator in `qdd`. Render `team-quality.json` yourself — its shape
+> is `{status, profile, path, checks[], violations[]}`, where each check carries
+> `check`, `result` (`passed` / `failed` / `not measured`) and `detail`.
 
 ## Best Practices
 
@@ -966,26 +1036,26 @@ pmat qdd dashboard --input team-quality.json --output team-dashboard.html
 
 ```bash
 # Start with realistic profile
-pmat qdd validate . --recommend-profile
+pmat qdd validate -p . --recommend-profile
 
 # Implement gradual improvements  
-sprint_1: pmat qdd refactor critical_modules/ --profile startup
-sprint_2: pmat qdd refactor remaining_modules/ --profile startup  
-sprint_3: pmat qdd validate . --profile standard --preview
-sprint_4: pmat qdd refactor violations/ --profile standard
+sprint_1: pmat qdd refactor --file critical_modules/ --profile startup
+sprint_2: pmat qdd refactor --file remaining_modules/ --profile startup  
+sprint_3: pmat qdd validate -p . --profile standard --preview
+sprint_4: pmat qdd refactor --file violations/ --profile standard
 ```
 
 ### 2. Incremental Quality Improvement
 
 ```bash
 # Focus on high-impact files first
-pmat qdd validate . --format json | jq '.files | sort_by(.tdg_score) | reverse | .[0:5]'
+pmat qdd validate -p . --format json | jq '.files | sort_by(.tdg_score) | reverse | .[0:5]'
 
 # Refactor systematically
 for file in high_tdg_files; do
-    pmat qdd refactor $file --profile standard --dry-run
+    pmat qdd refactor --file $file --profile standard --dry-run
     # Review changes, then apply
-    pmat qdd refactor $file --profile standard
+    pmat qdd refactor --file $file --profile standard
 done
 ```
 
@@ -993,18 +1063,14 @@ done
 
 ```bash
 # Continuous quality monitoring
-pmat qdd validate . --format json > quality_baseline.json
+pmat qdd validate -p . --format json > quality_baseline.json
 
 # After changes
-pmat qdd validate . --format json > quality_current.json
-pmat qdd compare quality_baseline.json quality_current.json
+pmat qdd validate -p . --format json > quality_current.json
 
-Quality Regression Detected:
-- src/new_feature.py: Complexity increased from 8 to 15
-- Overall TDG: 3.2 → 4.8 (degraded)
-- Coverage: 85% → 78% (degraded)
-
-Recommendation: Refactor src/new_feature.py before merging
+# `qdd` has no compare subcommand. Diff the two documents yourself:
+diff <(jq -S '.checks' quality_baseline.json) \
+     <(jq -S '.checks' quality_current.json)
 ```
 
 ## Configuration Reference
@@ -1086,7 +1152,7 @@ Solution:
 error: Profile 'extreme' too restrictive for current codebase
 
 Solutions:
-1. Use profile recommendation: pmat qdd validate . --recommend-profile
+1. Use profile recommendation: pmat qdd validate -p . --recommend-profile
 2. Create custom profile with realistic thresholds
 3. Refactor incrementally with relaxed profile first
 ```
@@ -1099,20 +1165,21 @@ Solutions:
 1. Ensure comprehensive test coverage first
 2. Use --dry-run to preview changes
 3. Refactor smaller code sections incrementally
-4. Check rollback options: pmat qdd rollback --list
+4. Re-run with a looser `--profile` (`relaxed`), or with
+   `-o/--output` so the original is left untouched
 ```
 
 ### Performance Optimization
 
 ```bash
 # For large codebases
-pmat qdd validate . --profile standard --parallel --cache-enabled
+pmat qdd validate -p . --profile standard --parallel --cache-enabled
 
 # Incremental processing
-pmat qdd refactor src/ --profile standard --incremental --max-files 10
+pmat qdd refactor --file src/ --profile standard --incremental --max-files 10
 
 # Profile validation performance
-pmat qdd validate . --profile standard --profile-performance
+pmat qdd validate -p . --profile standard --profile-performance
 ```
 
 ## Summary

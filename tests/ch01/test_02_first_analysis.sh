@@ -81,60 +81,88 @@ EOF
 }
 
 # Test 1: Analyze current directory
+#
+# `analyze` is a PARENT command. `pmat analyze .` exits 2 with
+# "error: unrecognized subcommand" — it never worked. `comprehensive` is the
+# subcommand that runs the whole suite, and --path defaults to `.`.
 echo "Test 1: Analyze current directory"
 setup_test_project
-if pmat analyze . &> /dev/null; then
+if pmat analyze comprehensive &> /dev/null; then
     test_pass "Current directory analysis"
 else
     test_fail "Current directory analysis"
 fi
 
+# Test 1b: prove the old form is genuinely rejected, so this test cannot pass
+# again by accident if someone reintroduces it.
+echo "Test 1b: bare 'pmat analyze .' is rejected"
+if pmat analyze . &> /dev/null; then
+    test_fail "'pmat analyze .' unexpectedly succeeded"
+else
+    test_pass "'pmat analyze .' rejected, as documented"
+fi
+
 # Test 2: Analyze with JSON output
 echo "Test 2: JSON output format"
-OUTPUT=$(pmat analyze . --format json 2>/dev/null)
-if echo "$OUTPUT" | jq -e '.repository.total_files' &> /dev/null; then
-    test_pass "JSON output contains repository info"
-    
-    # Verify we detected Python files
-    PYTHON_FILES=$(echo "$OUTPUT" | jq -r '.languages.Python.files // 0')
-    if [ "$PYTHON_FILES" -gt 0 ]; then
-        test_pass "Python files detected: $PYTHON_FILES"
+OUTPUT=$(pmat analyze comprehensive --path . --format json 2>/dev/null)
+if echo "$OUTPUT" | jq -e '.summary.total_files' &> /dev/null; then
+    test_pass "JSON output contains a summary section"
+
+    FILES=$(echo "$OUTPUT" | jq -r '.summary.total_files')
+    if [ "$FILES" -gt 0 ]; then
+        test_pass "Files analyzed: $FILES"
     else
-        test_fail "No Python files detected"
+        test_fail "No files analyzed"
     fi
 else
     test_fail "JSON output invalid"
 fi
 
+# Test 2b: dead_code must be null on a non-Cargo project, NOT 0.
+# A zero that means "never ran" is the defect this book shipped once.
+echo "Test 2b: dead_code reports 'not measured', not zero"
+if [ "$(echo "$OUTPUT" | jq -r '.dead_code')" = "null" ]; then
+    test_pass "dead_code is null (Rust-only analyser, correctly not measured)"
+else
+    test_fail "dead_code should be null on a Python project"
+fi
+
 # Test 3: Test TDG analysis
 echo "Test 3: Technical Debt Grading"
-TDG_OUTPUT=$(pmat analyze tdg . --format json 2>/dev/null)
-if echo "$TDG_OUTPUT" | jq -e '.grade' &> /dev/null; then
-    GRADE=$(echo "$TDG_OUTPUT" | jq -r '.grade')
+TDG_OUTPUT=$(pmat analyze tdg --path . --format json 2>/dev/null)
+if echo "$TDG_OUTPUT" | jq -e '.average_grade' &> /dev/null; then
+    GRADE=$(echo "$TDG_OUTPUT" | jq -r '.average_grade')
     test_pass "TDG analysis complete, Grade: $GRADE"
-    
-    # Check if grade is reasonable
-    if echo "$TDG_OUTPUT" | jq -e '.overall_score' &> /dev/null; then
-        SCORE=$(echo "$TDG_OUTPUT" | jq -r '.overall_score')
-        test_pass "Overall score: $SCORE"
+
+    if echo "$TDG_OUTPUT" | jq -e '.average_score' &> /dev/null; then
+        SCORE=$(echo "$TDG_OUTPUT" | jq -r '.average_score')
+        test_pass "Average score: $SCORE"
     else
-        test_fail "No overall score in TDG"
+        test_fail "No average score in TDG"
     fi
 else
     test_fail "TDG analysis failed"
 fi
 
-# Test 4: Test summary format
-echo "Test 4: Summary format"
-if pmat analyze . --summary 2>&1 | grep -q "Files:"; then
-    test_pass "Summary format contains file count"
+# Test 3b: the positional form is rejected; -p/--path is required.
+echo "Test 3b: 'pmat analyze tdg .' is rejected"
+if pmat analyze tdg . &> /dev/null; then
+    test_fail "'pmat analyze tdg .' unexpectedly succeeded"
 else
-    test_fail "Summary format missing file count"
+    test_pass "'pmat analyze tdg .' rejected, as documented"
+fi
+
+# Test 4: Executive summary
+echo "Test 4: Executive summary"
+if pmat analyze comprehensive --path . --executive-summary 2>/dev/null | grep -q "Total Files:"; then
+    test_pass "Executive summary contains file count"
+else
+    test_fail "Executive summary missing file count"
 fi
 
 # Test 5: Test specific file analysis
 echo "Test 5: Single file analysis"
-if pmat analyze src/main.py &> /dev/null; then
+if pmat analyze complexity --file src/main.py &> /dev/null; then
     test_pass "Single file analysis works"
 else
     test_fail "Single file analysis failed"
@@ -142,37 +170,29 @@ fi
 
 # Test 6: Test language detection
 echo "Test 6: Language detection"
-LANG_OUTPUT=$(pmat analyze . --format json 2>/dev/null)
-if echo "$LANG_OUTPUT" | jq -e '.languages | has("Python")' &> /dev/null; then
+LANG_OUTPUT=$(pmat analyze tdg --path . --format json 2>/dev/null)
+if echo "$LANG_OUTPUT" | jq -e '.language_distribution | has("Python")' &> /dev/null; then
     test_pass "Python language detected"
-    
-    # Check Markdown detection
-    if echo "$LANG_OUTPUT" | jq -e '.languages | has("Markdown")' &> /dev/null; then
-        test_pass "Markdown language detected"
-    else
-        test_fail "Markdown not detected"
-    fi
 else
     test_fail "Python not detected"
 fi
 
 # Test 7: Test complexity metrics
 echo "Test 7: Complexity metrics"
-METRICS=$(pmat analyze . --format json 2>/dev/null)
-if echo "$METRICS" | jq -e '.metrics.complexity' &> /dev/null; then
+METRICS=$(pmat analyze complexity --path . --format json 2>/dev/null)
+if echo "$METRICS" | jq -e '.summary.median_cyclomatic' &> /dev/null; then
     test_pass "Complexity metrics present"
 else
     test_fail "Complexity metrics missing"
 fi
 
-# Test 8: Test recommendations
-echo "Test 8: Recommendations"
-TDG_WITH_RECS=$(pmat analyze tdg . --format json 2>/dev/null)
-if echo "$TDG_WITH_RECS" | jq -e '.recommendations' &> /dev/null; then
-    REC_COUNT=$(echo "$TDG_WITH_RECS" | jq '.recommendations | length')
-    test_pass "Recommendations provided: $REC_COUNT"
+# Test 8: SATD violations are reported with their scope
+echo "Test 8: SATD scope census"
+if echo "$OUTPUT" | jq -e '.satd.census.analyzed' &> /dev/null; then
+    ANALYZED=$(echo "$OUTPUT" | jq -r '.satd.census.analyzed')
+    test_pass "SATD reports its denominator: $ANALYZED file(s) read"
 else
-    test_fail "No recommendations provided"
+    test_fail "SATD census missing"
 fi
 
 # Cleanup

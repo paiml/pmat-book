@@ -1,854 +1,504 @@
 # Chapter 12: Architecture Analysis
 
-<!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (8/8 examples)
+> **⚠️ Superseded, as of pmat 3.32.0 (2026-08-25). `pmat` has no
+> `architecture` subcommand, and never has had one.**
+>
+> This chapter used to document nineteen of them — `architecture analyze`,
+> `deps`, `graph`, `validate-layers`, `patterns`, `microservices`, `ddd`,
+> `coupling`, `cohesion`, `evolution`, `compare`, `track`, `debt-analysis`,
+> `debt-check`, `adr-suggest`, `legacy-assessment`, `review-package`, `report`
+> and `validate` — 39 examples in total, along with a `.pmat/architecture.yaml`
+> layer-definition format, a `.pmat/microservices.yaml`, a
+> `.pmat/patterns/custom-patterns.yaml` and a `.pmat/architecture-exceptions.yaml`.
+>
+> **None of it ever shipped.** There is no `Architecture` clap variant in any
+> commit of pmat's history; the only thing carrying the name is an internal
+> `AnalyzeSystemArchitectureArgs` struct for an MCP handler that is not among
+> the 19 tools `tools/list` exposes in 3.32.0 either. Every one of those YAML
+> files is read by nothing. The chapter's own test script,
+> `tests/ch12/test_architecture.sh`, wrote five of them and then asserted that
+> the files it had just written existed — it never invoked `pmat`, and it
+> passed for a year while the commands it "validated" all exited
+> `error: unrecognized subcommand`.
+>
+> The old status badge claiming "✅ 100% Working (8/8 examples)" has been
+> removed, and that test script has been rewritten to run the real binary
+> against a real fixture: 19 assertions, each checked to go red when the claim
+> behind it is false.
+>
+> pmat *does* analyze structure — through the dependency graph, churn
+> bottlenecks, duplication and community detection. Those commands are
+> documented below, and every example was executed against `pmat 3.32.0`.
 
-| Status | Count | Examples |
-|--------|-------|----------|
-| ✅ Working | 8 | All architecture analysis configurations tested |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+*What structural analysis `pmat` really offers, what it deliberately does not,
+and how to tell the difference.*
 
-*Last updated: 2025-10-26*  
-*PMAT version: pmat 2.213.1*  
-*Test-Driven: All examples validated in `tests/ch12/test_architecture.sh`*
-<!-- DOC_STATUS_END -->
+## Translation Table
 
-## Understanding Your Codebase Architecture
+If you arrived from a bookmark, this is what the command you were looking for
+maps onto:
 
-PMAT's architecture analysis goes beyond individual files to understand the overall structure, patterns, and design quality of your entire codebase. It provides insights into architectural debt, design patterns, dependency relationships, and structural evolution.
+| Old (fictional) | Real command in pmat 3.32.0 |
+|-----------------|------------------------------|
+| `architecture deps`, `architecture graph` | `pmat analyze dag` |
+| `architecture analyze` | `pmat analyze deep-context`, `pmat context` |
+| `architecture debt-analysis`, `debt-check` | `pmat tdg`, `pmat analyze satd` |
+| `architecture cohesion` | `pmat split` (Louvain modularity) |
+| `architecture coupling` | partially: edge counts from `pmat analyze dag` |
+| `architecture patterns` | *no equivalent* |
+| `architecture validate-layers` | *no equivalent* |
+| `architecture ddd` | *no equivalent* |
+| `architecture microservices` | *no equivalent* |
+| `architecture evolution`, `compare`, `track` | partially: `pmat analyze bottleneck` (churn) |
+| `architecture adr-suggest`, `legacy-assessment`, `review-package` | *no equivalent* |
 
-## What is Architecture Analysis?
+"*No equivalent*" means exactly that. `pmat` has no notion of an architectural
+layer, a bounded context, a design pattern or a service boundary, and cannot be
+configured to acquire one. If you need layer enforcement, use a tool built for
+it (`cargo-modules`, `import-linter`, ArchUnit) and gate it separately.
 
-Architecture analysis examines:
-- **Structural Patterns**: How components are organized and interact
-- **Dependency Management**: Import relationships and coupling analysis
-- **Design Patterns**: Identification of common architectural patterns
-- **Architectural Debt**: Deviations from intended design
-- **Evolution Tracking**: How architecture changes over time
-- **Modularity Metrics**: Cohesion and coupling measurements
+## The Dependency Graph: `pmat analyze dag`
 
-## Why Architecture Analysis Matters
+This is the real core of the chapter. It walks the AST, builds a dependency
+graph and emits Mermaid.
 
-Poor architecture leads to:
-- **Increased Maintenance Cost**: Harder to modify and extend
-- **Reduced Developer Productivity**: More time understanding code
-- **Higher Bug Rates**: Complex interactions create failure points
-- **Technical Debt Accumulation**: Shortcuts compound over time
-- **Team Bottlenecks**: Knowledge concentration in complex areas
-
-## Quick Start
-
-Analyze your architecture in minutes:
+### A Fixture
 
 ```bash
-# Basic architecture analysis
-pmat architecture analyze .
+mkdir -p arch/src/{api,domain,store} && cd arch
+cat > Cargo.toml << 'EOF'
+[package]
+name = "arch"
+version = "0.1.0"
+edition = "2021"
+EOF
+cat > src/lib.rs << 'EOF'
+pub mod api;
+pub mod domain;
+pub mod store;
+EOF
+cat > src/api/mod.rs << 'EOF'
+use crate::domain::User;
+use crate::store::load;
 
-# Generate architecture report
-pmat architecture report --format=html --output=arch-report.html
-
-# Check architectural violations
-pmat architecture validate --rules=strict
-
-# Visualize dependencies
-pmat architecture graph --output=dependencies.svg
-```
-
-## Core Analysis Features
-
-### 1. Dependency Analysis
-
-PMAT analyzes import and dependency relationships across your codebase:
-
-```bash
-# Analyze all dependencies
-pmat architecture deps --project-path .
-
-# Check for circular dependencies
-pmat architecture deps --circular --fail-on-cycles
-
-# Analyze dependency depth
-pmat architecture deps --depth --max-depth 5
-
-# Generate dependency matrix
-pmat architecture deps --matrix --output deps-matrix.json
-```
-
-**Example Output:**
-```json
-{
-  "dependencies": {
-    "user_service": {
-      "imports": ["shared.utils", "database.models", "api_client"],
-      "imported_by": ["main", "tests.test_user"],
-      "circular_deps": [],
-      "dependency_depth": 3,
-      "coupling_score": 0.65
-    }
-  },
-  "violations": [
-    {
-      "type": "circular_dependency",
-      "modules": ["auth.service", "user.models"],
-      "severity": "error"
-    }
-  ],
-  "metrics": {
-    "total_modules": 45,
-    "avg_coupling": 0.42,
-    "max_depth": 6,
-    "circular_count": 1
-  }
+pub fn handler(id: u32) -> Option<User> {
+    load(id)
 }
-```
-
-### 2. Layer Architecture Validation
-
-Define and validate architectural layers:
-
-```yaml
-# .pmat/architecture.yaml
-layers:
-  - name: "presentation"
-    path_patterns: ["*/controllers/*", "*/views/*", "*/templates/*"]
-    can_import: ["business", "shared"]
-    cannot_import: ["persistence", "infrastructure"]
-    
-  - name: "business" 
-    path_patterns: ["*/services/*", "*/domain/*", "*/use_cases/*"]
-    can_import: ["shared", "persistence_interfaces"]
-    cannot_import: ["presentation", "infrastructure"]
-    
-  - name: "persistence"
-    path_patterns: ["*/repositories/*", "*/dao/*", "*/models/*"]
-    can_import: ["shared"]
-    cannot_import: ["presentation", "business"]
-    
-  - name: "infrastructure"
-    path_patterns: ["*/external/*", "*/adapters/*", "*/config/*"]
-    can_import: ["shared"]
-    cannot_import: ["presentation", "business", "persistence"]
-
-validation_rules:
-  - "presentation_layer_only_calls_business"
-  - "no_direct_database_access_from_controllers"
-  - "business_logic_independent_of_frameworks"
-  - "shared_modules_have_no_dependencies"
-```
-
-**Validation Command:**
-```bash
-pmat architecture validate-layers --config .pmat/architecture.yaml
-```
-
-### 3. Design Pattern Detection
-
-Automatically identify common design patterns:
-
-```bash
-# Detect all patterns
-pmat architecture patterns --detect-all
-
-# Look for specific patterns
-pmat architecture patterns --detect singleton,factory,observer
-
-# Analyze pattern quality
-pmat architecture patterns --quality-check
-```
-
-**Detected Patterns:**
-
-**Singleton Pattern:**
-```python
-# src/config/settings.py - Detected: Singleton Pattern (Score: 95%)
-class Settings:
-    _instance = None
-    _initialized = False
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    def __init__(self):
-        if not self._initialized:
-            self.load_config()
-            Settings._initialized = True
-```
-
-**Repository Pattern:**
-```python
-# src/repositories/user_repository.py - Detected: Repository Pattern (Score: 88%)
-from abc import ABC, abstractmethod
-
-class UserRepository(ABC):
-    @abstractmethod
-    def find_by_id(self, user_id: str) -> Optional[User]:
-        pass
-    
-    @abstractmethod
-    def save(self, user: User) -> User:
-        pass
-
-class SQLUserRepository(UserRepository):
-    def find_by_id(self, user_id: str) -> Optional[User]:
-        # Implementation
-        pass
-```
-
-### 4. Component Coupling Analysis
-
-Measure how tightly coupled your components are:
-
-```bash
-# Analyze coupling metrics
-pmat architecture coupling --detailed
-
-# Identify highly coupled modules  
-pmat architecture coupling --threshold 0.8 --list-violations
-
-# Generate coupling heatmap
-pmat architecture coupling --heatmap --output coupling-heatmap.png
-```
-
-**Coupling Metrics:**
-```
-📊 Coupling Analysis Results
-
-🔗 Highly Coupled Modules (Coupling > 0.8):
-  - user_service.py (0.92) - Imports from 12 different modules
-  - order_processor.py (0.87) - Complex dependency web detected
-  - legacy_api.py (0.95) - Monolithic structure identified
-
-📈 Coupling Distribution:
-  Low (0.0-0.3):    15 modules (33%)
-  Medium (0.3-0.7):  22 modules (49%) 
-  High (0.7-1.0):    8 modules (18%)
-
-⚠️  Architectural Debt Indicators:
-  - 3 modules exceed recommended coupling (0.7)
-  - 1 circular dependency detected
-  - Average coupling increased 12% since last month
-```
-
-### 5. Module Cohesion Analysis
-
-Measure how focused your modules are:
-
-```bash
-# Analyze module cohesion
-pmat architecture cohesion --all-modules
-
-# Identify low-cohesion modules
-pmat architecture cohesion --threshold 0.6 --list-low-cohesion
-
-# Suggest refactoring opportunities  
-pmat architecture cohesion --suggest-refactoring
-```
-
-## Advanced Architecture Features
-
-### 1. Microservices Architecture Analysis
-
-For microservices architectures, PMAT provides specialized analysis:
-
-```yaml
-# .pmat/microservices.yaml
-architecture_type: "microservices"
-
-services:
-  - name: "user-service"
-    path: "services/user"
-    boundaries: ["users", "authentication", "profiles"]
-    databases: ["user_db"]
-    apis: ["users_api_v1", "auth_api_v1"]
-    
-  - name: "order-service"  
-    path: "services/order"
-    boundaries: ["orders", "shopping_cart", "checkout"]
-    databases: ["order_db"]
-    apis: ["orders_api_v1"]
-
-  - name: "payment-service"
-    path: "services/payment" 
-    boundaries: ["payments", "billing", "invoices"]
-    databases: ["payment_db"]
-    apis: ["payments_api_v1"]
-
-constraints:
-  database_per_service: true
-  no_shared_databases: true
-  api_communication_only: true
-  async_messaging: "preferred"
-
-integration_patterns:
-  event_sourcing: ["order-service", "payment-service"]
-  cqrs: ["user-service"]
-  saga_orchestration: true
-```
-
-**Analysis Commands:**
-```bash
-# Validate microservices boundaries
-pmat architecture microservices --validate-boundaries
-
-# Check service coupling
-pmat architecture microservices --coupling-analysis
-
-# Analyze API dependencies
-pmat architecture microservices --api-dependencies
-
-# Generate service map
-pmat architecture microservices --service-map --output services.png
-```
-
-### 2. Domain-Driven Design Analysis
-
-Analyze DDD patterns and bounded contexts:
-
-```bash
-# Detect bounded contexts
-pmat architecture ddd --detect-contexts
-
-# Validate domain models
-pmat architecture ddd --validate-models
-
-# Check aggregate consistency
-pmat architecture ddd --check-aggregates
-
-# Analyze domain events
-pmat architecture ddd --analyze-events
-```
-
-**DDD Analysis Output:**
-```
-🏗️  Domain-Driven Design Analysis
-
-📦 Bounded Contexts Detected:
-  1. User Management Context
-     - Entities: User, Profile, Preferences
-     - Value Objects: Email, Address, PhoneNumber
-     - Aggregates: UserAggregate (root: User)
-     - Services: UserService, AuthenticationService
-
-  2. Order Management Context
-     - Entities: Order, OrderItem, ShoppingCart
-     - Value Objects: Money, Quantity, ProductId
-     - Aggregates: OrderAggregate (root: Order)
-     - Services: OrderService, PricingService
-
-  3. Payment Context
-     - Entities: Payment, Invoice, Transaction
-     - Value Objects: PaymentMethod, Amount
-     - Aggregates: PaymentAggregate (root: Payment)
-     - Services: PaymentProcessor, BillingService
-
-⚠️  DDD Violations Found:
-  - UserService directly accessing OrderItem (cross-context boundary)
-  - Payment entity being modified outside its aggregate
-  - Missing domain events for order state changes
-```
-
-### 3. Architecture Evolution Tracking
-
-Track how your architecture changes over time:
-
-```bash
-# Initialize architecture tracking
-pmat architecture track --init
-
-# Compare with previous version
-pmat architecture compare --baseline=main --current=feature-branch
-
-# Generate evolution report
-pmat architecture evolution --period=6months --format=html
-```
-
-**Evolution Report:**
-```
-📈 Architecture Evolution Report (Last 6 Months)
-
-🔄 Structural Changes:
-  - New modules: 15 (+25%)
-  - Deleted modules: 3 (-5%)
-  - Refactored modules: 8 (major changes)
-
-📊 Coupling Trends:
-  - Average coupling: 0.45 → 0.38 (📉 -15% improvement)
-  - High-coupling modules: 12 → 6 (📉 -50% reduction)
-
-🏗️  Pattern Adoption:
-  - Repository pattern: 3 → 8 implementations
-  - Factory pattern: 1 → 4 implementations
-  - Observer pattern: 0 → 2 implementations
-
-⚠️  Architecture Debt:
-  - Circular dependencies: 2 → 1 (📉 -50%)
-  - Layer violations: 5 → 2 (📉 -60%)
-  - God classes: 1 → 0 (📉 -100%)
-```
-
-## Configuration and Customization
-
-### Advanced Architecture Configuration
-
-```toml
-# pmat.toml
-[architecture]
-enabled = true
-analyze_dependencies = true
-detect_patterns = true
-validate_layers = true
-track_evolution = true
-
-[architecture.analysis]
-max_coupling_threshold = 0.7
-min_cohesion_threshold = 0.6
-max_dependency_depth = 5
-circular_dependencies = "error"
-
-[architecture.patterns]
-detect_all = true
-confidence_threshold = 0.8
-custom_patterns = [
-    "mvc_pattern",
-    "hexagonal_architecture",
-    "event_sourcing"
-]
-
-[architecture.layers]
-config_file = ".pmat/architecture.yaml"
-strict_validation = true
-allow_test_violations = true
-
-[architecture.metrics]
-calculate_maintainability_index = true
-track_technical_debt = true
-complexity_analysis = true
-
-[architecture.visualization]
-generate_graphs = true
-output_format = "svg"
-include_metrics = true
-color_by_coupling = true
-
-[architecture.reporting]
-include_recommendations = true
-explain_violations = true
-suggest_refactoring = true
-benchmark_against_industry = true
-```
-
-### Custom Pattern Detection
-
-Define custom architectural patterns:
-
-```yaml
-# .pmat/patterns/custom-patterns.yaml
-patterns:
-  - name: "hexagonal_architecture"
-    description: "Ports and Adapters pattern"
-    confidence_threshold: 0.85
-    
-    structure:
-      core_domain:
-        path_patterns: ["*/domain/*", "*/core/*"]
-        must_not_depend_on: ["adapters", "infrastructure"]
-        
-      ports:
-        path_patterns: ["*/ports/*", "*/interfaces/*"]
-        must_be: "abstract_classes_or_protocols"
-        
-      adapters:
-        path_patterns: ["*/adapters/*", "*/infrastructure/*"]
-        must_implement: "ports"
-        can_depend_on: ["external_libraries"]
-        
-    validation_rules:
-      - "core_domain_independent_of_frameworks"
-      - "all_external_access_through_ports"
-      - "adapters_implement_specific_ports"
-
-  - name: "event_sourcing"
-    description: "Event Sourcing pattern implementation"
-    
-    required_components:
-      - name: "event_store"
-        must_exist: true
-        patterns: ["*EventStore*", "*event_store*"]
-        
-      - name: "aggregates"
-        must_exist: true
-        patterns: ["*Aggregate*", "*aggregate*"]
-        methods: ["apply_event", "get_uncommitted_events"]
-        
-      - name: "events"
-        must_exist: true
-        patterns: ["*Event*", "*event*"]
-        inherits_from: ["DomainEvent", "Event"]
-        
-      - name: "event_handlers"
-        patterns: ["*Handler*", "*handler*"]
-        methods: ["handle"]
-        
-    validation_rules:
-      - "events_are_immutable"
-      - "aggregates_raise_events"
-      - "event_store_persists_events"
-      - "handlers_are_idempotent"
-```
-
-## Real-World Analysis Examples
-
-### Example 1: E-commerce Platform Analysis
-
-```bash
-# Comprehensive architecture analysis of e-commerce platform
-pmat architecture analyze ./ecommerce-platform \
-  --include-patterns \
-  --validate-layers \
-  --check-coupling \
-  --generate-report
-```
-
-**Analysis Results:**
-```
-🛒 E-commerce Platform Architecture Analysis
-
-📁 Project Structure:
-  ├── presentation/         (Web API, Controllers)
-  ├── business/            (Domain Logic, Services)
-  ├── infrastructure/      (Database, External APIs)
-  └── shared/             (Common Utilities)
-
-🏗️  Detected Patterns:
-  ✅ Repository Pattern (8 implementations, avg quality: 87%)
-  ✅ Factory Pattern (3 implementations, avg quality: 92%)
-  ✅ Strategy Pattern (2 implementations, avg quality: 83%)
-  ⚠️  Singleton Pattern (1 implementation, potential bottleneck)
-
-📊 Architecture Metrics:
-  - Overall coupling: 0.43 (Good)
-  - Average cohesion: 0.78 (Excellent)
-  - Dependency depth: 4 (Acceptable)
-  - Cyclic complexity: Low
-
-⚠️  Issues Detected:
-  - OrderController directly accessing PaymentRepository (layer violation)
-  - User and Order modules circularly dependent
-  - ShoppingCart class has too many responsibilities (SRP violation)
-
-💡 Recommendations:
-  1. Introduce PaymentService to decouple controller from repository
-  2. Extract common interfaces to break circular dependency
-  3. Split ShoppingCart into Cart and CartCalculator
-  4. Consider introducing Domain Events for order processing
-```
-
-### Example 2: Microservices Boundary Analysis
-
-```bash
-# Analyze microservices for boundary violations
-pmat architecture microservices \
-  --config .pmat/microservices.yaml \
-  --boundary-analysis \
-  --cross-service-calls
-```
-
-**Boundary Violations Report:**
-```
-🚫 Service Boundary Violations Detected
-
-1. User Service → Order Database
-   File: user_service/analytics.py:45
-   Issue: Direct database access across service boundary
-   Fix: Use Order Service API instead
-
-2. Payment Service → User Service Internal
-   File: payment_service/billing.py:123
-   Issue: Importing internal user service modules
-   Fix: Use user service public API
-
-3. Shared Database Access
-   Issue: user_db accessed by both User and Notification services
-   Fix: Extract shared data to separate service or use events
-
-📈 Cross-Service Communication Analysis:
-   - Synchronous calls: 15 (67%)
-   - Asynchronous events: 7 (33%)
-   - Recommendation: Increase async communication to 60%
-
-🔄 Data Flow Issues:
-   - Circular data dependencies between User and Order services
-   - Recommendation: Implement eventual consistency with domain events
-```
-
-### Example 3: Legacy Code Architecture Assessment
-
-```bash
-# Assess legacy codebase for modernization opportunities
-pmat architecture legacy-assessment \
-  --detect-anti-patterns \
-  --modernization-suggestions \
-  --refactoring-priorities
-```
-
-**Legacy Assessment:**
-```
-🕰️  Legacy Code Architecture Assessment
-
-🚨 Anti-Patterns Detected:
-  1. God Class: SystemManager (847 lines, 23 responsibilities)
-     Priority: High - Split into domain-specific managers
-     
-  2. Spaghetti Code: ReportGenerator (circular imports, no clear structure)
-     Priority: High - Refactor using Strategy pattern
-     
-  3. Magic Numbers: 47 hardcoded values across 12 files
-     Priority: Medium - Extract to configuration
-     
-  4. Shotgun Surgery: User model changes require 15 file modifications
-     Priority: High - Implement proper encapsulation
-
-📊 Modernization Opportunities:
-  - Extract 5 microservices from monolithic structure
-  - Implement event-driven architecture for order processing
-  - Introduce API gateway for external communication
-  - Add domain-driven design patterns
-
-🎯 Refactoring Priority Matrix:
-  High Impact, Low Effort:
-    - Extract configuration constants
-    - Add logging facades
-    - Implement repository pattern for data access
-    
-  High Impact, High Effort:
-    - Decompose God classes
-    - Extract microservices
-    - Implement domain events
-    
-  Low Impact, Low Effort:
-    - Rename misleading variables
-    - Add type hints
-    - Remove dead code
-```
-
-## CI/CD Integration
-
-### GitHub Actions Workflow
-
-```yaml
-# .github/workflows/architecture-analysis.yml
-name: Architecture Analysis
-
-on:
-  pull_request:
-    paths: ['src/**', 'services/**']
-  push:
-    branches: [main, develop]
-
-jobs:
-  architecture-analysis:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for evolution analysis
-          
-      - name: Install PMAT
-        run: cargo install pmat
-          
-      - name: Run Architecture Analysis
-        run: |
-          # Full architecture analysis
-          pmat architecture analyze . \
-            --format json \
-            --output architecture-report.json
-            
-          # Validate architectural constraints
-          pmat architecture validate-layers \
-            --config .pmat/architecture.yaml \
-            --fail-on-violations
-            
-          # Check for architecture debt
-          pmat architecture debt-analysis \
-            --threshold-increase 10% \
-            --fail-on-regression
-            
-      - name: Generate Architecture Visualization
-        run: |
-          pmat architecture graph \
-            --output dependency-graph.svg \
-            --include-metrics \
-            --highlight-violations
-            
-      - name: Compare with Baseline
-        if: github.event_name == 'pull_request'
-        run: |
-          # Compare architecture with main branch
-          pmat architecture compare \
-            --baseline origin/main \
-            --current HEAD \
-            --output comparison-report.md
-            
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const report = JSON.parse(fs.readFileSync('architecture-report.json', 'utf8'));
-            const comparison = fs.readFileSync('comparison-report.md', 'utf8');
-            
-            const summary = {
-              coupling: report.metrics.average_coupling,
-              cohesion: report.metrics.average_cohesion,
-              violations: report.violations.length,
-              patterns: report.detected_patterns.length
-            };
-            
-            const comment = `## 🏗️ Architecture Analysis Results
-            
-            **Metrics Summary:**
-            - Average Coupling: ${summary.coupling.toFixed(2)}
-            - Average Cohesion: ${summary.cohesion.toFixed(2)}
-            - Violations: ${summary.violations}
-            - Detected Patterns: ${summary.patterns}
-            
-            **Architecture Changes:**
-            ${comparison}
-            
-            <details>
-            <summary>📊 Full Report</summary>
-            
-            \`\`\`json
-            ${JSON.stringify(report, null, 2)}
-            \`\`\`
-            </details>`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-            
-      - name: Upload Reports
-        uses: actions/upload-artifact@v3
-        with:
-          name: architecture-reports
-          path: |
-            architecture-report.json
-            dependency-graph.svg
-            comparison-report.md
-```
-
-## Troubleshooting
-
-### Performance Issues
-
-```bash
-# For large codebases, optimize analysis
-pmat architecture analyze . \
-  --parallel \
-  --max-threads 8 \
-  --skip-generated-files \
-  --cache-enabled
-
-# Focus analysis on specific areas
-pmat architecture analyze src/core \
-  --exclude "tests/" \
-  --exclude "vendor/" \
-  --shallow-analysis
-```
-
-### Complex Dependency Graphs
-
-```bash
-# Simplify visualization for complex projects
-pmat architecture graph \
-  --max-depth 3 \
-  --group-by-package \
-  --hide-low-coupling \
-  --output simplified-graph.svg
-```
-
-### False Architecture Violations
-
-```yaml
-# .pmat/architecture-exceptions.yaml
-exceptions:
-  layer_violations:
-    - file: "controllers/legacy_controller.py"
-      reason: "Legacy code - planned for refactoring"
-      expires: "2025-12-31"
-      
-    - pattern: "*/migrations/*"
-      reason: "Database migrations need direct model access"
-      
-  circular_dependencies:
-    - modules: ["user.models", "auth.models"]
-      reason: "Historical coupling - breaking in v2.0"
-      tracking_issue: "ARCH-123"
-      
-  pattern_violations:
-    - file: "utils/singleton_config.py"
-      pattern: "singleton"
-      reason: "Configuration requires global state"
-```
-
-## Best Practices
-
-### 1. Architecture Monitoring
-
-```bash
-# Set up continuous architecture monitoring
-cat > .github/workflows/architecture-monitor.yml << 'EOF'
-# Monitor architecture metrics daily
-- cron: '0 6 * * *'  # 6 AM daily
-  run: |
-    pmat architecture analyze . --track-evolution
-    pmat architecture debt-check --alert-threshold 15%
+EOF
+cat > src/domain/mod.rs << 'EOF'
+pub struct User {
+    pub id: u32,
+    pub name: String,
+}
+
+impl User {
+    pub fn label(&self) -> String {
+        format!("{}#{}", self.name, self.id)
+    }
+}
+EOF
+cat > src/store/mod.rs << 'EOF'
+use crate::domain::User;
+
+pub fn load(id: u32) -> Option<User> {
+    if id == 0 {
+        return None;
+    }
+    Some(User { id, name: "demo".into() })
+}
 EOF
 ```
 
-### 2. Architecture Decision Records
+### The Default Graph
 
 ```bash
-# Generate ADR from architecture analysis
-pmat architecture adr-suggest \
-  --based-on-violations \
-  --output docs/architecture/adr/
+pmat analyze dag -p .
 ```
 
-### 3. Team Architecture Reviews
+```
+🔄 Generating dependency analysis graph...
+📁 Analyzed 4 files
+📊 full-dependency: rendered 10 nodes and 4 edges
+graph TD
+    src_api_mod[mod]
+    src_api_mod_handler[handler]
+    src_domain_mod[mod]
+    src_domain_mod_User[User]
+    src_lib[lib]
+    src_lib_api[api]
+    src_lib_domain[domain]
+    src_lib_store[store]
+    src_store_mod[mod]
+    src_store_mod_load[load]
+
+    src_api_mod -.-> src_domain_mod
+    src_api_mod -.-> src_store_mod
+    src_store_mod -.-> src_domain_mod
+    src_api_mod_handler --> src_store_mod_load
+```
+
+Read the header line before the graph. "*rendered 10 nodes and 4 edges*" is the
+number that tells you whether the analysis found your code at all — a graph
+with plausible nodes and **zero edges** means the parser saw your files but
+resolved none of their references, and that is a failure dressed as a result.
+
+### Four Graph Types
+
+`--dag-type` selects what the edges mean:
+
+| Value | Edges are |
+|-------|-----------|
+| `full-dependency` (default) | everything below, combined |
+| `call-graph` | function calls |
+| `import-graph` | module imports |
+| `inheritance` | trait/class hierarchy |
+
+An empty result explains itself rather than printing a bare `graph TD`:
+
+```
+📊 inheritance: rendered 0 nodes and 0 edges
+   (empty: 2 functions across 4 files produced 3 edges in total, none of them Inherits/Implements)
+```
+
+The call graph on the fixture is two nodes:
 
 ```bash
-# Prepare architecture review materials
-pmat architecture review-package \
-  --include-metrics \
-  --include-suggestions \
-  --include-visualization \
-  --output architecture-review-$(date +%Y%m%d).zip
+pmat analyze dag -p . --dag-type call-graph
 ```
+
+```
+📊 call-graph: rendered 2 nodes and 1 edges
+graph TD
+    src_api_mod_handler[handler]
+    src_store_mod_load[load]
+
+    src_api_mod_handler --> src_store_mod_load
+```
+
+and the import graph is the module-level view most people mean by
+"architecture":
+
+```bash
+pmat analyze dag -p . --dag-type import-graph --filter-external
+```
+
+```
+🔗 --filter-external: dropped 0 external node(s) of 3
+📊 import-graph: rendered 3 nodes and 3 edges
+graph TD
+    src_api_mod[mod]
+    src_domain_mod[mod]
+    src_store_mod[mod]
+
+    src_api_mod -.-> src_domain_mod
+    src_api_mod -.-> src_store_mod
+    src_store_mod -.-> src_domain_mod
+```
+
+`--filter-external` reports what it dropped rather than silently shrinking the
+graph, which is the behaviour you want when you are about to draw a conclusion
+from the shape.
+
+### Other Options
+
+| Flag | Effect |
+|------|--------|
+| `--max-depth <N>` | limit traversal depth |
+| `--target-nodes <N>` | apply graph reduction above this node count |
+| `--show-complexity` | annotate nodes with complexity metrics |
+| `--include-dead-code` | fold dead-code analysis into the graph |
+| `--include-duplicates` | fold duplicate detection into the graph |
+| `-o, --output <FILE>` | write the Mermaid to a file |
+
+```bash
+pmat analyze dag -p . --show-complexity -o dag.mmd
+```
+
+```
+✅ DAG written to: dag.mmd
+
+💡 To view the graph:
+   - Copy content to https://mermaid.live
+   - Or use VS Code with Mermaid extension
+```
+
+On a large repository, start with `--target-nodes 100`: an unreduced graph of a
+few thousand nodes is a Mermaid document no renderer will draw.
+
+### Circular Dependencies: Visible, Not Detected
+
+The old chapter advertised `--circular --fail-on-cycles`. There is no such
+flag, and **no `pmat` command detects or fails on a dependency cycle** — the one
+exception being a Lua-specific `require()` check inside `pmat comply`.
+
+The graph does render the cycle, which is often enough to see it. Two modules
+that use each other:
+
+```bash
+mkdir -p cyc/src && cd cyc
+cat > Cargo.toml << 'EOF'
+[package]
+name = "cyc"
+version = "0.1.0"
+edition = "2021"
+EOF
+printf 'pub mod a;\npub mod b;\n' > src/lib.rs
+cat > src/a.rs << 'EOF'
+use crate::b::from_b;
+pub fn from_a() -> i32 { from_b() + 1 }
+pub fn seed() -> i32 { 1 }
+EOF
+cat > src/b.rs << 'EOF'
+use crate::a::seed;
+pub fn from_b() -> i32 { seed() + 1 }
+EOF
+```
+
+```bash
+pmat analyze dag -p . --dag-type import-graph
+```
+
+```
+📊 import-graph: rendered 2 nodes and 2 edges
+graph TD
+    src_a[a]
+    src_b[b]
+
+    src_b -.-> src_a
+    src_a -.-> src_b
+```
+
+Both directions are present. Nothing flags it, the exit code is 0, and if you
+want a build to fail on this you will have to detect it yourself from the
+Mermaid output.
+
+## Architectural Hotspots: `pmat analyze bottleneck`
+
+Where `dag` gives you static structure, `bottleneck` gives you the structure
+that is actually costing you — files whose churn is high relative to their
+size, computed from git history.
+
+```bash
+pmat analyze bottleneck -p . --period 365 --threshold 3
+```
+
+Run against this book's own repository:
+
+```
+Analyzing git churn for last 365 days...
+Architectural Bottleneck Analysis
+
+  Period: 365 days
+  Total commits: 153
+  Files changed: 216
+
+Bottleneck Files
+
+  1. src/SUMMARY.md (High Churn Ratio)
+     Touches: 64  Authors: 1  Lines: 129  Churn ratio: 49.6
+     Recommendation: This file changes too often relative to its size — consider architectural refactoring
+
+  2. Makefile (High Churn Ratio)
+     Touches: 19  Authors: 1  Lines: 322  Churn ratio: 5.9
+     Recommendation: This file changes too often relative to its size — consider architectural refactoring
+
+  3. src/appendix-b-commands.md (Feature Development)
+     Touches: 15  Authors: 1  Lines: 474  Churn ratio: 3.2
+
+  4. src/ch13-00-language-examples.md (Monolith)
+     Touches: 12  Authors: 1  Lines: 1749  Churn ratio: 0.7
+     Recommendation: Split this file into focused submodules with `pmat split --auto`
+```
+
+Each file is given a **classification** — `High Churn Ratio`, `Monolith`,
+`Feature Development` — and only some classifications carry a recommendation.
+`--period` (days, default 30) and `--threshold` (minimum touches, default 5)
+control the window; `-f` accepts `table`, `json`, `yaml`, `markdown`, `csv`,
+`summary`, `text`, `plain` and `junit`.
+
+This command needs git history. In a shallow clone the numbers will be quietly
+smaller rather than absent, so check `Total commits` against reality before
+trusting a ranking.
+
+## Modularity: `pmat split`
+
+`pmat split` clusters the functions inside one file by their call graph, using
+Louvain community detection, and proposes a split along the communities it
+finds. It is the closest thing `pmat` has to a cohesion metric.
+
+```bash
+pmat split src/store/mod.rs
+```
+
+```
+⚠  src/store/mod.rs is 8 lines (under 500-line threshold). Showing plan anyway.
+Split Plan for: src/store/mod.rs
+Total lines: ~8
+Modularity: 0.000
+Clusters: 0
+Unclustered items: 1
+
+Unclustered:
+  Function load (L3-L8)
+
+Impact 1 files import this module:
+  src/api/mod.rs
+```
+
+Two things here are useful beyond the split itself: **Modularity** is the
+Louvain score for the file (0 means no separable communities were found), and
+**Impact** is the reverse dependency list — who would be affected if you moved
+this code. The default is a dry run; `--execute` creates the files, and
+`--auto` scans the whole project:
+
+```bash
+pmat split --auto
+```
+
+```
+Automated File Splitting
+Project: /path/to/arch
+Threshold: 500 lines
+
+✓  No files exceed 500 lines. Project is well-structured.
+```
+
+## Duplication Across Modules
+
+Copy-paste across module boundaries is architectural debt that the dependency
+graph cannot show you, because duplicated code has no edge between its copies.
+
+```bash
+pmat analyze duplicates -p .
+```
+
+```
+Analyzing code similarity...
+✓  Found 0 duplicate blocks
+  Duplication: 0.0% (0 / 27 lines)
+
+Duplicate Code Analysis
+
+Summary
+  Total duplicate blocks: 0
+  Duplicate lines: 0 / 27
+  Duplication percentage: 0.0%
+
+Top Files by Duplication
+
+  1. src/api/mod.rs - 0.0% duplication (0 / 6 lines)
+  2. src/domain/mod.rs - 0.0% duplication (0 / 10 lines)
+  3. src/lib.rs - 0.0% duplication (0 / 3 lines)
+  4. src/store/mod.rs - 0.0% duplication (0 / 8 lines)
+```
+
+`--detection-type` selects the clone class — `exact` (Type 1), `renamed`
+(Type 2), `gapped` (Type 3), `semantic` (AST similarity), `fuzzy`, or `all`
+(default). `--threshold` (default `0.85`), `--min-lines` (default `5`) and
+`--max-tokens` (default `128`) tune the matcher.
+
+Note the denominator again: "*0 / 27 lines*". A run that examined 0 lines would
+also report 0% duplication.
+
+## A Command to Be Careful With: `pmat analyze graph-metrics`
+
+`pmat analyze graph-metrics` advertises degree/betweenness/closeness
+centrality, PageRank (`--metrics page-rank`, not `pagerank`), clustering
+coefficient and connected components.
+
+```bash
+pmat analyze graph-metrics -p . --metrics page-rank
+```
+
+```
+📊 Analyzing graph metrics...
+✅ Built graph with 4 nodes and 0 edges
+Graph Metrics Analysis
+
+Graph Statistics
+  Total nodes: 4
+  Total edges: 0
+  Density: 0.000
+  Average degree: 0.00
+  Max degree: 0
+  Connected components: 4
+```
+
+**Zero edges** — on the same tree where `pmat analyze dag` found four. That was
+reproduced on every tree tried, including real source directories, and it is
+the failure mode described earlier: a graph with no edges makes every
+centrality measure trivially zero and every node its own component. The
+"✅ Built graph" line is not a verdict on whether the graph is usable.
+
+Until that resolves, take structural centrality from `pmat analyze dag`'s edge
+list, or from `pmat query --rank-by pagerank`, which is computed over a
+different (working) index.
+
+## Whole-Project Structure
+
+For the "give me everything" view the old chapter's `architecture analyze`
+promised, the two real commands are:
+
+```bash
+pmat context -p .
+```
+
+```
+# Project Context
+
+**Language**: rust
+**Project Path**: .
+
+## Project Structure
+
+- **Total Files**: 5
+- **Total Functions**: 2
+- **Median Cyclomatic**: 1.00
+- **Median Cognitive**: 0.00
+
+## Quality Scorecard
+
+- **Overall Health**: 100.0%
+- **Maintainability Index**: not measured
+- **Complexity Score**: 100.0
+- **Test Coverage**: N/A
+```
+
+and, with defect detection and a machine-readable shape:
+
+```bash
+pmat analyze deep-context -p . --format json -o deep-context.json
+```
+
+whose top-level keys are `summary`, `files` and `recommendations`. `--format`
+also accepts `markdown` and `sarif`, and `--dag-type` selects the same four
+graph types as above. See [Deep Context Analysis](ch16-00-deep-context.md) for
+the full treatment.
 
 ## Summary
 
-PMAT's architecture analysis provides:
-- **Comprehensive Structure Analysis**: Understand your entire codebase architecture
-- **Design Pattern Detection**: Automatically identify and validate architectural patterns
-- **Dependency Management**: Track and optimize component relationships
-- **Evolution Tracking**: Monitor how your architecture changes over time
-- **Violation Detection**: Catch architectural debt before it becomes technical debt
-- **Automated Recommendations**: Get specific suggestions for architectural improvements
+| The old chapter said | pmat 3.32.0 |
+|----------------------|-------------|
+| 19 `architecture` subcommands | No `architecture` subcommand has ever existed |
+| `.pmat/architecture.yaml` layer rules | Read by nothing |
+| `.pmat/microservices.yaml` | Read by nothing |
+| `.pmat/patterns/custom-patterns.yaml` | Read by nothing |
+| Circular-dependency detection, `--fail-on-cycles` | Cycles are drawn, never flagged |
+| Design-pattern detection | No equivalent |
+| DDD bounded-context analysis | No equivalent |
+| ADR suggestions, legacy assessment | No equivalent |
+| HTML/SVG/PNG architecture reports | Mermaid text only |
+| "✅ 100% Working (8/8 examples)" | The test never invoked `pmat`; badge removed |
 
-With architecture analysis, you can maintain clean, maintainable codebases that scale with your team and requirements.
+What survives is a smaller, real toolkit: a dependency graph you can render, a
+churn-weighted hotspot list, a modularity score with reverse dependencies, and
+cross-module duplication. Used together they answer most of the questions the
+fictional commands claimed to — they just will not enforce an architecture you
+have not written down somewhere else.
 
-## Next Steps
+## Related Chapters
 
-- [Chapter 13: Performance Analysis](ch13-00-performance.md)
-- [Chapter 14: Large Codebase Optimization](ch14-00-large-codebases.md)
-- [Appendix I: Architecture Patterns Reference](appendix-i-architecture-patterns.md)
+- [The Analyze Command Suite](ch05-00-analyze-suite.md)
+- [Deep Context Analysis](ch16-00-deep-context.md)
+- [Custom Quality Rules](ch11-00-custom-rules.md) — what you can actually gate on
+- [Graph Statistics and Network Analysis](ch26-00-graph-statistics.md)

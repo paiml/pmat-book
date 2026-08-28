@@ -1,0 +1,13 @@
+134
+# Parse failures under `bash scripts/verify-documented-flags.sh` (the default,
+# hermetic, --help-probing mode). Down-only.
+#
+# Measured 2026-08-25 against pmat 3.32.0 over 1037 distinct commands extracted
+# from src/*.md. It started that day at 591 and fell as the chapter lanes
+# corrected commands; re-measure with `make test-flags-lower` once they settle,
+# because slack in a ratchet is room for a regression to hide in.
+#
+# This is NOT the same number as scripts/documented-commands.baseline. That one
+# counts subcommand PATHS that do not resolve; this one counts whole command
+# LINES that clap cannot read. `pmat analyze .` is invisible to the first and
+# caught by the second.

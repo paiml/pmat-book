@@ -1,7 +1,9 @@
 # PMAT Book Makefile
 # Quality Gates and Development Commands
 
-.PHONY: all build serve test clean lint validate help install-deps
+.PHONY: all build serve test clean lint validate help install-deps \
+        test-commands test-flags test-flags-lower test-flags-deep \
+        test-flags-selftest test-gates lint-shell
 
 # Default target
 all: validate build
@@ -25,6 +27,16 @@ help:
 	@echo "  make test-ch26         - Test Chapter 26 Graph Statistics"
 	@echo "  make test-ch30         - Test Chapter 30 File Exclusions"
 	@echo "  make test-all-chapters - Run ALL chapter tests"
+	@echo ""
+	@echo "🚦 POKA-YOKE GATES (what CI enforces):"
+	@echo "  make test-gates        - Run every gate below, in cost order"
+	@echo "  make test-commands     - Every documented command must EXIST"
+	@echo "  make test-flags        - Every documented command must PARSE (fast, hermetic)"
+	@echo "  make test-flags-lower  - ...and write the improved count into the baseline"
+	@echo "  make test-flags-deep   - ...by running each one for real (slower, finds"
+	@echo "                           missing-required-argument, which --help hides)"
+	@echo "  make test-flags-selftest - Prove the flag gate can go red (mutation test)"
+	@echo "  make lint-shell        - shellcheck every gate script"
 	@echo ""
 	@echo "🎨 CODE QUALITY:"
 	@echo "  make lint              - Lint all code examples"
@@ -85,9 +97,12 @@ test-ch02:
 test-ch03:
 	@echo "🧪 Testing Chapter 3 examples..."
 	@mkdir -p test-results/ch03
-	@chmod +x tests/ch03/test_simple.sh
+	@chmod +x tests/ch03/test_simple.sh tests/ch03/test_04_mcp_transports.sh
 	@echo "Running Chapter 3 MCP TDD validation..."
 	@tests/ch03/test_simple.sh > test-results/ch03/test_simple.log 2>&1 || { cat test-results/ch03/test_simple.log; exit 1; }
+	@echo "Running Chapter 3.4 MCP transport tests (CLI / stdio / HTTP)..."
+	@tests/ch03/test_04_mcp_transports.sh > test-results/ch03/test_04_mcp_transports.log 2>&1 || { cat test-results/ch03/test_04_mcp_transports.log; exit 1; }
+	@tail -4 test-results/ch03/test_04_mcp_transports.log
 	@echo "✅ Chapter 3 tests passed"
 
 test-ch04:
@@ -257,7 +272,7 @@ test-ch21:
 test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch25 test-ch26 test-ch30
 
 # Lint code examples
-lint:
+lint: lint-shell
 	@echo "🎨 Linting code examples..."
 	@# TODO: Add linting for bash and JSON examples
 
@@ -311,3 +326,55 @@ quality-gate:
 # Run all quality checks
 validate: test lint lint-markdown dogfood-pmat quality-gate
 	@echo "✅ All quality checks passed"
+# POKA-YOKE: every `pmat` command the book prints must exist in the pmat it
+# documents. A ratchet — the count of unresolvable paths may only go down.
+# Fails (exit 2) when pmat is absent rather than skipping: a gate that passes
+# when it cannot measure is how this book shipped 88 green MOCK_MODE assertions.
+test-commands:
+	@bash scripts/verify-documented-commands.sh
+
+# POKA-YOKE II: every `pmat` command the book prints must also PARSE — the flags
+# and argument shapes, not just the subcommand name. Its sibling above checks
+# existence and explicitly declines to check flags; between them they cover the
+# whole of what a reader types.
+#
+# Default mode appends `--help`, which reproduces clap's usage error without
+# running anything, so this is hermetic and takes seconds. See the script header
+# for why that is sound and where its one blind spot is.
+test-flags:
+	@bash scripts/verify-documented-flags.sh
+
+test-flags-lower:
+	@bash scripts/verify-documented-flags.sh --lower
+
+# Runs each command FOR REAL in a throwaway directory. Finds the one class
+# `--help` probing cannot see (required arguments that were never supplied).
+# Slower, and it holds back servers, daemons and `comply` — see the denylist in
+# the script. Not on the PR path; run it deliberately or let the weekly CI job.
+test-flags-deep:
+	@bash scripts/verify-documented-flags.sh --execute
+
+# A gate nobody has watched fail is a gate nobody has tested. Plants four known
+# defects in a scratch copy of the book, demands the flag gate goes red AND
+# names each one, then plants a VALID command and demands it stays green.
+test-flags-selftest:
+	@bash scripts/selftest-documented-flags.sh
+
+# Fail-closed, deliberately. Every hazard these gates guard against is a shell
+# hazard — `$$?` after a pipe, `grep -c` exiting 1 on no match, a subprocess
+# whose stderr was thrown away. Skipping the linter when it is absent would be
+# the same mistake in a different place.
+lint-shell:
+	@command -v shellcheck >/dev/null 2>&1 || { \
+		echo "❌ shellcheck is not installed, so the gate scripts were NOT linted."; \
+		echo "   That is a failure, not a skip: install it (apt install shellcheck)."; \
+		exit 1; }
+	@shellcheck scripts/*.sh
+	@echo "✅ gate scripts are shellcheck-clean"
+
+# Everything the poka-yoke lane owns, cheapest first so the fastest signal
+# arrives first — and so that `test-commands`, which fails whenever the book
+# IMPROVES until someone lowers its baseline by hand, cannot mask the result of
+# the gates after it.
+test-gates: lint-shell test-flags test-commands test-flags-selftest
+	@echo "✅ All poka-yoke gates passed"
