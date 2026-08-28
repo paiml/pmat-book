@@ -6,7 +6,28 @@ set -e
 
 echo "=== Testing Chapter 14: Quality-Driven Development (QDD) ==="
 
-# Check if pmat is available
+# EVERY `pmat qdd` CALL IN THIS FILE USED THE WRONG SIGNATURE, and the mock
+# mode above is why nobody noticed. The real forms:
+#   qdd create    --code-type/--name/--purpose flags, not positionals, and
+#                 --input takes `type:name` pairs ("int:a"), not "int a".
+#   qdd refactor  the file goes in `-f/--file`, not a positional.
+#   qdd validate  the path goes in `-p/--path`, not a positional.
+# A positional argument makes pmat exit with "unexpected argument found",
+# which every test below reported as a QDD failure once mock mode was fixed.
+# Check if pmat is available.
+#
+# MOCK_MODE IS INITIALISED HERE, AND THAT IS THE WHOLE POINT. This block used to
+# leave it UNSET on the success path: `MOCK_MODE=true` was assigned only in the
+# not-found branch, and `MOCK_MODE=false` only inside
+# `if [ "$PMAT_BIN" != "pmat" ] && ...`, which is false precisely when pmat WAS
+# found on PATH. Every guard below reads `[ "$MOCK_MODE" = false ]`, and with the
+# variable unset that test is FALSE -- so a working, installed pmat selected the
+# MOCK branch and the script never invoked pmat once.
+#
+# That is what paiml/pmat#1084's falsification control caught: the chapter passed
+# against a deliberately BROKEN pmat, because it was never calling pmat either
+# way.
+MOCK_MODE=false
 PMAT_BIN=""
 if command -v pmat &> /dev/null; then
     PMAT_BIN="pmat"
@@ -23,8 +44,7 @@ else
     PMAT_BIN="pmat"  # Set to default for mock mode
 fi
 
-if [ "$PMAT_BIN" != "pmat" ] && [ -x "$PMAT_BIN" ]; then
-    MOCK_MODE=false
+if [ "$MOCK_MODE" = false ]; then
     echo "Using PMAT binary: $PMAT_BIN"
 fi
 
@@ -105,7 +125,7 @@ echo ""
 echo "Test 2: QDD Create operation"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN qdd create function add_numbers "Add two numbers" --profile standard --input int a --input int b --output int > qdd_create.txt 2>&1; then
+    if $PMAT_BIN qdd create --code-type function --name add_numbers --purpose "Add two numbers" --profile standard --input int:a --input int:b --output int > qdd_create.txt 2>&1; then
         test_pass "QDD create command completed"
         
         if grep -q "Generated Code:" qdd_create.txt || grep -q "function" qdd_create.txt || grep -q "Quality" qdd_create.txt; then
@@ -170,7 +190,7 @@ echo ""
 echo "Test 3: QDD Refactor operation"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN qdd refactor complex_function.py --profile standard --dry-run > qdd_refactor.txt 2>&1; then
+    if $PMAT_BIN qdd refactor -f complex_function.py --profile standard --dry-run > qdd_refactor.txt 2>&1; then
         test_pass "QDD refactor dry-run completed"
         
         if grep -q "DRY RUN" qdd_refactor.txt || grep -q "refactor" qdd_refactor.txt || grep -q "complexity" qdd_refactor.txt; then
@@ -204,7 +224,7 @@ echo ""
 echo "Test 4: QDD Validate operation"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN qdd validate . --profile standard --format summary > qdd_validate.txt 2>&1; then
+    if $PMAT_BIN qdd validate -p . --profile standard --format summary > qdd_validate.txt 2>&1; then
         test_pass "QDD validate command completed"
         
         if grep -q "Validation" qdd_validate.txt || grep -q "Quality" qdd_validate.txt || grep -q "PASSED\|FAILED" qdd_validate.txt; then
@@ -238,11 +258,16 @@ echo ""
 echo "Test 5: QDD Quality Profiles"
 
 # Test different profile configurations
-profiles=("extreme" "standard" "relaxed" "enterprise" "startup" "legacy")
+# The three profiles pmat actually accepts. `pmat qdd validate --help` states
+# them as `[possible values: extreme, standard, relaxed]`, and clap rejects
+# anything else before the command runs. "enterprise", "startup" and "legacy"
+# were listed here and in the chapter text, and pmat has never had them --
+# every one of those three exited with a clap error that mock mode hid.
+profiles=("extreme" "standard" "relaxed")
 
 for profile in "${profiles[@]}"; do
     if [ "$MOCK_MODE" = false ]; then
-        if $PMAT_BIN qdd validate . --profile "$profile" --format summary > "qdd_profile_${profile}.txt" 2>&1; then
+        if $PMAT_BIN qdd validate -p . --profile "$profile" --format summary > "qdd_profile_${profile}.txt" 2>&1; then
             test_pass "QDD $profile profile validation completed"
         else
             test_fail "QDD $profile profile validation failed"
@@ -265,7 +290,7 @@ formats=("summary" "detailed" "json" "markdown")
 
 for format in "${formats[@]}"; do
     if [ "$MOCK_MODE" = false ]; then
-        if $PMAT_BIN qdd validate . --format "$format" > "qdd_format_${format}.txt" 2>&1; then
+        if $PMAT_BIN qdd validate -p . --format "$format" > "qdd_format_${format}.txt" 2>&1; then
             test_pass "QDD $format format completed"
         else
             test_fail "QDD $format format failed"
@@ -320,7 +345,7 @@ echo "Test 7: QDD Code Generation with Different Profiles"
 
 if [ "$MOCK_MODE" = false ]; then
     # Test extreme profile generation
-    if $PMAT_BIN qdd create function validate_email "Validate email address" --profile extreme --input str email --output bool > qdd_extreme.txt 2>&1; then
+    if $PMAT_BIN qdd create --code-type function --name validate_email --purpose "Validate email address" --profile extreme --input str:email --output bool > qdd_extreme.txt 2>&1; then
         test_pass "QDD extreme profile generation completed"
     else
         test_fail "QDD extreme profile generation failed"
