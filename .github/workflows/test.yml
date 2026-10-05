@@ -16,7 +16,7 @@ jobs:
         chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install PMAT
       run: |
@@ -39,7 +39,7 @@ jobs:
     needs: test-examples
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install PMAT
       run: |
@@ -107,7 +107,7 @@ jobs:
     needs: [test-examples, dogfood-pmat]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install mdBook
       run: |
