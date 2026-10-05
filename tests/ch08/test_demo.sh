@@ -7,25 +7,20 @@ set -e
 echo "=== Testing Chapter 8: pmat demo Command ==="
 
 # Check if pmat is available
+# Resolve pmat to an ABSOLUTE path before the cd into $TEST_DIR below (#19):
+# PATH first, then a sibling source checkout. Found means real commands; not
+# found means mock, said out loud. MOCK_MODE is always set, never left unset.
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
-    PMAT_BIN="pmat"
-    echo "✅ PMAT detected in PATH"
-elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
-    PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
-    echo "✅ PMAT detected in target/release"
-elif [ -x "../paiml-mcp-agent-toolkit/target/debug/pmat" ]; then
-    PMAT_BIN="../paiml-mcp-agent-toolkit/target/debug/pmat"
-    echo "✅ PMAT detected in target/debug"
-else
-    echo "⚠️  PMAT not found, using mock tests"
-    MOCK_MODE=true
-    PMAT_BIN="pmat"
-fi
-
-if [ "$PMAT_BIN" != "pmat" ] && [ -x "$PMAT_BIN" ]; then
+for c in pmat "$PWD/../paiml-mcp-agent-toolkit/target/release/pmat" "$PWD/../paiml-mcp-agent-toolkit/target/debug/pmat"; do
+    if p=$(command -v "$c" 2>/dev/null) && [ -x "$p" ]; then PMAT_BIN=$p; break; fi
+done
+if [ -n "$PMAT_BIN" ]; then
     MOCK_MODE=false
-    echo "Using PMAT binary: $PMAT_BIN"
+    echo "✅ Using PMAT binary: $PMAT_BIN"
+else
+    MOCK_MODE=true
+    PMAT_BIN=pmat
+    echo "⚠️  PMAT not found, using mock tests"
 fi
 
 TEST_DIR=$(mktemp -d)
