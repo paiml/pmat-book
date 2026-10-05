@@ -16,7 +16,7 @@ jobs:
         chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install PMAT
       run: |
@@ -28,10 +28,10 @@ jobs:
         make test-${{ matrix.chapter }}
     
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results-${{ matrix.chapter }}
+        name: test-results-${{ matrix.os }}-${{ matrix.chapter }}
         path: test-results/
   
   dogfood-pmat:
@@ -39,7 +39,7 @@ jobs:
     needs: test-examples
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install PMAT
       run: |
@@ -80,7 +80,7 @@ jobs:
         jq -r '"- Duplicates Found: \(.summary.total_duplicates)\n- Similarity Ratio: \(.summary.similarity_ratio)"' pmat-similarity.json >> quality-report.md
     
     - name: Upload PMAT reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pmat-reports
         path: |
@@ -107,7 +107,7 @@ jobs:
     needs: [test-examples, dogfood-pmat]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install mdBook
       run: |
@@ -118,7 +118,7 @@ jobs:
       run: make build
     
     - name: Upload book artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: book
         path: book/
