@@ -1,0 +1,23 @@
+roadmap_version: '1.0'
+github_enabled: true
+github_repo: paiml/pmat-book
+roadmap:
+- id: PMAT-056
+  github_issue: 56
+  item_type: task
+  title: Move v3 artifact/checkout/cache actions to v4 so CI jobs are admitted
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-05T21:56:22Z
+  updated: 2026-10-05T21:56:22Z
+  spec: null
+  acceptance_criteria:
+  - GitHub auto-fails any job referencing actions/upload-artifact@v3; pmat-dogfood.yml and test.yml never start a step.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 57
