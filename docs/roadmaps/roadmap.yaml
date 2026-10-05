@@ -14,6 +14,9 @@ roadmap:
   spec: null
   acceptance_criteria:
   - GitHub auto-fails any job referencing actions/upload-artifact@v3; pmat-dogfood.yml and test.yml never start a step.
+  - Every actions/upload-artifact, download-artifact, checkout and cache reference in pmat-dogfood.yml and test.yml is @v4.
+  - test.yml's test-examples matrix is os x chapter, and upload-artifact@v4 refuses a second upload under an existing name, so its artifact name must carry matrix.os (test-results-<os>-<chapter>); without it two of the three OS legs per chapter fail at upload.
+  - Out of scope, unchanged - pages.yml's actions/upload-pages-artifact@v3 is a different action, is not refused at admission (pages.yml last ran green 2026-07-03, after the deprecation) and is not moved here.
   phases: []
   subtasks: []
   estimated_effort: null
