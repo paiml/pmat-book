@@ -138,29 +138,29 @@ Assesses business and security criticality:
 
 ```bash
 # Basic TDG analysis of current directory
-pmat analyze tdg .
+pmat analyze tdg -p .
 
 # Analyze specific path
-pmat analyze tdg src/
+pmat analyze tdg -p src/
 
 # Show only critical files (TDG > 2.5)
-pmat analyze tdg . --critical-only
+pmat analyze tdg -p . --critical-only
 
 # Custom threshold filtering
-pmat analyze tdg . --threshold 2.0
+pmat analyze tdg -p . --threshold 2.0
 
 # Include component breakdown
-pmat analyze tdg . --include-components
+pmat analyze tdg -p . --include-components
 
 # Limit to top 10 files
-pmat analyze tdg . --top-files 10
+pmat analyze tdg -p . --top-files 10
 
 # ML-based scoring (GH-97) - Uses aprender LinearRegression
-pmat analyze tdg . --ml
+pmat analyze tdg -p . --ml
 pmat tdg . --ml  # Short form
 
 # Combined ML mode with other options
-pmat analyze tdg . --ml --include-components --format json
+pmat analyze tdg -p . --ml --include-components --format json
 ```
 
 ### Example Output
@@ -200,7 +200,7 @@ Understanding individual components helps target specific improvements:
 
 ```bash
 # Show detailed component breakdown
-pmat analyze tdg . --include-components --format json
+pmat analyze tdg -p . --include-components --format json
 ```
 
 ### Example Component Output
@@ -324,14 +324,14 @@ critical_paths:
 PMAT 2.68+ includes enterprise-grade features for large-scale analysis:
 
 ```bash
-# Use persistent storage backend
-pmat analyze tdg . --storage-backend sled
+# Inspect the persistent storage backend
+pmat tdg storage stats
 
-# Priority-based analysis
-pmat analyze tdg src/critical --priority high
+# Analyze a critical path
+pmat analyze tdg -p src/critical
 
-# Incremental analysis with caching
-pmat analyze tdg . --incremental --cache-enabled
+# Re-run the analysis
+pmat analyze tdg -p .
 ```
 
 ### MCP Integration
@@ -383,18 +383,18 @@ jobs:
         
       - name: Run TDG Analysis
         run: |
-          pmat analyze tdg . \
+          pmat analyze tdg -p . \
             --format json \
             --output tdg-report.json
             
       - name: Check TDG Thresholds
         run: |
           # Fail if any file has TDG > 3.0
-          pmat analyze tdg . --threshold 3.0 || exit 1
+          pmat analyze tdg -p . --threshold 3.0 || exit 1
           
       - name: Generate TDG Report
         run: |
-          pmat analyze tdg . \
+          pmat analyze tdg -p . \
             --include-components \
             --format markdown > tdg-report.md
             
@@ -474,7 +474,7 @@ pmat analyze tdg services/ --config tdg-micro.toml
 
 ```bash
 # Find high-churn, high-complexity files
-pmat analyze tdg . \
+pmat analyze tdg -p . \
   --include-components \
   --format json | \
   jq '.files[] | 
@@ -526,20 +526,20 @@ pmat analyze tdg . \
 
 ```bash
 # Create baseline for tracking
-pmat analyze tdg . --format json > tdg-baseline.json
+pmat tdg baseline create -p . -o tdg-baseline.json
 
 # Compare against baseline
-pmat analyze tdg . --compare-baseline tdg-baseline.json
+pmat tdg baseline compare -b tdg-baseline.json -p .
 ```
 
 ### 2. Incremental Improvement
 
 ```bash
 # Focus on worst files first
-pmat analyze tdg . --top-files 5 --critical-only
+pmat analyze tdg -p . --top-files 5 --critical-only
 
-# Track improvement over time
-pmat analyze tdg . --trend --period 30d
+# Track improvement over recent commits
+pmat tdg history --since HEAD~30
 ```
 
 ### 3. Team Standards

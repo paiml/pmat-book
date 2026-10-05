@@ -62,7 +62,7 @@ def validate_input(value):
 
 **Command Tested**:
 ```bash
-pmat analyze .
+pmat analyze comprehensive -p .
 ```
 
 **Test Validation**:
@@ -98,7 +98,7 @@ pmat analyze .
 
 **Command Tested**:
 ```bash
-pmat analyze tdg .
+pmat analyze tdg -p .
 ```
 
 **Test Validation**:
@@ -135,7 +135,7 @@ pmat analyze tdg .
 
 **Command Tested**:
 ```bash
-pmat analyze . --format json
+pmat analyze comprehensive -p . --format json
 ```
 
 **Test Validation**:
@@ -266,7 +266,7 @@ def very_complex_function(a, b, c, d):
 
 **Command Tested**:
 ```bash
-pmat analyze src/main.py
+pmat analyze comprehensive --file src/main.py
 ```
 
 **Test Validation**:
@@ -280,7 +280,7 @@ pmat analyze src/main.py
 
 **Command Tested**:
 ```bash
-pmat analyze . --summary
+pmat analyze comprehensive -p . --format summary
 ```
 
 **Test Validation**:

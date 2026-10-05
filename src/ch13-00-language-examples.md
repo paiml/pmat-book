@@ -132,8 +132,8 @@ class Calculator:
 
 **PMAT Analysis Command:**
 ```bash
-# Analyze Python project with specific configuration
-pmat analyze python_example/ --language python --include-tests
+# Analyze Python project
+pmat analyze comprehensive -p python_example/
 
 # Generate detailed report
 pmat report python_example/ --format json --output python_analysis.json
@@ -259,7 +259,7 @@ const processItem = async (item) => {
 **PMAT Analysis:**
 ```bash
 # Analyze JavaScript project
-pmat analyze js_example/ --language javascript
+pmat analyze comprehensive -p js_example/
 
 # Check for modern patterns
 pmat clippy js_example/ --rules "prefer-const,no-var,async-await-patterns"
@@ -399,8 +399,8 @@ pub mod utils {
 
 **PMAT Rust Analysis:**
 ```bash
-# Analyze Rust project with Cargo integration
-pmat analyze rust_example/ --language rust --cargo-features
+# Analyze Rust project
+pmat analyze comprehensive -p rust_example/
 
 # Check for Rust-specific patterns
 pmat clippy rust_example/ --rust-edition 2021
@@ -517,8 +517,8 @@ public class Calculator {
 
 **PMAT Java Analysis:**
 ```bash
-# Analyze Java project with Maven integration
-pmat analyze java_example/ --language java --maven-project
+# Analyze Java project
+pmat analyze comprehensive -p java_example/
 
 # Check enterprise patterns
 pmat quality-gate java_example/ --enterprise-rules
@@ -659,8 +659,8 @@ func (h *Handler) Calculate(w http.ResponseWriter, r *http.Request) {
 
 **PMAT Go Analysis:**
 ```bash
-# Analyze Go project with module awareness
-pmat analyze go_example/ --language go --go-modules
+# Analyze Go project
+pmat analyze comprehensive -p go_example/
 
 # Check Go-specific patterns
 pmat clippy go_example/ --go-version 1.19
@@ -792,7 +792,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ theme = 'light' }) => {
 **PMAT TypeScript Analysis:**
 ```bash
 # Analyze TypeScript React project
-pmat analyze ts_example/ --language typescript --react-components
+pmat analyze comprehensive -p ts_example/
 
 # Check TypeScript patterns
 pmat clippy ts_example/ --typescript-strict --react-hooks
@@ -1092,7 +1092,7 @@ docker run -d -p 5000:5000 app
 **PMAT Polyglot Analysis:**
 ```bash
 # Analyze entire polyglot project
-pmat analyze polyglot_example/ --all-languages
+pmat analyze comprehensive -p polyglot_example/
 
 # Generate cross-language report
 pmat report polyglot_example/ --polyglot-summary --output polyglot_report.json
@@ -1209,8 +1209,8 @@ logging:
 
 **PMAT Configuration Analysis:**
 ```bash
-# Analyze configuration and documentation
-pmat analyze config_example/ --include-config --include-docs
+# Analyze the configuration example project
+pmat analyze comprehensive -p config_example/
 
 # Security-focused analysis
 pmat security-scan config_example/ --check-secrets --check-hardcoded-values
@@ -1403,14 +1403,14 @@ rules = [
 Use PMAT to understand how different languages interact:
 
 ```bash
-# Analyze API boundaries between services
-pmat analyze . --cross-language-apis
+# Map dependencies between modules
+pmat analyze dag -p .
 
-# Check for consistent error handling patterns
-pmat analyze . --error-handling-consistency
+# Scan for known defect patterns
+pmat analyze defects -p .
 
-# Validate configuration consistency
-pmat analyze . --config-consistency
+# Find machine-specific paths baked into source
+pmat analyze hardcoded-paths -p .
 ```
 
 ### 4. Graduated Quality Enforcement
@@ -1453,11 +1453,11 @@ jobs:
 Analyze service boundaries and dependencies:
 
 ```bash
-# Analyze service communication patterns
-pmat analyze . --microservices-analysis
+# Map dependencies between services
+pmat analyze dag -p .
 
-# Check for consistent API patterns
-pmat analyze . --api-consistency-check
+# Find central, highly-coupled modules
+pmat analyze graph-metrics -p .
 ```
 
 ### 2. Full-Stack Applications
@@ -1465,11 +1465,11 @@ pmat analyze . --api-consistency-check
 Coordinate quality between frontend and backend:
 
 ```bash
-# Analyze full-stack consistency
-pmat analyze . --fullstack-analysis
+# Analyze frontend and backend together
+pmat analyze comprehensive -p .
 
-# Check data flow patterns
-pmat analyze . --data-flow-analysis
+# Inspect the dependency graph
+pmat analyze dag -p .
 ```
 
 ### 3. DevOps Integration
@@ -1478,7 +1478,7 @@ Ensure infrastructure code quality:
 
 ```bash
 # Analyze infrastructure as code
-pmat analyze . --include-iac --languages terraform,yaml,dockerfile
+pmat analyze comprehensive -p . --include "**/*.{tf,yaml,yml}"
 ```
 
 ## Troubleshooting Multi-Language Analysis
@@ -1488,11 +1488,11 @@ pmat analyze . --include-iac --languages terraform,yaml,dockerfile
 If PMAT doesn't detect a language correctly:
 
 ```bash
-# Force language detection
-pmat analyze . --force-language-detection
+# Analyze a single file directly
+pmat analyze comprehensive --file src/main.custom
 
 # Specify custom file patterns
-pmat analyze . --language-patterns "*.custom:python,*.special:rust"
+pmat analyze comprehensive -p . --include "**/*.{custom,special}"
 ```
 
 ### Performance with Large Codebases
@@ -1500,11 +1500,11 @@ pmat analyze . --language-patterns "*.custom:python,*.special:rust"
 For large polyglot projects:
 
 ```bash
-# Parallel analysis
-pmat analyze . --parallel-languages --workers 4
+# Analyze one directory at a time
+pmat analyze comprehensive -p src/
 
-# Incremental analysis
-pmat analyze . --incremental --changed-files-only
+# Analyze only the files you changed
+pmat analyze comprehensive --files src/main.rs,src/lib.rs
 ```
 
 ### Custom Language Support
@@ -1715,10 +1715,10 @@ When a `compile_commands.json` file exists (generated by CMake with `-DCMAKE_EXP
 
 ```bash
 # Analyze a C project
-pmat analyze ./path/to/c/project
+pmat analyze comprehensive -p ./path/to/c/project
 
 # Analyze a C++ project with detailed output
-pmat analyze --verbose ./path/to/cpp/project
+pmat analyze comprehensive --verbose -p ./path/to/cpp/project
 
 # Generate deep context for a mixed C/C++ project
 pmat context --output cpp_context.md ./path/to/cpp/project

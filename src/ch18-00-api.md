@@ -418,7 +418,7 @@ curl -X POST http://localhost:8080/report \
 ```bash
 # Analyze the PMAT book repository
 cd /path/to/pmat-book
-pmat analyze . --output book-analysis.json
+pmat analyze comprehensive -p . --format json --output book-analysis.json
 
 # Generate roadmap from analysis
 pmat roadmap init --from-analysis book-analysis.json \
