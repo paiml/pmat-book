@@ -28,10 +28,10 @@ jobs:
         make test-${{ matrix.chapter }}
     
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results-${{ matrix.chapter }}
+        name: test-results-${{ matrix.os }}-${{ matrix.chapter }}
         path: test-results/
   
   dogfood-pmat:
@@ -80,7 +80,7 @@ jobs:
         jq -r '"- Duplicates Found: \(.summary.total_duplicates)\n- Similarity Ratio: \(.summary.similarity_ratio)"' pmat-similarity.json >> quality-report.md
     
     - name: Upload PMAT reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pmat-reports
         path: |
@@ -118,7 +118,7 @@ jobs:
       run: make build
     
     - name: Upload book artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: book
         path: book/
