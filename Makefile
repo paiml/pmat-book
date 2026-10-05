@@ -88,6 +88,8 @@ test-ch03:
 	@chmod +x tests/ch03/test_simple.sh
 	@echo "Running Chapter 3 MCP TDD validation..."
 	@tests/ch03/test_simple.sh > test-results/ch03/test_simple.log 2>&1 || { cat test-results/ch03/test_simple.log; exit 1; }
+	@echo "Running Chapter 3.2 MCP tool inventory against pmat --mode mcp..."
+	@bash tests/ch03/test_03_mcp_tool_inventory.sh > test-results/ch03/test_03_mcp_tool_inventory.log 2>&1 || { cat test-results/ch03/test_03_mcp_tool_inventory.log; exit 1; }
 	@echo "✅ Chapter 3 tests passed"
 
 test-ch04:

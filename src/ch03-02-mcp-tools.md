@@ -1,677 +1,284 @@
 # MCP Tools
 
-**Chapter Status**: Working (25/25 tools documented)
+**Chapter Status**: Working (20/20 tools on the `tools/list` surface documented)
 
-*Last updated: 2026-02-04*
-*PMAT version: pmat 2.215.0*
+*Last updated: 2026-10-05*
+*PMAT version: pmat 3.42.0*
 
 ## Overview
 
-PMAT provides 25 MCP tools across 8 categories for comprehensive code analysis, quality assessment, and AI-assisted development. All tools use standardized JSON-RPC 2.0 protocol.
+`pmat --mode mcp` serves **20 tools** over JSON-RPC 2.0 on stdio. This chapter
+lists every one of them, and only them. The list below is the server's own
+`tools/list` answer, and `tests/ch03/test_03_mcp_tool_inventory.sh` compares the
+`####` headings in this file against that answer in both directions. A tool the
+binary drops, or a heading for a tool it does not serve, fails the test.
+
+Earlier revisions of this chapter (pinned to pmat 2.215.0) documented 25 tools,
+20 of which the server does not have: `validate_documentation`, `check_claim`,
+`semantic_search`, the `deep_wasm_*` family and others. Calling any of them
+returns a hard error; see [Error Handling](#error-handling).
+
+### Ask the binary
+
+The inventory is a question the server answers, so ask it rather than trusting
+any copy, including this one:
+
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  | pmat --mode mcp 2>/dev/null \
+  | jq -r 'select(.id==2) | .result.tools[].name'
+```
 
 ## Tool Categories
 
-### Documentation Quality (2 tools)
+### Code Search (4 tools)
 
-Tools for validating documentation accuracy and preventing hallucinations.
-
-#### `validate_documentation`
-
-Validate documentation against codebase to prevent hallucinations, broken references, and 404 errors.
-
-**Input Schema:**
-```json
-{
-  "documentation_path": "README.md",
-  "deep_context_path": "deep_context.md",
-  "similarity_threshold": 0.7,
-  "fail_on_error": true
-}
-```
-
-**Output:**
-```json
-{
-  "summary": {
-    "pass": true,
-    "total_claims": 45,
-    "verified": 42,
-    "unverified": 2,
-    "contradictions": 1,
-    "broken_references": 0,
-    "http_errors": 0
-  },
-  "issues": [
-    {
-      "line": 42,
-      "claim": "PMAT can compile Rust code",
-      "status": "Contradiction",
-      "confidence": 0.12,
-      "evidence": "PMAT analyzes but does not compile"
-    }
-  ]
-}
-```
-
-**Use Cases:**
-- Pre-commit hooks for documentation validation
-- CI/CD gates for preventing bad docs
-- Automated documentation quality checks
-
-#### `check_claim`
-
-Verify a single documentation claim against the codebase.
-
-**Input Schema:**
-```json
-{
-  "claim": "PMAT can analyze TypeScript complexity",
-  "deep_context_path": "deep_context.md",
-  "similarity_threshold": 0.7
-}
-```
-
-**Output:**
-```json
-{
-  "status": "Verified",
-  "confidence": 0.94,
-  "evidence": "server/src/cli/language_analyzer.rs:150"
-}
-```
-
-### Code Quality (2 tools)
-
-Technical Debt Grading (TDG) analysis and actionable recommendations.
-
-#### `analyze_technical_debt`
-
-Comprehensive TDG quality analysis with A+ to F grading.
-
-**Input Schema:**
-```json
-{
-  "path": "src/main.rs",
-  "include_penalties": true
-}
-```
-
-**Output:**
-```json
-{
-  "score": {
-    "total": 82.5,
-    "grade": "B+",
-    "complexity": 88.0,
-    "duplication": 75.0,
-    "size": 85.0
-  },
-  "penalties": [
-    {
-      "type": "high_complexity",
-      "function": "process_data",
-      "file": "src/main.rs",
-      "line": 45,
-      "impact": -5.0
-    }
-  ]
-}
-```
-
-#### `get_quality_recommendations`
-
-Get actionable refactoring suggestions prioritized by impact.
-
-**Input Schema:**
-```json
-{
-  "path": "src/complex_module.rs",
-  "max_recommendations": 10,
-  "min_severity": "high"
-}
-```
-
-**Output:**
-```json
-{
-  "recommendations": [
-    {
-      "severity": "high",
-      "category": "complexity",
-      "issue": "Function 'calculate' has cyclomatic complexity of 15",
-      "suggestion": "Extract validation logic into separate function",
-      "impact": 8.5,
-      "file": "src/complex_module.rs",
-      "line": 120
-    }
-  ]
-}
-```
-
-### Agent-Based Analysis (5 tools)
-
-Multi-agent workflows for comprehensive code analysis and transformation.
-
-#### `analyze`
-
-Comprehensive code analysis using specialized agents.
-
-**Input Schema:**
-```json
-{
-  "path": "src/",
-  "agent_type": "complexity_analyzer",
-  "config": {
-    "threshold": 10,
-    "include_tests": false
-  }
-}
-```
-
-#### `transform`
-
-Code transformation and refactoring using AI agents.
-
-**Input Schema:**
-```json
-{
-  "path": "src/legacy_code.rs",
-  "transformation_type": "modernize",
-  "preserve_behavior": true
-}
-```
-
-#### `validate`
-
-Code validation and verification using formal methods.
-
-**Input Schema:**
-```json
-{
-  "path": "src/auth.rs",
-  "validation_type": "security",
-  "strict": true
-}
-```
-
-#### `orchestrate`
-
-Multi-agent workflow orchestration.
-
-**Input Schema:**
-```json
-{
-  "workflow": "full_analysis",
-  "path": "src/",
-  "agents": ["complexity", "security", "maintainability"]
-}
-```
-
-#### `quality_gate`
-
-Comprehensive quality checks for CI/CD integration.
-
-**Input Schema:**
-```json
-{
-  "path": "src/",
-  "min_grade": "B",
-  "checks": ["complexity", "security", "duplication"]
-}
-```
-
-### Deep WASM Analysis (5 tools)
-
-Bytecode-level WebAssembly analysis and optimization.
-
-#### `deep_wasm_analyze`
-
-Bytecode-level WASM analysis.
-
-**Input Schema:**
-```json
-{
-  "wasm_file": "output.wasm",
-  "analysis_level": "deep"
-}
-```
-
-#### `deep_wasm_query_mapping`
-
-Source-to-bytecode mapping queries.
-
-**Input Schema:**
-```json
-{
-  "wasm_file": "output.wasm",
-  "source_line": 45
-}
-```
-
-#### `deep_wasm_trace_execution`
-
-Execution path tracing through bytecode.
-
-**Input Schema:**
-```json
-{
-  "wasm_file": "output.wasm",
-  "function": "calculate",
-  "max_depth": 100
-}
-```
-
-#### `deep_wasm_compare_optimizations`
-
-Compare optimization levels.
-
-**Input Schema:**
-```json
-{
-  "wasm_file_1": "output_O0.wasm",
-  "wasm_file_2": "output_O3.wasm"
-}
-```
-
-#### `deep_wasm_detect_issues`
-
-Detect performance and security issues.
-
-**Input Schema:**
-```json
-{
-  "wasm_file": "output.wasm",
-  "check_security": true,
-  "check_performance": true
-}
-```
-
-### Agent Context (4 tools)
-
-RAG-powered semantic code search with quality annotations. No API keys required - works completely offline.
+Semantic search over pmat's function index, with TDG grades and complexity on
+every result. `pmat_query_code` returns function IDs; the other three take one.
 
 #### `pmat_query_code`
 
-Semantic search for code by intent. Returns quality-ranked results with TDG scores, complexity, and Big-O estimates.
+Search code functions by natural language query with TDG quality filtering. Returns semantically ranked results with complexity, fault patterns, and call graph context.
 
-**Input Schema:**
-```json
-{
-  "query": "error handling in API layer",
-  "limit": 5,
-  "min_grade": "B",
-  "max_complexity": 15,
-  "path": "src/"
-}
-```
-
-**Output:**
-```json
-{
-  "results": [
-    {
-      "id": "src/api/error.rs::handle_api_error",
-      "name": "handle_api_error",
-      "file": "src/api/error.rs",
-      "line": 42,
-      "signature": "pub fn handle_api_error(err: ApiError) -> Response",
-      "tdg_grade": "A",
-      "complexity": 8,
-      "big_o": "O(1)",
-      "relevance": 0.92
-    }
-  ]
-}
-```
-
-**Use Cases:**
-- Replace grep for AI agents (Claude Code, Cline, Cursor)
-- Quality-filtered code discovery
-- Pre-refactoring analysis
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `query` | string | yes | Natural language search query describing the code intent. |
+| `limit` | integer | no | Maximum number of results to return. |
+| `min_grade` | string | no | Minimum TDG grade filter (A+ is best). Case-insensitive. One of: `A+`, `A`, `A-`, `B+`, `B`, `B-`, `C+`, `C`, `C-`, `D`, `F`. |
+| `max_complexity` | integer | no | Maximum cyclomatic complexity filter. |
+| `language` | string | no | Language filter. One of: `rust`, `typescript`, `python`, `go`, `java`, `c`, `cpp`. |
+| `path_pattern` | string | no | Path glob pattern filter. |
+| `include_source` | boolean | no | Include source code in results. |
+| `rebuild_index` | boolean | no | Force index rebuild before query. |
 
 #### `pmat_get_function`
 
-Get full function source with quality metrics by file and function name.
+Get detailed information about a specific function by its ID. Returns full function metadata including source code, quality metrics, and SATD markers.
 
-**Input Schema:**
-```json
-{
-  "file": "src/api/error.rs",
-  "function": "handle_api_error",
-  "include_callers": false,
-  "include_callees": false
-}
-```
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `function_id` | string | yes | Function ID from pmat_query_code results (e.g., 'src/handlers/auth.rs::handle_login') |
+| `include_source` | boolean | no | Include full source code (default: true) |
 
 #### `pmat_find_similar`
 
-Find functions similar to a given one for refactoring and deduplication.
+Find functions similar to a reference function. Useful for finding related code, potential duplicates, or implementations of similar patterns.
 
-**Input Schema:**
-```json
-{
-  "file": "src/api/error.rs",
-  "function": "handle_api_error",
-  "limit": 5,
-  "min_similarity": 0.7
-}
-```
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `function_id` | string | yes | Function ID to find similar functions for |
+| `limit` | integer | no | Maximum number of similar functions (default: 5, max: 20) |
+| `min_similarity` | number | no | Minimum similarity score (0.0-1.0, default: 0.3) |
 
 #### `pmat_index_stats`
 
-Check agent context index health and statistics.
+Get statistics about the code index including function counts, quality distribution, and index health.
 
-**Input Schema:**
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `rebuild` | boolean | no | Rebuild the index before returning stats (default: false) |
+
+### Analysis (9 tools)
+
+Each runs one analyzer over the given paths or project root and returns its report as JSON text.
+
+#### `analyze_complexity`
+
+Analyze cyclomatic and cognitive complexity for source files.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `top_files` | integer | no | Return only the top N most-complex files |
+| `threshold` | integer | no | Minimum cyclomatic complexity to report |
+
+#### `analyze_big_o`
+
+Classify the Big-O time complexity of functions in the given paths.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `top_files` | integer | no | Return only the top N files by algorithmic complexity |
+
+#### `analyze_dag`
+
+Generate a project dependency graph (call graph, import graph, inheritance, or full dependency DAG).
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `dag_type` | string | no | Dependency graph type to generate (default: full-dependency) One of: `call-graph`, `import-graph`, `inheritance`, `full-dependency`. |
+
+#### `analyze_dead_code`
+
+Find unreachable or unused code (functions, types, or modules).
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `include_tests` | boolean | no | Include test files when searching for dead code |
+
+#### `analyze_deep_context`
+
+Run the full deep-context analysis pipeline (AST, complexity, churn, dead code) over the given paths.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+
+#### `analyze_satd`
+
+Detect self-admitted technical debt (TODO, FIXME, HACK markers) in source code.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `include_resolved` | boolean | no | Include items already marked resolved |
+| `include_tests` | boolean | no | Include test files and #[cfg(test)] blocks (default: false, matching `pmat analyze satd`) |
+
+#### `analyze_hardcoded_paths`
+
+Find machine-specific absolute paths baked into source (a user's home, a nix store hash, a build root) — correct where they were written, inert everywhere else.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `project_path` | string | yes | Project root to analyze (the directory holding Cargo.toml / the git worktree) |
+
+#### `analyze_reachability`
+
+Report tracked .rs files that no compilation unit reaches — orphaned modules that compile to nothing and whose tests never run.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `project_path` | string | yes | Project root to analyze (the directory holding Cargo.toml / the git worktree) |
+
+#### `analyze_vacuous_tests`
+
+Find #[test] functions that cannot fail — no assertion, an assertion over constants, or a body that silently returns when a fixture is missing.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `project_path` | string | yes | Project root to analyze (the directory holding Cargo.toml / the git worktree) |
+
+### Quality Gating (3 tools)
+
+`quality_gate` grades files already on disk. `quality_check_content` and `quality_proxy` grade *proposed* content before it is written; they share one description and one schema.
+
+#### `quality_gate`
+
+Run the `pmat quality-gate --checks all` suite (complexity, dead code, SATD, entropy, security, duplicates, coverage, documentation sections, provability) plus a TDG score against the given paths. Any check a path could not answer is named in `not_measured` and, with its reason, in `checks.not_run`.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `strict` | boolean | no | Fail the gate on any violation (no tolerance) |
+| `file` | string | no | Check only this single file instead of the paths list |
+
+#### `quality_check_content`
+
+Grade proposed file content against the project's quality gate (complexity, SATD, docs, lint) and return it with a verdict. Never touches the filesystem: hand the returned content to your own file tool, or let the harness PreToolUse hook gate the change.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `file_path` | string | yes | Path the content is destined for (decides the language and the project's pmat.toml) |
+| `content` | string | yes | The proposed file content to grade |
+| `mode` | string | no | Proxy enforcement mode One of: `strict`, `advisory`, `auto_fix`, `auto-fix`. |
+| `quality_config` | object | no |  |
+
+#### `quality_proxy`
+
+Grade proposed file content against the project's quality gate (complexity, SATD, docs, lint) and return it with a verdict. Never touches the filesystem: hand the returned content to your own file tool, or let the harness PreToolUse hook gate the change.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `file_path` | string | yes | Path the content is destined for (decides the language and the project's pmat.toml) |
+| `content` | string | yes | The proposed file content to grade |
+| `mode` | string | no | Proxy enforcement mode One of: `strict`, `advisory`, `auto_fix`, `auto-fix`. |
+| `quality_config` | object | no |  |
+
+### Project Context (3 tools)
+
+#### `generate_context`
+
+Generate project context (file tree + optional dependency graph) for LLM/agent consumption.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `format` | string | no | Output format One of: `json`. |
+| `max_depth` | integer | no | Max directory-tree depth to include |
+| `include_dependencies` | boolean | no | Include dependency graph |
+
+#### `scaffold_project`
+
+Produce a high-level project summary scaffold for the given paths.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `paths` | array | yes | Filesystem paths (files or directories) to analyze |
+| `level` | string | no | Summary detail level One of: `brief`, `normal`, `detailed`. |
+
+#### `git_operation`
+
+Query git working-tree status for the given repository path.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `path` | string | yes | Path to the git repository to query |
+
+### Planning (1 tool)
+
+#### `pdmt_deterministic_todos`
+
+Generate deterministic, quality-enforced todo lists from a list of requirements.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `requirements` | array | yes | Requirements to convert into deterministic actionable todos |
+| `project_name` | string | no | Project or component name |
+| `granularity` | string | no | Task detail level (default: high) One of: `low`, `medium`, `high`. |
+| `quality_config` | object | no | Quality enforcement config |
+
+## Calling a Tool
+
+A `tools/call` request names the tool and passes `arguments` that match its
+schema. The result is one `text` content item holding the tool's JSON report:
+
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"analyze_satd","arguments":{"paths":["./src"]}}}' \
+  | pmat --mode mcp 2>/dev/null | jq -c 'select(.id==2)'
+```
+
+Against a `src/lib.rs` holding one `// TODO: tidy` (output abbreviated):
+
 ```json
-{}
-```
-
-**Output:**
-```json
-{
-  "total_functions": 42001,
-  "total_files": 1816,
-  "avg_tdg_score": 0.3,
-  "languages": ["Rust", "TypeScript", "Python"]
-}
-```
-
-### Semantic Search (4 tools)
-
-Local semantic code search using TF-IDF embeddings (no API key required).
-
-#### `semantic_search`
-
-Semantic code search using embeddings.
-
-**Input Schema:**
-```json
-{
-  "query": "authentication logic with JWT validation",
-  "path": "src/",
-  "max_results": 10
-}
-```
-
-#### `find_similar_code`
-
-Find similar code patterns.
-
-**Input Schema:**
-```json
-{
-  "reference_file": "src/auth.rs",
-  "reference_function": "validate_token",
-  "similarity_threshold": 0.8
-}
-```
-
-#### `cluster_code`
-
-Cluster code by semantic similarity.
-
-**Input Schema:**
-```json
-{
-  "path": "src/",
-  "num_clusters": 5
-}
-```
-
-#### `analyze_topics`
-
-Topic analysis and extraction.
-
-**Input Schema:**
-```json
-{
-  "path": "src/",
-  "num_topics": 10
-}
-```
-
-### JVM Language Analysis (2 tools)
-
-Full AST-based analysis for Java and Scala (Sprint 51).
-
-#### `analyze_java`
-
-Analyze Java source code with full AST parsing for complexity, structure, and quality metrics.
-
-**Input Schema:**
-```json
-{
-  "path": "src/main/java/",
-  "max_depth": 3,
-  "include_metrics": true,
-  "include_ast": false
-}
-```
-
-**Output:**
-```json
-{
-  "summary": {
-    "total_files": 45,
-    "total_classes": 38,
-    "total_methods": 287,
-    "avg_complexity": 3.2,
-    "max_complexity": 15
-  },
-  "files": [
-    {
-      "path": "src/main/java/com/example/Service.java",
-      "classes": 2,
-      "methods": 18,
-      "lines": 342,
-      "complexity": {
-        "cyclomatic": 5.2,
-        "cognitive": 4.1
-      }
-    }
-  ]
-}
-```
-
-**Use Cases:**
-- Analyze Java enterprise applications
-- Track complexity trends in Spring/Jakarta EE projects
-- Identify refactoring opportunities in JVM codebases
-- Generate quality reports for Java microservices
-
-#### `analyze_scala`
-
-Analyze Scala source code with full AST parsing for complexity, structure, and quality metrics.
-
-**Input Schema:**
-```json
-{
-  "path": "src/main/scala/",
-  "max_depth": 3,
-  "include_metrics": true,
-  "include_ast": false
-}
-```
-
-**Output:**
-```json
-{
-  "summary": {
-    "total_files": 28,
-    "total_classes": 15,
-    "total_case_classes": 22,
-    "total_objects": 12,
-    "total_traits": 8,
-    "total_methods": 156,
-    "avg_complexity": 2.8,
-    "max_complexity": 12
-  },
-  "files": [
-    {
-      "path": "src/main/scala/com/example/Service.scala",
-      "case_classes": 3,
-      "objects": 1,
-      "methods": 14,
-      "lines": 287,
-      "complexity": {
-        "cyclomatic": 3.8,
-        "cognitive": 3.2
-      }
-    }
-  ]
-}
-```
-
-**Use Cases:**
-- Analyze Scala functional codebases
-- Track quality in Akka/Play Framework applications
-- Identify complex pattern matching expressions
-- Generate reports for Scala microservices
-
-### Testing (1 tool)
-
-Mutation testing for test suite quality assessment.
-
-#### `mutation_test`
-
-Run mutation testing to measure test effectiveness.
-
-**Input Schema:**
-```json
-{
-  "path": "src/",
-  "target_file": "src/main.rs",
-  "timeout": 60
-}
-```
-
-**Output:**
-```json
-{
-  "total_mutants": 45,
-  "caught": 40,
-  "missed": 5,
-  "timeout": 0,
-  "score": 88.9
-}
-```
-
-## Common Workflows
-
-### Workflow 1: Documentation Validation
-
-```javascript
-// Step 1: Generate deep context
-await runCommand('pmat context --output deep_context.md');
-
-// Step 2: Validate documentation
-const result = await client.callTool('validate_documentation', {
-  documentation_path: 'README.md',
-  deep_context_path: 'deep_context.md',
-  similarity_threshold: 0.7,
-  fail_on_error: true
-});
-
-if (!result.summary.pass) {
-  console.error('Documentation validation failed!');
-  process.exit(1);
-}
-```
-
-### Workflow 2: Code Quality Check
-
-```javascript
-// Analyze technical debt
-const analysis = await client.callTool('analyze_technical_debt', {
-  path: 'src/',
-  include_penalties: true
-});
-
-// Get recommendations if score is low
-if (analysis.score.total < 70) {
-  const recommendations = await client.callTool('get_quality_recommendations', {
-    path: 'src/',
-    max_recommendations: 10,
-    min_severity: 'high'
-  });
-
-  console.log('Quality issues found:', recommendations.recommendations);
-}
-```
-
-### Workflow 3: WASM Optimization Analysis
-
-```javascript
-// Analyze WASM bytecode
-const analysis = await client.callTool('deep_wasm_analyze', {
-  wasm_file: 'output.wasm',
-  analysis_level: 'deep'
-});
-
-// Compare optimizations
-const comparison = await client.callTool('deep_wasm_compare_optimizations', {
-  wasm_file_1: 'output_O0.wasm',
-  wasm_file_2: 'output_O3.wasm'
-});
-
-// Detect issues
-const issues = await client.callTool('deep_wasm_detect_issues', {
-  wasm_file: 'output.wasm',
-  check_security: true,
-  check_performance: true
-});
-```
-
-### Workflow 4: Agent Context Search
-
-```javascript
-// Step 1: Search for relevant code by intent
-const results = await client.callTool('pmat_query_code', {
-  query: 'error handling in API layer',
-  min_grade: 'B',
-  limit: 5
-});
-
-// Step 2: Get full function details
-for (const result of results) {
-  const details = await client.callTool('pmat_get_function', {
-    file: result.file,
-    function: result.name
-  });
-  console.log(`${result.name}: TDG ${result.tdg_grade}, Complexity ${result.complexity}`);
-}
-
-// Step 3: Find similar functions for refactoring
-const similar = await client.callTool('pmat_find_similar', {
-  file: results[0].file,
-  function: results[0].name,
-  limit: 3
-});
+{"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text","text":"{\"status\":\"completed\",\"message\":\"SATD analysis completed\",\"results\":{\"total_satd\":1,\"files\":[{\"file\":\"src/lib.rs\",\"satd_count\":1,\"debts\":[{\"line\":2,\"category\":\"Requirement\",\"severity\":\"Low\",\"text\":\"TODO: tidy\"}]}], ...}}"}]}}
 ```
 
 ## Error Handling
 
-All tools return consistent error formats:
+Errors are JSON-RPC 2.0 error objects. Calling a tool the server does not have
+is a `-32602`, not a silent empty result:
 
 ```json
-{
-  "code": -32602,
-  "message": "Path does not exist: /invalid/path",
-  "data": {
-    "path": "/invalid/path",
-    "suggestion": "Please provide a valid file or directory path"
-  }
-}
+{"jsonrpc":"2.0","id":3,"error":{"code":-32602,"message":"Resource not found: Tool 'semantic_search' not found"}}
 ```
 
 **Error Codes:**
 - `-32700`: Parse error
 - `-32600`: Invalid request
 - `-32601`: Method not found
-- `-32602`: Invalid parameters
+- `-32602`: Invalid parameters, including an unknown tool name
 - `-32603`: Internal error
 
 ## Next Steps
 
 - [**Claude Integration**](ch03-03-claude-integration.md) - Connect with Claude Desktop
-- [**Chapter 15: Complete MCP Tools Reference**](ch15-00-mcp-tools.md) - Advanced workflows and detailed schemas
+- [**Chapter 15: Complete MCP Tools Reference**](ch15-00-mcp-tools.md) - Longer workflows. Its tool list has not been reconciled with this one yet (#8); where they disagree, `tools/list` above is the authority.
