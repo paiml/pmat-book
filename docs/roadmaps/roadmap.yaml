@@ -1,0 +1,23 @@
+roadmap_version: '1.0'
+github_enabled: true
+github_repo: paiml/pmat-book
+roadmap:
+- id: PMAT-009
+  github_issue: 9
+  item_type: task
+  title: 'pmat-dogfood.yml: pin pmat 3.42, drop the analyze steps a markdown book cannot feed, keep the link gate'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-05T22:08:27Z
+  updated: 2026-10-05T22:08:27Z
+  spec: null
+  acceptance_criteria:
+  - PMAT_VERSION 2.69.0 no longer compiles; analyze complexity/satd/dead-code have no source to measure in a book.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 57

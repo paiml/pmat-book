@@ -10,7 +10,7 @@ on:
     - cron: '0 6 * * *'
 
 env:
-  PMAT_VERSION: "2.69.0"
+  PMAT_VERSION: "3.42.0"
 
 jobs:
   pmat-analysis:
@@ -31,7 +31,7 @@ jobs:
     
     - name: Install PMAT
       run: |
-        cargo install pmat --version ${{ env.PMAT_VERSION }}
+        cargo install pmat --locked --version ${{ env.PMAT_VERSION }}
         pmat --version
     
     - name: Cache PMAT Analysis
@@ -50,24 +50,6 @@ jobs:
         pmat context --output context-report.json
         echo "✅ Context generated"
     
-    - name: Analyze Code Complexity
-      run: |
-        echo "📊 Analyzing complexity..."
-        pmat analyze complexity --path . --output complexity-report.json
-        echo "✅ Complexity analysis complete"
-    
-    - name: Check Technical Debt (SATD)
-      run: |
-        echo "💸 Checking technical debt..."
-        pmat analyze satd --path . --output satd-report.json
-        echo "✅ SATD analysis complete"
-    
-    - name: Find Dead Code
-      run: |
-        echo "☠️ Looking for dead code..."
-        pmat analyze dead-code --path . --output deadcode-report.json
-        echo "✅ Dead code analysis complete"
-    
     - name: Generate Quality Metrics
       run: |
         echo "📈 Generating quality metrics..."
@@ -78,15 +60,6 @@ jobs:
         Generated on: $(date -u)
         PMAT Version: ${{ env.PMAT_VERSION }}
         Commit: ${{ github.sha }}
-        
-        ## Complexity Analysis
-        $(head -20 complexity-report.json)
-        
-        ## Technical Debt
-        $(head -10 satd-report.json)
-        
-        ## Dead Code Analysis
-        $(head -10 deadcode-report.json)
         
         ## Context Summary
         $(head -15 context-report.json)
@@ -155,21 +128,6 @@ jobs:
         # Check for suspicious patterns
         grep -r "TODO.*security\|FIXME.*security\|HACK.*security" src/ --include="*.md" || echo "No security TODOs found"
     
-    - name: Generate Trend Analysis
-      if: github.event_name == 'schedule'
-      run: |
-        echo "📈 Generating trend analysis..."
-        # Compare with previous runs (if cache exists)
-        if [ -f ./pmat-cache/previous-complexity.json ]; then
-          echo "Comparing with previous analysis..."
-          # Simple diff of complexity metrics
-          diff ./pmat-cache/previous-complexity.json complexity-report.json || echo "Complexity metrics changed"
-        fi
-        
-        # Store current results for next comparison
-        mkdir -p ./pmat-cache
-        cp complexity-report.json ./pmat-cache/previous-complexity.json
-    
     - name: Upload Analysis Results
       uses: actions/upload-artifact@v3
       if: always()
@@ -193,10 +151,10 @@ jobs:
           let comment = '## 📊 PMAT Analysis Results\n\n';
           
           try {
-            // Add complexity summary
-            const complexity = fs.readFileSync('complexity-report.json', 'utf8');
-            const complexityLines = complexity.split('\n').slice(0, 15).join('\n');
-            comment += '### Complexity Analysis\n```\n' + complexityLines + '\n```\n\n';
+            // Add project context summary
+            const contextReport = fs.readFileSync('context-report.json', 'utf8');
+            const contextLines = contextReport.split('\n').slice(0, 15).join('\n');
+            comment += '### Project Context\n```\n' + contextLines + '\n```\n\n';
             
             // Add any link issues
             if (fs.existsSync('link-issues.txt')) {
@@ -241,7 +199,7 @@ jobs:
         override: true
     
     - name: Install PMAT
-      run: cargo install pmat --version ${{ env.PMAT_VERSION }}
+      run: cargo install pmat --locked --version ${{ env.PMAT_VERSION }}
     
     - name: Generate Roadmap Status
       run: |
@@ -333,12 +291,6 @@ jobs:
         if [ -f link-issues.txt ]; then
           echo "❌ Quality gate failed: Broken links found"
           QUALITY_PASSED=false
-        fi
-        
-        # Check complexity metrics
-        if grep -q "Max Cyclomatic.*[2-9][0-9]" complexity-report.json; then
-          echo "⚠️ Warning: High complexity functions detected"
-          # Don't fail for complexity, just warn
         fi
         
         # Check build performance
