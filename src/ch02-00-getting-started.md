@@ -42,7 +42,9 @@ pmat context > project_context.md
 ### Example Output
 
 Run on a small project with one Python and one JavaScript file, `pmat context`
-prints (pmat 3.42.0, trimmed):
+prints (pmat 3.42.0, trimmed). `**Language**` names one language, the one pmat
+detects as the project's primary language; with several present, measured runs
+have named either one:
 
 ```markdown
 # Project Context
@@ -76,7 +78,7 @@ prints (pmat 3.42.0, trimmed):
 ## Choosing What Goes In
 
 `pmat context` has no `--include` or `--exclude` glob options, and no
-`--max-file-size`. What it analyzes is chosen by three things:
+`--max-file-size`. To choose what it analyzes:
 
 ```bash
 # Scope to one directory
@@ -284,14 +286,14 @@ pmat context --skip-expensive-metrics
 # Analyze one directory at a time
 pmat context -p src/
 
-# See where the time goes
+# More log output (info level)
 pmat context --verbose
 ```
 
 #### Permission Errors
 
 There is no `--skip-errors` or `--user` option. Run `pmat context` as the user
-who can read the project; to see which files fail, use `--debug`:
+who can read the project. For debug-level log output:
 
 ```bash
 pmat context --debug
