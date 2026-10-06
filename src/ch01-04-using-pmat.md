@@ -58,7 +58,7 @@ pmat --mode mcp analyze complexity --project-path .
   "mcpServers": {
     "pmat": {
       "command": "pmat",
-      "args": ["--mode", "mcp", "mcp-server"]
+      "args": ["--mode", "mcp"]
     }
   }
 }
@@ -245,8 +245,8 @@ pmat --help
 When using PMAT via MCP, tools are auto-discovered:
 
 ```bash
-# List MCP tools (for debugging)
-pmat mcp-server --list-tools
+# Print every MCP transport and how to register it
+pmat mcp connect
 
 # Available MCP tools match CLI commands:
 # - analyze_complexity

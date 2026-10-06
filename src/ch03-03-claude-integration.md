@@ -35,7 +35,7 @@ This chapter covers integrating PMAT MCP tools with Claude Desktop for AI-assist
   "mcpServers": {
     "pmat": {
       "command": "pmat",
-      "args": ["mcp-server"],
+      "args": ["--mode", "mcp"],
       "env": {
         "RUST_LOG": "info"
       }
@@ -51,7 +51,7 @@ This chapter covers integrating PMAT MCP tools with Claude Desktop for AI-assist
   "mcpServers": {
     "pmat": {
       "command": "pmat",
-      "args": ["mcp-server", "--bind", "127.0.0.1:3000"],
+      "args": ["--mode", "mcp"],
       "env": {
         "RUST_LOG": "info",
         "PMAT_MCP_LOG_LEVEL": "info",
@@ -61,7 +61,7 @@ This chapter covers integrating PMAT MCP tools with Claude Desktop for AI-assist
     },
     "pmat-semantic": {
       "command": "pmat",
-      "args": ["mcp-server", "--bind", "127.0.0.1:3001"],
+      "args": ["--mode", "mcp"],
       "env": {
         "PMAT_SEMANTIC_ENABLED": "true",
         "PMAT_VECTOR_DB_PATH": "~/.pmat/embeddings.db",
@@ -281,7 +281,7 @@ Workflow:
 
 4. Check PMAT server logs:
    ```bash
-   RUST_LOG=debug pmat mcp-server
+   RUST_LOG=debug pmat --mode mcp 2>pmat-mcp.log  # stdout is the protocol; logs go to stderr
    ```
 
 ### Tools Timing Out
@@ -296,7 +296,7 @@ Workflow:
      "mcpServers": {
        "pmat": {
          "command": "pmat",
-         "args": ["mcp-server"],
+         "args": ["--mode", "mcp"],
          "timeout": 120000
        }
      }

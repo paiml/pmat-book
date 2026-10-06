@@ -14,31 +14,35 @@ This chapter covers setting up and configuring the PMAT MCP server for AI-assist
 ### Start the Server
 
 ```bash
-# Start with default configuration (localhost:3000)
-pmat mcp-server
+# Over stdio, for a client that spawns pmat (Claude Code, Claude Desktop)
+pmat --mode mcp
 
-# Start with custom bind address
-pmat mcp-server --bind 127.0.0.1:8080
+# Over streamable HTTP, for a shared or remote client
+pmat serve --transport http --host 127.0.0.1 --port 8080
 
 # Enable verbose logging
-RUST_LOG=debug pmat mcp-server
+pmat serve --transport http --port 8080 --debug
+
+# Print every transport and the exact line to register it with a client
+pmat mcp connect
 ```
 
 ### Verify Server is Running
 
-```bash
-# Check server health
-curl http://localhost:3000/health
+Over stdio, send `initialize` and `tools/list` and read the answers:
 
-# List available tools
-curl -X POST http://localhost:3000 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": "1",
-    "method": "tools/list"
-  }'
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"check","version":"1"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  | pmat --mode mcp | jq -r 'select(.id == 2) | .result.tools[].name'
 ```
+
+Over HTTP, `pmat serve` prints the URL it listens on, its bearer token and a
+copy-paste `claude mcp add` line. The endpoint is the root path; there is no
+health endpoint, and `/health` and `/mcp` both return 404. Requests without the
+token get 401.
 
 ## Server Configuration
 
@@ -78,15 +82,15 @@ export RUST_LOG=info  # Options: error, warn, info, debug, trace
 ### Custom Configuration
 
 ```bash
-# Custom bind address
-pmat mcp-server --bind 0.0.0.0:8080
-
-# Unix socket (for local IPC)
-pmat mcp-server --unix-socket /tmp/pmat.sock
+# Listen on every interface (a non-loopback bind needs PMAT_MCP_HTTP_TOKEN set)
+export PMAT_MCP_HTTP_TOKEN=$(pmat mcp token)
+pmat serve --transport http --host 0.0.0.0 --port 8080
 
 # Enable verbose logging
-RUST_LOG=debug pmat mcp-server
+pmat serve --transport http --port 8080 --debug
 ```
+
+There is no Unix-socket transport. For local IPC, use stdio (`pmat --mode mcp`).
 
 ## Connection Examples
 
@@ -168,7 +172,7 @@ async def connect_to_pmat():
 lsof -i :3000
 
 # Check logs
-RUST_LOG=debug pmat mcp-server
+pmat serve --transport http --port 3000 --debug
 
 # Check firewall
 sudo ufw status
@@ -194,7 +198,7 @@ pmat config --set semantic.enabled=true
 export PMAT_SEMANTIC_ENABLED=true
 
 # Check server logs for semantic tool registration
-RUST_LOG=info pmat mcp-server | grep semantic
+pmat serve --transport http --port 8080 --debug 2>&1 | grep semantic
 ```
 
 **Note**: Semantic search uses local TF-IDF embeddings via the aprender library. No API keys required.
