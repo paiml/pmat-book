@@ -13,10 +13,10 @@
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat analyze` | Run standard analysis | `pmat analyze .` |
+| `pmat analyze` | Run standard analysis | `pmat analyze comprehensive -p .` |
 | `pmat scan` | Quick scan | `pmat scan --focus=security` |
 | `pmat watch` | Continuous monitoring | `pmat watch --on-change` |
-| `pmat analyze tdg` | Technical debt grading | `pmat analyze tdg --detailed` |
+| `pmat analyze tdg` | Technical debt grading | `pmat analyze tdg -p .` |
 | `pmat complexity` | Complexity analysis | `pmat complexity --by-function` |
 | `pmat similarity` | Code similarity | `pmat similarity --threshold=0.8` |
 | `pmat dead-code` | Dead code detection | `pmat dead-code --export-list` |
@@ -306,12 +306,12 @@
 
 ### Quick Quality Check
 ```bash
-pmat analyze . --quick && pmat quality-gate --min-grade=B+
+pmat analyze comprehensive -p . --format summary && pmat quality-gate --min-grade=B+
 ```
 
 ### Full Analysis with Report
 ```bash
-pmat analyze . --comprehensive && pmat report --format=html
+pmat analyze comprehensive -p . && pmat report --format=html
 ```
 
 ### Security Scan
@@ -319,9 +319,9 @@ pmat analyze . --comprehensive && pmat report --format=html
 pmat security scan --severity=high && pmat notify slack
 ```
 
-### Incremental CI/CD Analysis
+### CI/CD Analysis
 ```bash
-pmat analyze --incremental --since=main | pmat quality-gate
+pmat quality-gate --fail-on-violation
 ```
 
 ### Team Dashboard
@@ -368,12 +368,12 @@ alias ps='pmat status'
 
 ### Batch Analysis
 ```bash
-find . -type d -name "src" | xargs -I {} pmat analyze {}
+find . -type d -name "src" | xargs -I {} pmat analyze comprehensive -p {}
 ```
 
 ### JSON Processing
 ```bash
-pmat analyze . --format=json | jq '.violations[] | select(.severity=="error")'
+pmat analyze comprehensive -p . --format=json | jq '.violations[] | select(.severity=="error")'
 ```
 
 ### Continuous Monitoring
@@ -383,7 +383,7 @@ watch -n 60 'pmat status --detailed'
 
 ### Pipeline Integration
 ```bash
-pmat analyze . || exit $?
+pmat analyze comprehensive -p . || exit $?
 ```
 
 ## Running Examples
