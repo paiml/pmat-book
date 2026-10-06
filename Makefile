@@ -242,6 +242,13 @@ test-ch19:
 	@tests/ch17/test_plugins.sh > test-results/ch19/test_plugins.log 2>&1 || { cat test-results/ch19/test_plugins.log; exit 1; }
 	@echo "✅ Chapter 19 tests passed"
 
+test-ch19-agent:
+	@echo "🧪 Testing ch19-00-agent.md agent-daemon examples against pmat..."
+	@mkdir -p test-results/ch19
+	@chmod +x tests/ch19/test_agent_feature_gate.sh
+	@tests/ch19/test_agent_feature_gate.sh > test-results/ch19/test_agent_feature_gate.log 2>&1 || { cat test-results/ch19/test_agent_feature_gate.log; exit 1; }
+	@echo "✅ ch19-00-agent.md agent-daemon checks passed"
+
 test-ch20:
 	@echo "🧪 Testing Chapter 20: API Integration..."
 	@mkdir -p test-results/ch20
@@ -254,7 +261,7 @@ test-ch21:
 	@tests/ch19/test_ai.sh > test-results/ch21/test_ai.log 2>&1 || { cat test-results/ch21/test_ai.log; exit 1; }
 	@echo "✅ Chapter 21 tests passed"
 
-test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch25 test-ch26 test-ch30
+test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch25 test-ch26 test-ch30 test-ch19-agent
 
 # Lint code examples
 lint:

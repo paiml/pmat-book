@@ -1,18 +1,30 @@
 # Chapter 19: Agent Management and Continuous Monitoring
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (12/12 examples)
+**Chapter Status**: ⚠️ Not Implemented in the default build (0 of 29 `pmat agent` examples run on `cargo install pmat`)
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 12 | Ready for production use |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | 0 | |
+| ⚠️ Not Implemented | 29 | Every `pmat agent` command needs `--features agent-daemon`; on a default build each exits 1 with `Agent daemon feature not enabled` |
+| ❌ Broken | 0 | Seven examples that also failed argument parsing (exit 2) were corrected to flags `pmat agent <command> --help` lists |
+| 📋 Planned | 0 | |
 
-*Last updated: 2025-09-12*  
-*PMAT version: pmat 2.213.1*
+*Not measured: any `pmat agent` command on a binary built with `--features agent-daemon`.*
+
+*Last updated: 2026-10-06*
+*PMAT version: pmat 3.42.0*
 <!-- DOC_STATUS_END -->
+
+> **Not implemented in the default build.** `pmat agent` is compiled only with
+> the `agent-daemon` feature, which is not in pmat's default feature set. On a
+> plain `cargo install pmat` binary every command in this chapter, `start`,
+> `stop`, `status`, `health`, `monitor`, `unmonitor`, `reload`, `quality-gate`
+> and `mcp-server`, exits 1 with
+> `Error: Agent daemon feature not enabled. Build with --features agent-daemon`.
+> `pmat agent --help` says the same. To try the agent, install it with
+> `cargo install pmat --features agent-daemon`. For an MCP server you do not need
+> the agent at all: see [MCP Server Integration](#mcp-server-integration).
 
 ## The Problem
 
@@ -62,7 +74,7 @@ pmat agent start --foreground
 ```
 
 **Output:**
-```
+```text
 🤖 PMAT Agent starting...
 📁 Monitoring: /path/to/project
 🔍 Initial analysis complete
@@ -122,7 +134,7 @@ pmat agent monitor --project-path . \
 ```
 
 **Output:**
-```
+```text
 📁 Project: main-api
 📊 Baseline analysis complete
    - Files: 150
@@ -197,7 +209,7 @@ pmat agent start --foreground --verbose
 ```
 
 **Real-time Output:**
-```
+```text
 🔍 [14:30:15] Scanning project-frontend...
 📊 [14:30:16] Analysis complete: Grade A- (no change)
 ⚡ [14:30:45] File changed: src/components/UserProfile.tsx
@@ -215,8 +227,8 @@ pmat agent start --foreground --verbose
 # Agent with health monitoring
 pmat agent start \
   --health-interval 30 \
-  --max-memory-mb 400 \
-  --no-auto-restart false
+  --max-memory-mb 400
+# Auto-restart is on by default; --no-auto-restart (a flag, no value) turns it off.
 ```
 
 **Health Check Output:**
@@ -242,17 +254,18 @@ pmat agent health
 ### Git Integration
 
 ```bash
-# Enable git hooks monitoring
-pmat agent monitor --project-path . --git-hooks
+# Monitor the project. There is no --git-hooks flag: the agent does not
+# install hooks, so add the pre-commit hook below yourself.
+pmat agent monitor --project-path .
 ```
 
-The agent automatically installs git hooks:
+A pre-commit hook that runs the agent's quality gate:
 
 ```bash
 # .git/hooks/pre-commit (installed by agent)
 #!/bin/bash
 echo "🤖 PMAT Agent: Running pre-commit analysis..."
-pmat agent quality-gate --fast
+pmat agent quality-gate --project .
 if [ $? -ne 0 ]; then
     echo "❌ Quality gate failed - commit blocked"
     exit 1
@@ -261,25 +274,27 @@ fi
 
 ### MCP Server Integration
 
-```bash
-# Start MCP server through agent
-pmat agent mcp-server --config mcp-config.json
-```
+> **Use `pmat --mode mcp`, not `pmat agent mcp-server`.** `pmat agent mcp-server`
+> exits 1 on a default build, so a client registered with it fails at startup
+> (Claude Desktop just never shows the server). The MCP server in every build
+> is `pmat --mode mcp`, and `pmat mcp connect` prints how to register it.
 
-**MCP Configuration:**
 ```json
 {
   "mcpServers": {
-    "pmat-agent": {
+    "pmat": {
       "command": "pmat",
-      "args": ["agent", "mcp-server"],
-      "env": {
-        "PMAT_AGENT_MODE": "mcp",
-        "PMAT_CONFIG": "./agent-config.toml"
-      }
+      "args": ["--mode", "mcp"]
     }
   }
 }
+```
+
+With a binary built with `--features agent-daemon`, the agent's own MCP server
+for testing is:
+
+```bash
+pmat agent mcp-server --config mcp-config.json
 ```
 
 ## Integration Examples
@@ -304,7 +319,7 @@ jobs:
     - uses: actions/checkout@v3
     
     - name: Setup PMAT
-      run: cargo install pmat
+      run: cargo install pmat --features agent-daemon
     
     - name: Start Quality Agent
       run: |
@@ -315,7 +330,7 @@ jobs:
     
     - name: Run Quality Gate
       run: |
-        pmat agent quality-gate --strict
+        pmat agent quality-gate --project .
         echo "Quality gate passed ✅"
     
     - name: Generate Quality Report
@@ -344,7 +359,7 @@ jobs:
 FROM rust:1.75-slim as builder
 
 # Install PMAT
-RUN cargo install pmat
+RUN cargo install pmat --features agent-daemon
 
 FROM debian:bookworm-slim
 
@@ -448,7 +463,7 @@ pmat agent start --config slack-config.toml
 ```
 
 **Slack Message Example:**
-```
+```text
 🤖 PMAT Quality Alert
 
 Project: frontend-app
@@ -488,10 +503,9 @@ body_template = "email-alert.html"
 
 ```bash
 # Monitor agent resource usage
-pmat agent start \
-  --max-memory-mb 400 \
-  --max-cpu-percent 20 \
-  --cache-size-mb 50
+# --max-memory-mb is the only resource limit pmat agent start takes;
+# there is no --max-cpu-percent or --cache-size-mb flag.
+pmat agent start --max-memory-mb 400
 ```
 
 **Resource Monitoring:**
@@ -555,8 +569,8 @@ pmat agent start --foreground
 # Reduce cache size
 pmat agent reload --config reduced-memory.toml
 
-# Monitor memory patterns
-pmat agent status --memory-profile
+# Show status in detail
+pmat agent status --verbose
 ```
 
 3. **Slow Analysis Performance**
@@ -620,6 +634,8 @@ fail_under = 80
 ```
 
 ## Summary
+
+All of this needs a pmat built with `--features agent-daemon`; the default `cargo install pmat` binary does not include the agent.
 
 The PMAT agent system transforms quality assurance from a manual, error-prone process into an automated, intelligent monitoring system. By running continuously in the background, the agent catches quality issues early, provides actionable feedback, and integrates seamlessly with existing development workflows. 
 

@@ -83,16 +83,20 @@
 
 ## Agent Management
 
+> **Needs `--features agent-daemon`.** None of these commands is in the default
+> `cargo install pmat` build; there each exits 1 with
+> `Agent daemon feature not enabled`. For an MCP server use `pmat --mode mcp`.
+
 | Command | Description | Example |
 |---------|-------------|---------|
 | `pmat agent start` | Start background agent | `pmat agent start --project-path .` |
 | `pmat agent stop` | Stop agent daemon | `pmat agent stop` |
 | `pmat agent status` | Show agent status | `pmat agent status --verbose` |
 | `pmat agent health` | Health check | `pmat agent health` |
-| `pmat agent monitor` | Monitor project | `pmat agent monitor --project-id main` |
+| `pmat agent monitor` | Monitor project | `pmat agent monitor --project-path . --project-id main` |
 | `pmat agent unmonitor` | Stop monitoring | `pmat agent unmonitor --project-id main` |
 | `pmat agent reload` | Reload configuration | `pmat agent reload` |
-| `pmat agent quality-gate` | Quality gate via agent | `pmat agent quality-gate --strict` |
+| `pmat agent quality-gate` | Quality gate via agent | `pmat agent quality-gate --project .` |
 | `pmat agent mcp-server` | Start MCP server | `pmat agent mcp-server --debug` |
 
 ## AI-Powered Refactoring
