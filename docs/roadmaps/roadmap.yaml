@@ -5,7 +5,7 @@ roadmap:
 - id: PMAT-005
   github_issue: 5
   item_type: task
-  title: 'Every Chapter N a reader sees for a page is the number SUMMARY.md gives it, enforced in CI'
+  title: 'Every Chapter N page H1 and [Chapter N](page.md) link label matches the SUMMARY.md number, enforced in CI'
   status: planned
   priority: medium
   assigned_to: null
@@ -24,4 +24,6 @@ roadmap:
   - 'Measured on origin/main src/: 15 mismatches, the 6 H1s and 9 labels above, plus 17 DEAD labels; exit 1.'
   - 'Merge order: after fix/4-dead-in-prose-links (issue 4), which deletes or retargets every DEAD label. On this branch alone the check exits 1 with the 17 DEAD labels and 0 other mismatches. Measured on main + fix/4 + this branch, conflicts in ch09/ch10/ch11 resolved as fix/4''s lines plus this branch''s H1s: 157 comparisons, 0 mismatches, exit 0.'
   - 'Each planted defect on that merged tree exits 1 with 1 mismatch: sub-page H1 4.2->5.2, colonless label 67->68, decimal label 9->8.1, anchor label 5->6. Indenting the SUMMARY.md Chapter 3 entry exits 2.'
+  - 'An entry SUMMARY.md gives no number is stored as "-", not an empty field that tab-IFS read would collapse to 0. Measured: an unnumbered intro.md whose H1 says Chapter 0 passed the previous version (exit 0) and fails this one (exit 1).'
+  - 'Out of scope: "Chapter N" in running prose that is not an H1 or a link label.'
   - 'It runs in CI as a step of the test.yml build job before Build book, and locally from make lint.'

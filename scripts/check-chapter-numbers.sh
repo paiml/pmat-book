@@ -21,9 +21,9 @@ awk '
       print file "\t" cur "\t1"
     } else if ($0 ~ /^- /) {
       cur = ""
-      print file "\t\t0"
+      print file "\t-\t0"
     } else {
-      print file "\t" cur "\t0"
+      print file "\t" (cur == "" ? "-" : cur) "\t0"
     }
   }' "$src/SUMMARY.md" >"$map"
 entries=$(awk -F'\t' '$3 == 1' "$map" | wc -l)
@@ -38,6 +38,7 @@ tab=$(printf '\t')
 # major<TAB>minor of a "Chapter N" or "Chapter N.M" string on stdin
 num_of() { sed 's/.*Chapter \([0-9][0-9]*\)\(\.[0-9][0-9]*\)\{0,1\}.*/\1/'; }
 while IFS="$tab" read -r file num own; do
+  [ "$num" = - ] && num=
   [ -f "$src/$file" ] || continue
   h1=$(awk '/^```/{f=!f;next} !f && /^# /{print;exit}' "$src/$file")
   case "$h1" in
@@ -70,6 +71,7 @@ if [ -n "$links" ]; then
       continue
     fi
     num=$(awk -F'\t' -v t="$target" '$1 == t { print $2; exit }' "$map")
+    [ "$num" = - ] && num=
     if [ "$n" != "$num" ]; then
       echo "LINK ${where}label Chapter $n -> $target: SUMMARY.md says Chapter ${num:-(none)}"
       bad=$((bad + 1))
