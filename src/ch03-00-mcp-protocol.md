@@ -5,23 +5,23 @@
 
 | Status | Count | Description |
 |--------|-------|-------------|
-| ✅ Working | 19 | All MCP tools documented and tested |
+| ✅ Working | tools/list | Every tool name matches `pmat --mode mcp` tools/list (tests/ch03/test_05_ch03_00_tool_names.sh) |
 | ⚠️ Not Implemented | 0 | Complete MCP integration |
 | ❌ Broken | 0 | No known issues |
 | 📋 Planned | 0 | Core MCP features complete |
 
-*Last updated: 2025-10-19*
-*PMAT version: pmat 2.213.1*
+*Last updated: 2026-10-06*
+*PMAT version: pmat 3.42.0*
 *MCP version: v2024-11-05*
 <!-- DOC_STATUS_END -->
 
 ## Overview
 
-The Model Context Protocol (MCP) enables seamless integration between PMAT and AI agents like Claude, ChatGPT, and custom AI assistants. PMAT provides 19 MCP tools across 6 categories for comprehensive code analysis, quality assessment, and AI-assisted development.
+The Model Context Protocol (MCP) enables seamless integration between PMAT and AI agents like Claude, ChatGPT, and custom AI assistants. PMAT serves its MCP tools in five groups: code search, analysis, quality gating, project context and planning. The list below is what `tools/list` returns; ask the binary rather than trusting a number, because the count moves between builds of one release line.
 
 **Protocol Version**: MCP v2024-11-05
-**Total Tools**: 19
-**Transport**: HTTP/1.1 (JSON-RPC 2.0)
+**Tools**: whatever `tools/list` returns (20 in pmat 3.42.0)
+**Transport**: JSON-RPC 2.0 over stdio (`pmat --mode mcp`), or streamable HTTP (`pmat serve --transport http`, bearer token required)
 
 ## What is MCP?
 
@@ -82,121 +82,94 @@ await client.connect()
 ### 3. Call a Tool
 
 ```javascript
-// Validate documentation against codebase
-const result = await client.callTool('validate_documentation', {
-  documentation_path: 'README.md',
-  deep_context_path: 'deep_context.md',
-  similarity_threshold: 0.7,
-  fail_on_error: true
+// Cyclomatic and cognitive complexity, functions above the threshold
+const complexity = await client.callTool('analyze_complexity', {
+  paths: ['src/'],
+  threshold: 20
 });
 
-// Analyze technical debt
-const analysis = await client.callTool('analyze_technical_debt', {
-  path: 'src/main.rs',
-  include_penalties: true
+// The full quality-gate suite (complexity, dead code, SATD, entropy, ...)
+const gate = await client.callTool('quality_gate', {
+  paths: ['.'],
+  strict: true
 });
 
-// Get quality recommendations
-const recommendations = await client.callTool('get_quality_recommendations', {
-  path: 'src/complex_module.rs',
-  max_recommendations: 10,
-  min_severity: 'high'
+// Natural-language code search, filtered by TDG grade
+const hits = await client.callTool('pmat_query_code', {
+  query: 'error handling',
+  min_grade: 'B',
+  limit: 10
 });
 ```
 
-## MCP Tools Overview (19 Total)
+A name that `tools/list` does not return is refused with `-32602`
+(`Tool '<name>' not found`), so take names from the list below or from
+the server itself.
 
-### Documentation Quality (2 tools)
-- **`validate_documentation`** - Validate docs against codebase (zero hallucinations)
-- **`check_claim`** - Verify individual documentation claims
+## MCP Tools Overview
 
-### Code Quality (2 tools)
-- **`analyze_technical_debt`** - TDG quality analysis (A+ to F grades)
-- **`get_quality_recommendations`** - Actionable refactoring suggestions
+The groups below hold every tool `pmat --mode mcp` returns from `tools/list`
+(pmat 3.42.0). [Available Tools](ch03-02-mcp-tools.md) has each tool's
+parameters.
 
-### Agent-Based Analysis (5 tools)
-- **`analyze`** - Comprehensive code analysis
-- **`transform`** - Code transformation and refactoring
-- **`validate`** - Code validation and verification
-- **`orchestrate`** - Multi-agent workflow coordination
-- **`quality_gate`** - Comprehensive quality checks
+### Code Search (4 tools)
+- **`pmat_query_code`** - Natural-language code search with TDG quality filters
+- **`pmat_get_function`** - One function's metadata, optionally with source
+- **`pmat_find_similar`** - Functions similar to a reference function
+- **`pmat_index_stats`** - Function counts and grade distribution of the code index
 
-### Deep WASM Analysis (5 tools)
-- **`deep_wasm_analyze`** - Bytecode-level analysis
-- **`deep_wasm_query_mapping`** - Source-to-bytecode mappings
-- **`deep_wasm_trace_execution`** - Execution path tracing
-- **`deep_wasm_compare_optimizations`** - Optimization comparison
-- **`deep_wasm_detect_issues`** - Issue detection and diagnostics
+### Analysis (9 tools)
+- **`analyze_complexity`** - Cyclomatic and cognitive complexity
+- **`analyze_big_o`** - Big-O time complexity of functions
+- **`analyze_dag`** - Call, import or inheritance graph
+- **`analyze_dead_code`** - Unreachable or unused functions, types and modules
+- **`analyze_deep_context`** - The full deep-context pipeline (AST, complexity, churn, dead code)
+- **`analyze_satd`** - Self-admitted technical debt (TODO, FIXME, HACK)
+- **`analyze_hardcoded_paths`** - Machine-specific absolute paths baked into source
+- **`analyze_reachability`** - Tracked `.rs` files no compilation unit reaches
+- **`analyze_vacuous_tests`** - `#[test]` functions that cannot fail
 
-### Semantic Search (4 tools)
-- **`semantic_search`** - Semantic code search (requires OpenAI API key)
-- **`find_similar_code`** - Find similar code patterns
-- **`cluster_code`** - Cluster code by similarity
-- **`analyze_topics`** - Topic analysis and extraction
+### Quality Gating (3 tools)
+- **`quality_gate`** - The `pmat quality-gate --checks all` suite
+- **`quality_check_content`** - Grade proposed file content against the project's gate
+- **`quality_proxy`** - The same grading; it serves the same description and parameters as `quality_check_content`
 
-### Testing (1 tool)
-- **`mutation_test`** - Mutation testing for test suite quality
+### Project Context (3 tools)
+- **`generate_context`** - File tree and optional dependency graph for an agent
+- **`scaffold_project`** - High-level project summary
+- **`git_operation`** - Working-tree status of a repository
+
+### Planning (1 tool)
+- **`pdmt_deterministic_todos`** - Deterministic todo lists from a list of requirements
+
 
 ## Architecture
 
 ```
-┌─────────────┐
-│  AI Agent   │
-└──────┬──────┘
-       │ MCP Protocol
-       │ (JSON-RPC over HTTP)
-       ▼
-┌─────────────┐
-│ MCP Server  │ ← server/src/mcp_integration/server.rs
-├─────────────┤
-│   Tools     │
-├─────────────┤
-│ - validate_ │ ← hallucination_detection_tools.rs
-│   documenta │
-│   tion      │
-│ - check_    │
-│   claim     │
-├─────────────┤
-│ - analyze_  │ ← tdg_tools.rs
-│   technical │
-│   _debt     │
-│ - get_      │
-│   quality_  │
-│   recommend │
-│   ations    │
-├─────────────┤
-│ - analyze   │ ← tools.rs
-│ - transform │
-│ - validate  │
-│ - orchestr  │
-│   ate       │
-├─────────────┤
-│ - deep_wasm │ ← deep_wasm_tools.rs
-│   _*        │
-├─────────────┤
-│ - semantic_ │ ← tools.rs (adapters)
-│   search    │
-├─────────────┤
-│ - mutation_ │ ← mutation_tools.rs
-│   test      │
-└─────────────┘
-       │
-       ▼
-┌─────────────┐
-│  Services   │
-├─────────────┤
-│ - Hallucin  │
-│   ation     │
-│   Detector  │
-│ - TDG       │
-│   Analyzer  │
-│ - Agent     │
-│   Registry  │
-│ - Deep WASM │
-│ - Semantic  │
-│   Search    │
-└─────────────┘
+┌──────────────────┐
+│     AI Agent     │
+└────────┬─────────┘
+         │ MCP (JSON-RPC 2.0)
+         │ stdio: pmat --mode mcp
+         │ HTTP:  pmat serve --transport http
+         ▼
+┌──────────────────┐
+│    MCP Server    │
+├──────────────────┤
+│ tools/list       │
+│ - code search    │ pmat_query_code, pmat_get_function, ...
+│ - analysis       │ analyze_complexity, analyze_satd, ...
+│ - quality gating │ quality_gate, quality_check_content, ...
+│ - project context│ generate_context, scaffold_project, ...
+│ - planning       │ pdmt_deterministic_todos
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  pmat analyzers  │ the same code the CLI subcommands run
+└──────────────────┘
 ```
+
 
 ## Topics Covered
 
@@ -206,17 +179,14 @@ const recommendations = await client.callTool('get_quality_recommendations', {
 
 ## Common Use Cases
 
-### Pre-Commit Hook: Validate Documentation
+### Pre-Commit Hook: Grade Staged Files
 
 ```bash
 #!/bin/bash
 # .git/hooks/pre-commit
 
-# Generate deep context
-pmat context --output deep_context.md
-
-# Validate documentation via MCP
-node scripts/validate-docs.js || exit 1
+# Calls quality_check_content once per staged file and exits non-zero on a failing verdict
+node scripts/check-staged.js $(git diff --cached --name-only) || exit 1
 ```
 
 ### CI/CD: Quality Gate
@@ -242,13 +212,10 @@ await postReviewComments(pr, reviews);
 ## Protocol Compliance
 
 - **Version**: MCP v2024-11-05
-- **Transport**: HTTP/1.1 (JSON-RPC 2.0)
-- **Capabilities**:
-  - ✅ Tools (19 tools)
-  - ✅ Resources (planned)
-  - ✅ Prompts (planned)
-  - ✅ Logging
-  - ❌ Sampling (not applicable)
+- **Transport**: JSON-RPC 2.0 over stdio, or streamable HTTP
+- **Capabilities** (as `initialize` reports them in pmat 3.42.0):
+  - ✅ Tools (`listChanged: true`)
+  - ❌ Resources, Prompts, Logging, Sampling (not advertised)
 
 ## Error Handling
 
@@ -275,6 +242,6 @@ All tools follow consistent error patterns:
 ## Next Steps
 
 - [**MCP Server Setup**](ch03-01-mcp-setup.md) - Learn how to configure and run the MCP server
-- [**Available Tools**](ch03-02-mcp-tools.md) - Explore the complete catalog of 19 MCP tools
+- [**Available Tools**](ch03-02-mcp-tools.md) - Every tool the server serves, with its parameters
 - [**Claude Integration**](ch03-03-claude-integration.md) - Integrate with Claude Desktop and AI agents
 - [**Chapter 15: Complete MCP Tools Reference**](ch15-00-mcp-tools.md) - Advanced workflows and integration patterns
