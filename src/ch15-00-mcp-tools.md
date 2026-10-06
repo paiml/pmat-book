@@ -23,23 +23,31 @@ Traditional documentation focuses on individual commands, but MCP tools work bes
 
 ## PMAT's MCP Architecture
 
-PMAT implements MCP as a flexible server that can run in multiple modes:
+pmat speaks MCP over two transports from one binary, and both serve the same
+tools. `pmat mcp connect` prints both, with the exact commands:
 
-- **HTTP Mode**: RESTful API for web integrations and custom clients
-- **WebSocket Mode**: Real-time bidirectional communication for interactive tools
-- **Server-Sent Events**: Streaming updates for long-running analysis operations
-- **Background Daemon**: Persistent server with health monitoring and caching
+| Transport | Start it with | Use it for |
+|-----------|---------------|------------|
+| stdio | `pmat --mode mcp` (or `MCP_VERSION=1 pmat`) | A client that spawns pmat as a subprocess, such as Claude Desktop or Claude Code on the same machine. No port, no token. |
+| Streamable HTTP | `pmat serve --transport http --port 8080` | A shared or remote client, or one that cannot spawn a subprocess. |
 
-### MCP Server Capabilities
+The HTTP endpoint is MCP JSON-RPC, not a REST API, and four things about it are
+not guessable:
 
-| Feature | HTTP Mode | WebSocket Mode | SSE Mode | Background Daemon |
-|---------|-----------|----------------|----------|-------------------|
-| **Port Configuration** | ✅ Default 8080 | ✅ Configurable | ✅ Configurable | ✅ Multi-port |
-| **CORS Support** | ✅ Cross-origin | ✅ Cross-origin | ✅ Cross-origin | ✅ Full CORS |
-| **Real-time Updates** | ❌ Request/Response | ✅ Bidirectional | ✅ Server Push | ✅ All modes |
-| **Claude Desktop** | ✅ Supported | ✅ Supported | ✅ Supported | ✅ Preferred |
-| **Caching** | ✅ HTTP cache | ✅ Session cache | ✅ Stream cache | ✅ Persistent |
-| **Load Balancing** | ✅ Stateless | ⚠️ Session aware | ⚠️ Connection bound | ✅ Multi-instance |
+- MCP is served at the root path. `POST /` is 200; `/mcp` is 404.
+- There is no health endpoint. `/health` is 404.
+- A bearer token is mandatory, and `PMAT_MCP_HTTP_TOKEN` must be at least 16
+  characters. `pmat mcp token` prints one. On a loopback bind with no token set,
+  `pmat serve` generates one and prints it.
+- Every call needs `Accept: application/json, text/event-stream`, or the server
+  answers 406.
+
+> **Not implemented: WebSocket, SSE and a background daemon.** Earlier versions
+> of this chapter listed WebSocket, Server-Sent Events and a background-daemon
+> mode as supported. None of them exists. `pmat serve --transport web-socket` and
+> `--transport http-sse` exit 2 with `is not yet implemented`, and
+> `pmat mcp --port 8081 --mode websocket` exits 2 with
+> `error: unexpected argument '--port' found`.
 
 ## Complete MCP Tools Inventory
 
@@ -1038,7 +1046,8 @@ Advanced analysis capabilities for specific use cases and research applications.
 
 ### Claude Desktop Integration
 
-The most common integration pattern uses Claude Desktop's MCP configuration:
+Claude Desktop spawns pmat as a subprocess and speaks MCP over stdio. There is no
+port and no token:
 
 **Configuration File** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 ```json
@@ -1046,27 +1055,16 @@ The most common integration pattern uses Claude Desktop's MCP configuration:
   "mcpServers": {
     "pmat": {
       "command": "pmat",
-      "args": ["mcp", "--port", "8080", "--mode", "http"],
-      "env": {
-        "PMAT_MCP_LOG_LEVEL": "info",
-        "PMAT_MCP_CACHE_ENABLED": "true",
-        "PMAT_MCP_MAX_CONCURRENT": "4"
-      }
-    },
-    "pmat-websocket": {
-      "command": "pmat",
-      "args": ["mcp", "--port", "8081", "--mode", "websocket"],
-      "env": {
-        "PMAT_MCP_LOG_LEVEL": "debug",
-        "PMAT_MCP_REALTIME": "true"
-      }
+      "args": ["--mode", "mcp"]
     }
   }
 }
 ```
 
+For Claude Code the equivalent is `claude mcp add --scope user pmat -- pmat --mode mcp`.
+
 **Usage in Claude:**
-```
+```text
 I need to analyze the complexity of my Python project. Can you use PMAT to check the src/ directory and identify functions with high complexity?
 ```
 
@@ -1088,13 +1086,24 @@ For custom applications and integrations:
 
 **Python HTTP Client:**
 ```python
-import requests
 import json
+import os
+import uuid
+
+import requests
 
 class PMATMCPClient:
-    def __init__(self, base_url="http://localhost:8080"):
+    # Talks to `pmat serve --transport http --port 8080`. MCP is served at the
+    # ROOT path (`/mcp` is 404), a bearer token is mandatory, and every call
+    # needs the Accept header below or the server answers 406.
+    def __init__(self, base_url="http://127.0.0.1:8080/", token=None):
         self.base_url = base_url
         self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {token or os.environ['PMAT_MCP_HTTP_TOKEN']}",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        })
     
     def call_tool(self, tool_name, arguments):
         payload = {
@@ -1107,12 +1116,7 @@ class PMATMCPClient:
             }
         }
         
-        response = self.session.post(
-            f"{self.base_url}/mcp",
-            json=payload,
-            headers={"Content-Type": "application/json"},
-            timeout=30
-        )
+        response = self.session.post(self.base_url, json=payload, timeout=30)
         
         response.raise_for_status()
         return response.json()
@@ -1147,233 +1151,13 @@ context_data = json.loads(context_result['result']['content'][0]['text'])
 print(f"Project has {context_data['total_files']} files in {len(context_data['languages_detected'])} languages")
 ```
 
-### WebSocket Integration
+### WebSocket and Server-Sent Events
 
-For real-time applications requiring bidirectional communication:
-
-**Node.js WebSocket Client:**
-```javascript
-const WebSocket = require('ws');
-
-class PMATMCPWebSocketClient {
-    constructor(url = 'ws://localhost:8081') {
-        this.ws = new WebSocket(url);
-        this.requestId = 1;
-        this.pendingRequests = new Map();
-        this.eventHandlers = new Map();
-    }
-    
-    async connect() {
-        return new Promise((resolve, reject) => {
-            this.ws.on('open', () => {
-                console.log('Connected to PMAT MCP server');
-                resolve();
-            });
-            
-            this.ws.on('error', reject);
-            
-            this.ws.on('message', (data) => {
-                try {
-                    const message = JSON.parse(data);
-                    this.handleMessage(message);
-                } catch (error) {
-                    console.error('Failed to parse message:', error);
-                }
-            });
-        });
-    }
-    
-    handleMessage(message) {
-        if (message.id && this.pendingRequests.has(message.id)) {
-            // Response to a request
-            const callback = this.pendingRequests.get(message.id);
-            callback(message);
-            this.pendingRequests.delete(message.id);
-        } else if (message.method) {
-            // Event or notification
-            const handlers = this.eventHandlers.get(message.method) || [];
-            handlers.forEach(handler => handler(message.params));
-        }
-    }
-    
-    async callTool(toolName, arguments) {
-        const id = (this.requestId++).toString();
-        
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                this.pendingRequests.delete(id);
-                reject(new Error('Request timeout'));
-            }, 30000);
-            
-            this.pendingRequests.set(id, (response) => {
-                clearTimeout(timeout);
-                if (response.error) {
-                    reject(new Error(response.error.message));
-                } else {
-                    resolve(response);
-                }
-            });
-            
-            const request = {
-                jsonrpc: "2.0",
-                id: id,
-                method: "tools/call",
-                params: {
-                    name: toolName,
-                    arguments: arguments
-                }
-            };
-            
-            this.ws.send(JSON.stringify(request));
-        });
-    }
-    
-    onEvent(eventType, handler) {
-        if (!this.eventHandlers.has(eventType)) {
-            this.eventHandlers.set(eventType, []);
-        }
-        this.eventHandlers.get(eventType).push(handler);
-    }
-    
-    // High-level methods
-    async startBackgroundAnalysis(projectPath, analysisTypes = ['complexity', 'satd']) {
-        return this.callTool('background_daemon', {
-            action: 'start_analysis',
-            path: projectPath,
-            analysis_types: analysisTypes,
-            notify_on_completion: true
-        });
-    }
-}
-
-// Example usage
-async function demonstrateWebSocketIntegration() {
-    const client = new PMATMCPWebSocketClient();
-    await client.connect();
-    
-    // Set up event handlers
-    client.onEvent('analysis_progress', (data) => {
-        console.log(`Analysis progress: ${data.percentage}%`);
-    });
-    
-    client.onEvent('analysis_complete', (data) => {
-        console.log('Analysis completed:', data.results);
-    });
-    
-    // Start background analysis
-    const result = await client.startBackgroundAnalysis('/path/to/large/project');
-    console.log('Background analysis started:', result);
-    
-    // Continue with other work while analysis runs in background
-    const contextResult = await client.callTool('generate_context', {
-        path: '/path/to/other/project',
-        max_tokens: 10000
-    });
-    
-    console.log('Context generated while analysis runs in background');
-}
-
-demonstrateWebSocketIntegration().catch(console.error);
-```
-
-### Server-Sent Events Integration
-
-For streaming updates and progress monitoring:
-
-**JavaScript SSE Client:**
-```javascript
-class PMATMCPSSEClient {
-    constructor(baseUrl = 'http://localhost:8080') {
-        this.baseUrl = baseUrl;
-    }
-    
-    async startStreamingAnalysis(projectPath, analysisTypes) {
-        const response = await fetch(`${this.baseUrl}/mcp/stream`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/event-stream'
-            },
-            body: JSON.stringify({
-                tool: 'analyze_comprehensive',
-                arguments: {
-                    path: projectPath,
-                    types: analysisTypes,
-                    stream_progress: true
-                }
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        
-        return {
-            async *events() {
-                try {
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-                                if (data === '[DONE]') return;
-                                
-                                try {
-                                    yield JSON.parse(data);
-                                } catch (e) {
-                                    console.warn('Failed to parse SSE data:', data);
-                                }
-                            }
-                        }
-                    }
-                } finally {
-                    reader.releaseLock();
-                }
-            }
-        };
-    }
-}
-
-// Example usage
-async function demonstrateSSEIntegration() {
-    const client = new PMATMCPSSEClient();
-    
-    const stream = await client.startStreamingAnalysis('/path/to/project', [
-        'complexity', 
-        'satd', 
-        'security'
-    ]);
-    
-    console.log('Starting streaming analysis...');
-    
-    for await (const event of stream.events()) {
-        switch (event.type) {
-            case 'progress':
-                console.log(`Progress: ${event.data.percentage}% - ${event.data.current_step}`);
-                break;
-            case 'result':
-                console.log(`Completed ${event.data.analysis_type}:`, event.data.results);
-                break;
-            case 'error':
-                console.error('Analysis error:', event.data.error);
-                break;
-            case 'complete':
-                console.log('All analysis completed:', event.data.summary);
-                return;
-        }
-    }
-}
-
-demonstrateSSEIntegration().catch(console.error);
-```
+> **Not implemented.** pmat has no WebSocket or SSE transport.
+> `pmat serve --transport web-socket` and `pmat serve --transport http-sse` both
+> exit 2 with `error: pmat serve --transport websocket is not yet implemented`
+> (or `http-sse`). Use stdio or streamable HTTP, above; `pmat mcp connect`
+> prints both.
 
 ## Advanced MCP Workflows
 
@@ -1903,7 +1687,7 @@ async def diagnose_connection_issues(client):
             
     except ConnectionError:
         print("❌ Connection refused - is server running?")
-        print("Try: pmat mcp --port 8080 --mode http")
+        print("Try: pmat serve --transport http --port 8080")
         
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
@@ -1961,9 +1745,8 @@ PMAT's MCP tools provide a comprehensive suite of 25+ analysis, quality, and dev
 Key benefits of the MCP architecture include:
 
 - **Standardized Interface**: All tools use consistent JSON-RPC protocols
-- **Multiple Transport Modes**: HTTP, WebSocket, SSE, and background daemon options
+- **Two Transports**: stdio for a client that spawns pmat, streamable HTTP for a shared or remote one
 - **Intelligent Caching**: Performance optimization with smart invalidation
-- **Real-time Communication**: WebSocket support for interactive workflows
 - **Scalable Architecture**: Parallel processing and resource management
 
 The integration patterns shown in this chapter enable teams to build sophisticated AI-assisted development workflows, from automated code review to continuous quality monitoring. Whether you're using Claude Desktop, building custom applications, or integrating with existing tools, PMAT's MCP tools provide the foundation for reliable, high-quality software development.

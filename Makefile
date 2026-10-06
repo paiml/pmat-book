@@ -184,6 +184,8 @@ test-ch15:
 	@chmod +x tests/ch15/test_mcp_minimal.sh
 	@echo "Running Chapter 15 MCP tools tests..."
 	@tests/ch15/test_mcp_minimal.sh > test-results/ch15/test_mcp_minimal.log 2>&1 || { cat test-results/ch15/test_mcp_minimal.log; exit 1; }
+	@chmod +x tests/ch15/test_mcp_transports.sh
+	@tests/ch15/test_mcp_transports.sh > test-results/ch15/test_mcp_transports.log 2>&1 || { cat test-results/ch15/test_mcp_transports.log; exit 1; }
 	@echo "✅ Chapter 15 tests passed"
 
 test-ch16:
