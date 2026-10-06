@@ -286,14 +286,14 @@ pmat context --skip-expensive-metrics
 # Analyze one directory at a time
 pmat context -p src/
 
-# More log output (info level)
+# Enable verbose output (info level)
 pmat context --verbose
 ```
 
 #### Permission Errors
 
 There is no `--skip-errors` or `--user` option. Run `pmat context` as the user
-who can read the project. For debug-level log output:
+who can read the project. To enable debug output (debug level):
 
 ```bash
 pmat context --debug
