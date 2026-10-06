@@ -1,4 +1,4 @@
-# Chapter 10: Auto-clippy Integration
+# Chapter 11: Auto-clippy Integration
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (8/8 examples)
@@ -780,6 +780,6 @@ With auto-clippy, your codebase continuously improves with every analysis, maint
 
 ## Next Steps
 
-- [Chapter 11: Custom Quality Rules](ch11-00-custom-rules.md)
-- [Chapter 12: Architecture Analysis](ch12-00-architecture.md)
+- [Chapter 12: Custom Quality Rules](ch11-00-custom-rules.md)
+- [Chapter 13: Architecture Analysis](ch12-00-architecture.md)
 - [Appendix G: Auto-clippy Rule Reference](appendix-g-clippy-reference.md)

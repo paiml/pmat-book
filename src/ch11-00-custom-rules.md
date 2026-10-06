@@ -1,4 +1,4 @@
-# Chapter 11: Custom Quality Rules
+# Chapter 12: Custom Quality Rules
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (8/8 examples)
@@ -769,6 +769,6 @@ With custom rules, PMAT becomes a powerful tool for maintaining not just code qu
 
 ## Next Steps
 
-- [Chapter 12: Architecture Analysis](ch12-00-architecture.md)
+- [Chapter 13: Architecture Analysis](ch12-00-architecture.md)
 - [Chapter 13: Performance Analysis](ch13-00-performance.md)
 - [Appendix H: Custom Rules Reference](appendix-h-rules-reference.md)

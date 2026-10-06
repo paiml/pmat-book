@@ -885,6 +885,6 @@ Master these tools to maintain high code quality and reduce technical debt syste
 
 ## Next Steps
 
-- [Chapter 6: Pre-commit Hooks](ch09-00-precommit-hooks.md) - Automate quality checks
+- [Chapter 10: Pre-commit Hooks](ch09-00-precommit-hooks.md) - Automate quality checks
 - [Chapter 4: Technical Debt Grading](ch04-01-tdg.md) - Advanced debt metrics
-- [Chapter 9: Quality-Driven Development](ch14-00-qdd.md) - Quality-first coding
+- [Chapter 27: Quality-Driven Development](ch14-00-qdd.md) - Quality-first coding

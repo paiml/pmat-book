@@ -1,4 +1,4 @@
-# Chapter 9: Pre-commit Hooks Management
+# Chapter 10: Pre-commit Hooks Management
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (8/8 examples)
@@ -820,5 +820,5 @@ With PMAT hooks, technical debt is caught at the source, making your codebase he
 ## Next Steps
 
 - [Chapter 10: PMAT in CI/CD Pipelines](ch10-00-cicd-integration.md)
-- [Chapter 11: Custom Quality Rules](ch11-00-custom-rules.md)
+- [Chapter 12: Custom Quality Rules](ch11-00-custom-rules.md)
 - [Appendix F: Hook Configuration Reference](appendix-f-hooks-reference.md)

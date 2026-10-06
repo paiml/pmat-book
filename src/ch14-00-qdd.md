@@ -1,4 +1,4 @@
-# Chapter 14: Quality-Driven Development (QDD)
+# Chapter 27: Quality-Driven Development (QDD)
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (18/18 examples)

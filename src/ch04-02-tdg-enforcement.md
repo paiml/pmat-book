@@ -1226,7 +1226,7 @@ The TDG Enforcement System provides:
 
 - [Chapter 5: The Analyze Command Suite](ch05-00-analyze-suite.md)
 - [Chapter 7: Quality Gates](ch07-00-quality-gate.md)
-- [Chapter 9: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
+- [Chapter 10: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
 
 ---
 

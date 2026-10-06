@@ -1,0 +1,25 @@
+roadmap_version: '1.0'
+github_enabled: true
+github_repo: paiml/pmat-book
+roadmap:
+- id: PMAT-005
+  github_issue: 5
+  item_type: task
+  title: 'Every Chapter N a reader sees for a page is the number SUMMARY.md gives it, enforced in CI'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-06T12:32:16Z
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  acceptance_criteria:
+  - 'Direction is the issue''s Option B: the six page H1s move to the SUMMARY.md number (ch09-00-precommit-hooks 9->10, ch10-00-auto-clippy 10->11, ch11-00-custom-rules 11->12, ch12-00-architecture 12->13, ch13-00-language-examples 13->14, ch14-00-qdd 14->27). No file is renamed, so no URL changes. Option A would leave two chapters claiming Chapter 9.'
+  - 'Every [Chapter N: ...](page.md) link label in src/ whose target is a SUMMARY.md chapter entry now carries that entry''s number: 9 labels in ch04-02, ch05-00 (2), ch08-00, ch09-00, ch10-00 (2), ch11-00 and ch34-00.'
+  - 'scripts/check-chapter-numbers.sh (POSIX sh, no Python) compares each SUMMARY.md "Chapter N" entry with its page H1 (skipping fenced code) and with every link label that targets it. It prints the count of entries and comparisons, and exits 1 on a mismatch and 2 when nothing was compared.'
+  - 'Measured: on this branch 74 entries, 128 comparisons, 0 mismatches, exit 0. On origin/main src/ the same script reports the 6 H1s plus the 9 labels, 15 mismatches, exit 1. An empty SUMMARY.md exits 2.'
+  - 'It runs in CI as a step of the test.yml build job, before Build book, and locally from make lint.'
+  - 'Out of scope, unchanged: link labels whose target file does not exist (dead links, issue 4); the Makefile test-ch18/test-ch20 target names (filed separately in the issue); sub-chapter labels such as Chapter 13.2; ch32-00 whose H1 carries no number.'

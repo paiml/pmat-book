@@ -114,6 +114,9 @@ jobs:
         cargo install mdbook
         cargo install mdbook-linkcheck
     
+    - name: Chapter numbers match SUMMARY.md
+      run: scripts/check-chapter-numbers.sh
+
     - name: Build book
       run: make build
     

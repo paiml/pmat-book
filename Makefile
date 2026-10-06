@@ -259,6 +259,7 @@ test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 t
 # Lint code examples
 lint:
 	@echo "🎨 Linting code examples..."
+	@scripts/check-chapter-numbers.sh
 	@# TODO: Add linting for bash and JSON examples
 
 # Validate markdown links

@@ -783,6 +783,6 @@ Use demos to:
 
 ## Next Steps
 
-- [Chapter 9: Pre-commit Hooks](ch09-00-precommit-hooks.md) - Automated quality enforcement
+- [Chapter 10: Pre-commit Hooks](ch09-00-precommit-hooks.md) - Automated quality enforcement
 - [Chapter 5: Analyze Suite](ch05-00-analyze-suite.md) - Detailed analysis commands  
 - [Chapter 7: Quality Gates](ch07-00-quality-gate.md) - Quality enforcement systems

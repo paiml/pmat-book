@@ -1,4 +1,4 @@
-# Chapter 12: Architecture Analysis
+# Chapter 13: Architecture Analysis
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (8/8 examples)
