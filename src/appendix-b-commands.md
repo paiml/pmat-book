@@ -1,361 +1,235 @@
 # Appendix B: Quick Command Reference
 
+<!-- DOC_STATUS_START -->
+**Chapter Status**: ✅ Every example on this page parses with pmat 3.42.0
+
+| Status | Count | Examples |
+|--------|-------|----------|
+| ✅ Working | 133 | Every pmat example below is accepted by pmat 3.42.0's argument parser (`<example> --help` exits 0); `tests/appendix-b/test_commands_parse.sh` checks every one |
+| ⚠️ Not Implemented | 0 | `pmat agent` and `pmat org` exist but need a feature build; they are marked where they appear |
+| ❌ Broken | 0 | |
+| 📋 Planned | 0 | |
+
+*Not measured: what each command prints on your project. The check above proves the command and its flags exist, not the output.*
+
+*Last updated: 2026-10-06*
+*PMAT version: pmat 3.42.0*
+<!-- DOC_STATUS_END -->
+
+This page lists commands pmat 3.42.0 actually has. Earlier editions listed
+about 30 top-level commands that never existed (`pmat status`, `pmat scan`,
+`pmat dashboard`, `pmat team`, `pmat webhook`, `pmat plugin`, and others) and
+dropped the `analyze` prefix from real analyses. If a command you remember is
+not here, `pmat --help` is the authority: it lists every top-level command,
+and `pmat <command> --help` lists its subcommands and flags.
+
 ## Essential Commands
 
 | Command | Description | Example |
 |---------|-------------|---------|
 | `pmat --version` | Display version | `pmat --version` |
 | `pmat help` | Show help | `pmat help analyze` |
-| `pmat init` | Initialize project | `pmat init --template=enterprise` |
-| `pmat status` | Check project status | `pmat status --detailed` |
+| `pmat init` | Bootstrap an agent-ready workspace (quality hook, MCP registration) | `pmat init --path .` |
+| `pmat diagnose` | Self-diagnostics: check that pmat's features work here | `pmat diagnose --format json` |
+| `pmat explain` | Explain what a check, metric or grade means | `pmat explain tdg` |
 
-## Analysis Commands
+## Analysis
+
+Every analysis is a subcommand of `pmat analyze`. `pmat analyze --help`
+lists all of them.
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat analyze` | Run standard analysis | `pmat analyze .` |
-| `pmat scan` | Quick scan | `pmat scan --focus=security` |
-| `pmat watch` | Continuous monitoring | `pmat watch --on-change` |
-| `pmat analyze tdg` | Technical debt grading | `pmat analyze tdg --detailed` |
-| `pmat complexity` | Complexity analysis | `pmat complexity --by-function` |
-| `pmat similarity` | Code similarity | `pmat similarity --threshold=0.8` |
-| `pmat dead-code` | Dead code detection | `pmat dead-code --export-list` |
-| `pmat satd` | SATD detection | `pmat satd --extended` (detect euphemisms) |
-| `pmat query` | RAG-powered semantic search | `pmat query "error handling" --type fn --min-grade B` |
+| `pmat analyze complexity` | Cyclomatic and cognitive complexity | `pmat analyze complexity --path .` |
+| `pmat analyze satd` | Self-admitted technical debt markers | `pmat analyze satd --path .` |
+| `pmat analyze dead-code` | Dead code detection | `pmat analyze dead-code --path .` |
+| `pmat analyze churn` | Git churn | `pmat analyze churn --path .` |
+| `pmat analyze duplicates` | Code clones | `pmat analyze duplicates --path .` |
+| `pmat analyze dag` | Dependency graph | `pmat analyze dag --path .` |
+| `pmat analyze deep-context` | Combined deep analysis | `pmat analyze deep-context --path .` |
+| `pmat analyze clippy` | Clippy findings | `pmat analyze clippy --path .` |
+| `pmat analyze big-o` | Algorithmic complexity estimates | `pmat analyze big-o --path .` |
+| `pmat analyze entropy` | Pattern diversity | `pmat analyze entropy --path .` |
+| `pmat tdg` | Technical Debt Grading | `pmat tdg . --format json` |
+| `pmat extract` | Function boundaries from one file (tree-sitter) | `pmat extract --list src/main.rs` |
+| `pmat split` | Suggest semantic file splits | `pmat split --help` |
+| `pmat kaizen` | Continuous improvement: scan, fix, commit | `pmat kaizen --dry-run` |
+
+## Code Search and Context
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat query` | Semantic code search with quality annotations | `pmat query "error handling" --min-grade B --limit 10` |
 | `pmat query --docs-only` | Search only documents (PDF, SVG, markdown) | `pmat query "design spec" --docs-only --limit 5` |
-| `pmat query --no-docs` | Code-only search (disable document results) | `pmat query "parse" --no-docs --limit 10` |
-| `pmat extract --list` | Tree-sitter function boundary extraction | `pmat extract --list src/main.rs` |
-| `pmat kaizen` | Autonomous continuous improvement | `pmat kaizen --dry-run` |
-| `pmat comply check` | PMAT compliance checking | `pmat comply check` |
+| `pmat query --no-docs` | Code-only search | `pmat query "parse" --no-docs --limit 10` |
+| `pmat context` | Project context for an LLM | `pmat context --format llm-optimized` |
+| `pmat embed` | Manage search embeddings | `pmat embed status` |
+| `pmat sql` | Direct SQL over the function index | `pmat sql --help` |
+
+## Quality Gates and Scores
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat quality-gate` | Run quality gate checks | `pmat quality-gate --fail-on-violation` |
+| `pmat quality-gates` | Configurable gates for the current project | `pmat quality-gates --help` |
+| `pmat verify` | Run the CI-faithful gate set before committing | `pmat verify --format json` |
+| `pmat score` | Unified quality score (0-100) | `pmat score --path .` |
+| `pmat repo-score` | Repository health score (0-100) | `pmat repo-score --path .` |
+| `pmat rust-project-score` | Rust project quality score | `pmat rust-project-score --full` |
+| `pmat popper-score` | Falsifiability score | `pmat popper-score --verbose` |
+| `pmat perfection-score` | 200-point perfection score | `pmat perfection-score --fast --breakdown` |
+| `pmat comply check` | Compliance checks | `pmat comply check` |
+| `pmat report` | Analysis report | `pmat report --output-format json --output report.json` |
 
 ## Configuration
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat config list` | List configuration | `pmat config list` |
-| `pmat config get` | Get config value | `pmat config get quality.min_grade` |
-| `pmat config set` | Set config value | `pmat config set analysis.parallel true` |
-| `pmat config reset` | Reset to defaults | `pmat config reset --all` |
-| `pmat config profiles` | Manage profiles | `pmat config profiles switch prod` |
-| `pmat config export` | Export config | `pmat config export > config.toml` |
-| `pmat config import` | Import config | `pmat config import config.toml` |
-
-## Memory Management
+`pmat config` takes flags, not subcommands.
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat memory stats` | Memory statistics | `pmat memory stats --verbose` |
-| `pmat memory cleanup` | Clean up memory | `pmat memory cleanup --force-gc` |
-| `pmat memory configure` | Configure limits | `pmat memory configure --max-heap 500` |
-| `pmat memory pools` | Pool statistics | `pmat memory pools` |
+| `pmat config --show` | Show the configuration | `pmat config --show` |
+| `pmat config --validate` | Validate the configuration | `pmat config --validate` |
+| `pmat config --reset` | Reset to defaults | `pmat config --reset` |
+
+## Memory and Cache
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat memory stats` | Memory usage | `pmat memory stats --verbose` |
+| `pmat memory cleanup` | Release memory | `pmat memory cleanup` |
+| `pmat memory pools` | Memory pool status | `pmat memory pools` |
 | `pmat memory pressure` | Memory pressure | `pmat memory pressure` |
+| `pmat cache stats` | Cache statistics; the only `cache` subcommand | `pmat cache stats --verbose` |
 
-## Cache Management
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat cache stats` | Cache statistics | `pmat cache stats --verbose` |
-| `pmat cache clear` | Clear cache | `pmat cache clear --all` |
-| `pmat cache optimize` | Optimize cache | `pmat cache optimize` |
-| `pmat cache warmup` | Warmup cache | `pmat cache warmup` |
-| `pmat cache configure` | Configure cache | `pmat cache configure --eviction lru` |
-
-## Security
+## MCP and the HTTP Server
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat security scan` | Security scan | `pmat security scan --severity=critical` |
-| `pmat dependencies` | Dependency check | `pmat dependencies --check-vulnerabilities` |
+| `pmat --mode mcp` | MCP server over stdio | `pmat --mode mcp` |
+| `pmat serve` | MCP over streamable HTTP at `/`, not a REST API (see Chapter 18) | `pmat serve --port 8080` |
+| `pmat mcp connect` | Print how to register pmat with an MCP client | `pmat mcp connect` |
+| `pmat mcp token` | Generate a bearer token for `pmat serve` | `pmat mcp token` |
 
-## API Server & Roadmap
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat serve` | Start API server | `pmat serve --port 8080` |
-| `pmat serve --metrics` | Server with metrics | `pmat serve --metrics --verbose` |
-| `pmat roadmap init` | Initialize sprint | `pmat roadmap init --sprint v1.0` |
-| `pmat roadmap todos` | Generate todos | `pmat roadmap todos --format markdown` |
-| `pmat roadmap start` | Start task | `pmat roadmap start PMAT-001` |
-| `pmat roadmap complete` | Complete task | `pmat roadmap complete PMAT-001 --quality-check` |
-| `pmat roadmap status` | Sprint status | `pmat roadmap status --format json` |
-| `pmat roadmap validate` | Validate release | `pmat roadmap validate` |
-| `pmat roadmap quality-check` | Quality validation | `pmat roadmap quality-check PMAT-001` |
-
-## Agent Management
+## Work Tracking, Roadmap and Specs
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat agent start` | Start background agent | `pmat agent start --project-path .` |
-| `pmat agent stop` | Stop agent daemon | `pmat agent stop` |
-| `pmat agent status` | Show agent status | `pmat agent status --verbose` |
-| `pmat agent health` | Health check | `pmat agent health` |
-| `pmat agent monitor` | Monitor project | `pmat agent monitor --project-id main` |
-| `pmat agent unmonitor` | Stop monitoring | `pmat agent unmonitor --project-id main` |
-| `pmat agent reload` | Reload configuration | `pmat agent reload` |
-| `pmat agent quality-gate` | Quality gate via agent | `pmat agent quality-gate --strict` |
-| `pmat agent mcp-server` | Start MCP server | `pmat agent mcp-server --debug` |
+| `pmat work list` | List work items | `pmat work list` |
+| `pmat work start` | Start a work item | `pmat work start PMAT-001` |
+| `pmat work complete` | Complete a work item | `pmat work complete PMAT-001` |
+| `pmat roadmap status` | Roadmap status (reads `docs/execution/roadmap.md`) | `pmat roadmap status --format json` |
+| `pmat spec score` | Score a specification | `pmat spec score docs/spec.md --verbose` |
+| `pmat spec list` | List specifications | `pmat spec list` |
+| `pmat five-whys` | Five Whys root-cause analysis | `pmat five-whys --help` |
 
-## AI-Powered Refactoring
+## Prompts and Templates
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat prompt show` | Show a built-in prompt | `pmat prompt show --list` |
+| `pmat prompt generate` | Generate a defect-aware prompt | `pmat prompt generate --task "Add auth"` |
+| `pmat list` | List templates | `pmat list --format json` |
+| `pmat search` | Search templates | `pmat search "web" --limit 10` |
+| `pmat generate` | Generate one template | `pmat generate rust cli -p name=app` |
+| `pmat scaffold` | Scaffold a project or agent | `pmat scaffold list-templates` |
+
+## Refactoring
 
 | Command | Description | Example |
 |---------|-------------|---------|
 | `pmat refactor auto` | Automated refactoring | `pmat refactor auto --quality-profile extreme` |
 | `pmat refactor interactive` | Interactive refactoring | `pmat refactor interactive --target-complexity 8` |
-| `pmat refactor serve` | Batch processing server | `pmat refactor serve --port 8080` |
-| `pmat refactor status` | Refactoring status | `pmat refactor status` |
-| `pmat refactor resume` | Resume from checkpoint | `pmat refactor resume --checkpoint state.json` |
 | `pmat refactor docs` | Documentation cleanup | `pmat refactor docs --dry-run` |
-
-## Template Generation & Scaffolding
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat list` | List available templates | `pmat list --format json` |
-| `pmat search` | Search templates | `pmat search "web" --limit 10` |
-| `pmat generate` | Generate single template | `pmat generate rust cli -p name=app` |
-| `pmat validate` | Validate template params | `pmat validate rust web` |
-| `pmat scaffold project` | Scaffold complete project | `pmat scaffold project rust-api --name api` |
-| `pmat scaffold agent` | Scaffold MCP agent | `pmat scaffold agent deterministic --name agent` |
-| `pmat scaffold list-templates` | List agent templates | `pmat scaffold list-templates` |
-| `pmat scaffold validate-template` | Validate agent template | `pmat scaffold validate-template agent.yaml` |
-
-## System Diagnostics
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat diagnose` | Run system diagnostics | `pmat diagnose --verbose` |
-| `pmat diagnose --format json` | JSON diagnostic output | `pmat diagnose --format json > report.json` |
-| `pmat diagnose --only` | Test specific features | `pmat diagnose --only cache --only analysis` |
-| `pmat diagnose --skip` | Skip features | `pmat diagnose --skip telemetry` |
-| `pmat diagnose --timeout` | Set timeout | `pmat diagnose --timeout 30` |
-| `pmat diagnose --troubleshoot` | Troubleshooting mode | `pmat diagnose --troubleshoot` |
-| `pmat diagnose --repair-cache` | Repair cache | `pmat diagnose --repair-cache` |
-| `pmat diagnose --serve` | Start diagnostic server | `pmat diagnose --serve --port 8090` |
-
-## Performance Testing
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat test performance` | Run performance tests | `pmat test performance --verbose` |
-| `pmat test property` | Property-based testing | `pmat test property --cases 10000` |
-| `pmat test memory` | Memory usage testing | `pmat test memory --detect-leaks` |
-| `pmat test throughput` | Throughput testing | `pmat test throughput --rps 1000` |
-| `pmat test regression` | Regression detection | `pmat test regression --threshold 5` |
-| `pmat test integration` | Integration tests | `pmat test integration --full-stack` |
-| `pmat test all` | Run all test suites | `pmat test all --timeout 300` |
-| `pmat test --baseline` | Create baseline | `pmat test performance --baseline` |
-| `pmat secrets` | Secret detection | `pmat secrets scan --all-history` |
-| `pmat compliance` | Compliance check | `pmat compliance --standard=SOC2` |
-| `pmat audit` | Security audit | `pmat audit --comprehensive` |
-
-## Reporting
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat report` | Generate report | `pmat report --format=html` |
-| `pmat report executive` | Executive summary | `pmat report executive --period=monthly` |
-| `pmat export` | Export data | `pmat export --format=json` |
-| `pmat import` | Import data | `pmat import results.json` |
-| `pmat compare` | Compare analyses | `pmat compare baseline.json current.json` |
-| `pmat diff` | Show differences | `pmat diff --from=main --to=feature` |
-| `pmat merge` | Merge reports | `pmat merge *.json --output=combined.json` |
-
-## Performance
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat performance analyze` | Performance analysis | `pmat performance analyze` |
-| `pmat performance hotspots` | Find hotspots | `pmat performance hotspots --top=10` |
-| `pmat performance memory` | Memory analysis | `pmat performance memory --leak-detection` |
-| `pmat performance compare` | Compare performance | `pmat performance compare --baseline=main` |
-
-## Architecture
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat architecture analyze` | Architecture analysis | `pmat architecture analyze` |
-| `pmat architecture deps` | Dependency analysis | `pmat architecture deps --circular` |
-| `pmat architecture patterns` | Pattern detection | `pmat architecture patterns --detect=all` |
-| `pmat architecture validate-layers` | Layer validation | `pmat architecture validate-layers` |
-| `pmat architecture graph` | Generate graph | `pmat architecture graph --output=deps.svg` |
-
-## Quality Gates
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat quality-gate` | Check quality gates | `pmat quality-gate --min-grade=B+` |
-| `pmat repo-score` | Repository health score | `pmat repo-score . --format json` |
-| `pmat rust-project-score` | Rust-specific quality score | `pmat rust-project-score --full` |
-| `pmat popper-score` | Popper falsifiability score | `pmat popper-score --verbose` |
-| `pmat perfection-score` | Unified 200-point quality score | `pmat perfection-score --fast --breakdown` |
-| `pmat validate` | Validate project | `pmat validate --strict` |
-| `pmat check` | Run all checks | `pmat check --all` |
-
-## Specification Management
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat spec score` | Popperian spec validation | `pmat spec score docs/spec.md --verbose` |
-| `pmat spec comply` | Auto-fix spec issues | `pmat spec comply docs/spec.md --dry-run` |
-| `pmat spec create` | Create specification template | `pmat spec create "Feature Name" --issue "#123"` |
-| `pmat spec list` | List all specifications | `pmat spec list docs/specifications/ --failing-only` |
-
-## Team Collaboration
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat team setup` | Setup team | `pmat team setup` |
-| `pmat review prepare` | Prepare review | `pmat review prepare --pr-number=123` |
-| `pmat dashboard serve` | Start dashboard | `pmat dashboard serve --port=8080` |
-| `pmat retrospective` | Generate retrospective | `pmat retrospective generate` |
-
-## Integration
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat serve` | Start HTTP API server | `pmat serve --port=8080 --cors` |
-| `pmat webhook` | Manage webhooks | `pmat webhook create` |
-| `pmat notify` | Send notifications | `pmat notify slack --channel=#alerts` |
-| `pmat pipeline` | Pipeline integration | `pmat pipeline validate` |
-
-## Plugins
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat plugin list` | List plugins | `pmat plugin list` |
-| `pmat plugin install` | Install plugin | `pmat plugin install swift-analyzer` |
-| `pmat plugin update` | Update plugins | `pmat plugin update --all` |
-
-## AI Features
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat ai analyze` | AI analysis | `pmat ai analyze --explain-violations` |
-| `pmat ai suggest` | Get suggestions | `pmat ai suggest-improvements` |
-| `pmat ai refactor` | AI refactoring | `pmat ai refactor --preview` |
-| `pmat ai review` | AI code review | `pmat ai review-pr --number=123` |
-
-## AI Prompt Generation (Phase 4)
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat prompt show` | View workflow prompts | `pmat prompt show code-coverage` |
-| `pmat prompt show --list` | List all prompts | `pmat prompt show --list` |
-| `pmat prompt generate` | Generate defect-aware prompt | `pmat prompt generate --task "Add auth" --summary org.yaml` |
-| `pmat prompt ticket` | EXTREME TDD ticket workflow | `pmat prompt ticket ticket-123.md --summary org.yaml` |
-| `pmat prompt implement` | Spec-based implementation | `pmat prompt implement docs/spec.md` |
-| `pmat prompt scaffold-new-repo` | New repo setup | `pmat prompt scaffold-new-repo docs/spec.md --include-pmat` |
-
-## Organizational Intelligence (Phase 4)
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat org analyze` | Analyze GitHub organization | `pmat org analyze --org mycompany --output report.yaml` |
-| `pmat org analyze --summarize` | Analyze and summarize | `pmat org analyze --org mycompany --summarize --strip-pii` |
-
-## Utilities
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat doctor` | Diagnostics | `pmat doctor --fix` |
-| `pmat debug` | Debug mode | `pmat debug --trace` |
-| `pmat benchmark` | Benchmarking | `pmat benchmark --iterations=100` |
-| `pmat info` | System info | `pmat info --environment` |
-
-## Custom Rules
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat rules init` | Initialize rules | `pmat rules init` |
-| `pmat rules create` | Create rule | `pmat rules create --name=no-console-log` |
-| `pmat rules test` | Test rules | `pmat rules test --all` |
-| `pmat rules validate` | Validate rules | `pmat rules validate` |
-
-## Auto-clippy
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `pmat clippy enable` | Enable clippy | `pmat clippy enable` |
-| `pmat clippy run` | Run clippy | `pmat clippy run --format=json` |
-| `pmat clippy fix` | Auto-fix issues | `pmat clippy fix --safe` |
 
 ## Hooks
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `pmat hooks install` | Install hooks | `pmat hooks install --pre-commit` |
-| `pmat hooks run` | Run hooks | `pmat hooks run pre-commit` |
-| `pmat hooks configure` | Configure hooks | `pmat hooks configure` |
+| `pmat hooks install` | Install the pre-commit hook | `pmat hooks install` |
+| `pmat hooks status` | Hook status | `pmat hooks status` |
+| `pmat hooks run` | Run the hooks now | `pmat hooks run` |
+
+## Performance Testing
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `pmat test` | Performance tests | `pmat test performance --verbose` |
+| `pmat test` with a timeout | All suites | `pmat test all --timeout 300` |
+
+## Feature Builds Only
+
+These exist in `pmat --help` but are compiled only with a cargo feature. On a
+default `cargo install pmat` they exit 1 and name the feature to build with.
+
+| Command | Feature | Example |
+|---------|---------|---------|
+| `pmat agent` | `agent-daemon` (see Chapter 19) | `pmat agent status` |
+| `pmat org` | see `pmat org --help` | `pmat org analyze --summarize` |
+| `pmat demo` | see `pmat demo --help` | `pmat demo --help` |
 
 ## Global Options
 
+These apply to every command.
+
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--config <path>` | Use specific config | `--config custom.toml` |
-| `--profile <name>` | Use profile | `--profile production` |
-| `--format <type>` | Output format | `--format json` |
-| `--output <path>` | Output file | `--output report.html` |
-| `--quiet` | Suppress output | `--quiet` |
-| `--verbose` | Verbose output | `--verbose` |
-| `--debug` | Debug output | `--debug` |
-| `--dry-run` | Preview only | `--dry-run` |
-| `--parallel` | Parallel processing | `--parallel` |
-| `--help` | Show help | `--help` |
+| `--mode <cli\|mcp>` | Force CLI or MCP mode | `pmat --mode mcp` |
+| `-v`, `--verbose` | Info-level output | `pmat diagnose --verbose` |
+| `-q`, `--quiet` | Errors only | `pmat quality-gate --quiet` |
+| `--debug` | Debug-level output | `pmat diagnose --debug` |
+| `--trace` | Trace-level output | `pmat diagnose --trace` |
+| `--color <auto\|always\|never>` | Colour output | `pmat quality-gate --color never` |
+| `-h`, `--help` | Help | `pmat analyze --help` |
+| `-V`, `--version` | Version | `pmat --version` |
+
+Output format, output file and dry-run are per-command flags, not global
+ones: check `pmat <command> --help`.
 
 ## Common Workflows
 
 ### Quick Quality Check
 ```bash
-pmat analyze . --quick && pmat quality-gate --min-grade=B+
+pmat analyze complexity --path . && pmat quality-gate --fail-on-violation
 ```
 
-### Full Analysis with Report
+### Technical Debt Grade
 ```bash
-pmat analyze . --comprehensive && pmat report --format=html
+pmat tdg . --format json
 ```
 
-### Security Scan
+### Report to a File
 ```bash
-pmat security scan --severity=high && pmat notify slack
+pmat report --output-format json --output report.json
 ```
 
-### Incremental CI/CD Analysis
+### Pre-commit Verification
 ```bash
-pmat analyze --incremental --since=main | pmat quality-gate
-```
-
-### Team Dashboard
-```bash
-pmat dashboard generate --team=backend && pmat dashboard serve
+pmat verify --format json
 ```
 
 ## Environment Variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `PMAT_CONFIG_PATH` | Config file path | `/opt/pmat/config.toml` |
-| `PMAT_PROFILE` | Active profile | `production` |
-| `PMAT_MAX_THREADS` | Thread limit | `16` |
-| `PMAT_MEMORY_LIMIT` | Memory limit | `8G` |
-| `PMAT_CACHE_DIR` | Cache directory | `/tmp/pmat-cache` |
-| `PMAT_API_TOKEN` | API token | `your-token` |
-| `PMAT_DEBUG` | Debug mode | `1` |
-| `PMAT_LOG_LEVEL` | Log level | `debug` |
+| `RUST_LOG` | Log filter; `--trace-filter` overrides it | `paiml=debug` |
+| `PMAT_MCP_HTTP_TOKEN` | Bearer token for `pmat serve` (16 characters minimum); required for a non-loopback `--host` | `$(pmat mcp token)` |
+
+Earlier editions listed `PMAT_CONFIG_PATH`, `PMAT_PROFILE`,
+`PMAT_MAX_THREADS`, `PMAT_MEMORY_LIMIT`, `PMAT_CACHE_DIR`, `PMAT_API_TOKEN`,
+`PMAT_DEBUG` and `PMAT_LOG_LEVEL`. pmat reads none of them.
 
 ## Exit Codes
+
+pmat has no global exit-code table. What was measured with pmat 3.42.0:
 
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | General error |
-| 2 | Configuration error |
-| 3 | Analysis failure |
-| 4 | Quality gate failure |
-| 5 | Security violation |
-| 10 | Invalid arguments |
-| 11 | Missing dependencies |
-| 12 | Network error |
-| 20 | License error |
+| 1 | The command ran and failed, for example a feature-gated command on a default build |
+| 2 | Argument error: an unknown command or flag (from the argument parser) |
+| 4 | `pmat serve --host 0.0.0.0` (any non-loopback address) with `PMAT_MCP_HTTP_TOKEN` unset |
+
+Individual commands document their own failure codes in `--help`.
 
 ## Tips and Tricks
 
@@ -363,27 +237,22 @@ pmat dashboard generate --team=backend && pmat dashboard serve
 ```bash
 alias pa='pmat analyze'
 alias pq='pmat quality-gate'
-alias ps='pmat status'
+alias pt='pmat tdg .'
 ```
 
 ### Batch Analysis
 ```bash
-find . -type d -name "src" | xargs -I {} pmat analyze {}
+find . -type d -name "src" | xargs -I {} pmat analyze complexity --path {}
 ```
 
 ### JSON Processing
 ```bash
-pmat analyze . --format=json | jq '.violations[] | select(.severity=="error")'
-```
-
-### Continuous Monitoring
-```bash
-watch -n 60 'pmat status --detailed'
+pmat tdg . --format json | jq .
 ```
 
 ### Pipeline Integration
 ```bash
-pmat analyze . || exit $?
+pmat quality-gate --fail-on-violation || exit $?
 ```
 
 ## Running Examples
@@ -464,8 +333,7 @@ Run `ls examples/*.rs` to see all 80+ available examples.
 - `pmat help` - General help
 - `pmat help <command>` - Command-specific help
 - `pmat <command> --help` - Alternative help syntax
-- `pmat doctor` - Diagnose issues
-- `pmat info` - System information
+- `pmat diagnose` - Diagnose issues
 
 ## See Also
 
