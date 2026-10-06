@@ -20,9 +20,13 @@ if ! command -v pmat >/dev/null 2>&1; then
     exit 1
 fi
 
-# Every command as printed: from `pmat report` to the end of the command,
-# stopping at a pipe, a comment or a closing backtick.
-CMDS=$(grep -ohE 'pmat report[^`#|]*' "$CHAPTER" | sed -E 's/[[:space:]\\]+$//' | sort -u)
+# Every command as printed, from fenced code blocks only (not prose): a line
+# continued with `\` is joined to the next first, so a wrapped command is run
+# whole rather than cut at the break. The command runs from `pmat report` to a
+# pipe or a comment.
+code_blocks() { awk '/^[[:space:]]*```/ { inside = !inside; next } inside' "$1"; }
+join_continuations() { sed -e ':a' -e '/\\$/ { N; s/\\\n[[:space:]]*/ /; ba' -e '}'; }
+CMDS=$(code_blocks "$CHAPTER" | join_continuations | grep -oE 'pmat report[^#|]*' | sed -E 's/[[:space:]]+$//' | sort -u)
 COUNT=$(printf '%s\n' "$CMDS" | grep -c .)
 if [ "$COUNT" -lt 10 ]; then
     echo "❌ FAIL: found only $COUNT \`pmat report\` commands in $CHAPTER: the extractor is broken"
