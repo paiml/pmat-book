@@ -1,18 +1,31 @@
 # Chapter 18: API Server and Roadmap Management
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (16/16 examples)
+**Chapter Status**: ❌ Mostly broken (3 of 20 measured commands work)
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 16 | Ready for production use |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | 3 | `pmat serve`, `pmat serve --verbose`, `pmat serve --port 9090 --host 0.0.0.0` once `PMAT_MCP_HTTP_TOKEN` is set: they start an MCP server, not the REST API this chapter describes |
+| ⚠️ Not Implemented | 7 | `/health`, `/analyze`, `/context`, `/quality-gate`, `/batch-analyze`, `/report`, `ws://…/ws`: every one is HTTP 404 |
+| ❌ Broken | 10 | `pmat roadmap init --sprint`, `pmat roadmap complete --quality-check`, `pmat serve --metrics`, `pmat analyze .`, `pmat report --path`: exit 2 (unexpected argument); `pmat serve --port 9090 --host 0.0.0.0` as first written, with no token: exit 4 |
+| 📋 Planned | 0 | |
 
-*Last updated: 2025-09-12*  
-*PMAT version: pmat 2.213.1*
+*Not measured: `pmat roadmap todos`, `start` and `status`, which read `docs/execution/roadmap.md`; no step in this chapter creates it.*
+
+*Last updated: 2026-10-06*
+*PMAT version: pmat 3.42.0*
 <!-- DOC_STATUS_END -->
+
+> **Not implemented: the REST API and WebSocket.** `pmat serve` does not serve
+> REST endpoints. It serves MCP JSON-RPC over streamable HTTP at the root path
+> `/`, and needs a bearer token (`PMAT_MCP_HTTP_TOKEN`, 16 characters minimum)
+> and an `Accept: application/json, text/event-stream` header on every call.
+> Every endpoint this chapter documents, `/health`, `/analyze`, `/context`,
+> `/quality-gate`, `/batch-analyze`, `/report` and `/ws`, returns 404, so the
+> curl calls, the CI jobs, the benchmark and the WebSocket client below do
+> nothing useful. `pmat mcp connect` prints how to connect a client.
+> The roadmap half has its own problems, listed at the start of
+> [Roadmap Sprint Management](#roadmap-sprint-management).
 
 ## The Problem
 
@@ -22,12 +35,11 @@ Modern development teams need programmatic access to PMAT's analysis capabilitie
 
 ### API Server Architecture
 
-PMAT's API server provides:
-- RESTful HTTP endpoints for all analysis features
-- WebSocket support for real-time updates
-- JSON request/response format
-- Concurrent request handling
-- Graceful shutdown capabilities
+What `pmat serve` provides in pmat 3.42.0:
+- MCP JSON-RPC over streamable HTTP, at the root path `/`
+- The same tools as the stdio MCP server (`pmat --mode mcp`)
+- Bearer-token authentication; on a loopback bind with no token set, pmat generates one and prints it
+- No REST endpoints, no `/health` and no WebSocket
 
 ### Roadmap Management
 
@@ -46,22 +58,41 @@ The roadmap system integrates:
 # Start server on default port (8080)
 pmat serve
 
-# Custom port and host
+# Custom port. A non-loopback --host such as 0.0.0.0 also needs
+# PMAT_MCP_HTTP_TOKEN set, or pmat exits 4 instead of starting.
+export PMAT_MCP_HTTP_TOKEN=$(pmat mcp token)
 pmat serve --port 9090 --host 0.0.0.0
 
 # With verbose logging
 pmat serve --verbose
 ```
 
-**Output:**
+**Output** (`pmat serve`, pmat 3.42.0, no token set):
+```text
+pmat MCP (streamable HTTP) listening on http://127.0.0.1:8080/
+  endpoint: the ROOT path — `/mcp` and `/health` are 404, there is no health endpoint
+  auth: Bearer, from PMAT_MCP_HTTP_TOKEN; unauthenticated requests get 401
+  tools: 20 (identical to the stdio surface)
+
+PMAT_MCP_HTTP_TOKEN was unset, so pmat generated a token for this process:
+
+  <generated token>
 ```
-Starting PMAT API server...
-Server listening on http://127.0.0.1:8080
-WebSocket endpoint: ws://127.0.0.1:8080/ws
-Press Ctrl+C to stop
+
+A working call to the server lists its tools:
+
+```bash
+curl -sS http://127.0.0.1:8080/ \
+  -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
 ## API Endpoints
+
+> **Not implemented.** None of the endpoints in this section exists. Each one
+> returns HTTP 404 from `pmat serve` in pmat 3.42.0.
 
 ### Health Check
 
@@ -149,6 +180,8 @@ curl -X POST http://localhost:8080/quality-gate \
 
 ## WebSocket Real-time Updates
 
+> **Not implemented.** pmat has no WebSocket endpoint. `/ws` returns 404.
+
 ### JavaScript Client Example
 
 ```javascript
@@ -178,6 +211,14 @@ ws.send(JSON.stringify({
 
 ## Roadmap Sprint Management
 
+> **Broken in pmat 3.42.0.** These commands exit 2 with an unexpected-argument
+> error: `pmat roadmap init --sprint` (and `--from-analysis`),
+> `pmat roadmap complete --quality-check`, `pmat roadmap quality-check --project`
+> and `pmat roadmap todos --format`. `pmat roadmap validate` with no arguments
+> exits 2 because `--sprint` is required. `pmat roadmap todos`, `start` and
+> `status` read `docs/execution/roadmap.md`, and exit 1 when it is missing.
+> Check `pmat roadmap <command> --help` before using an example here.
+
 ### Initialize a Sprint
 
 ```bash
@@ -187,7 +228,7 @@ pmat roadmap init --sprint "v1.0.0" \
 ```
 
 **Output:**
-```
+```text
 Sprint v1.0.0 initialized
 Goal: Complete core features
 Duration: 2 weeks (default)
@@ -202,7 +243,7 @@ pmat roadmap todos
 ```
 
 **Output:**
-```
+```text
 Generated 15 PDMT todos:
 - [ ] PMAT-001: Implement user authentication (P0)
 - [ ] PMAT-002: Add database migrations (P0)
@@ -245,7 +286,7 @@ pmat roadmap status
 ```
 
 **Output:**
-```
+```text
 Sprint: v1.0.0
 Progress: 60% (9/15 tasks)
 Velocity: 4.5 tasks/day
@@ -268,7 +309,7 @@ pmat roadmap validate
 ```
 
 **Output:**
-```
+```text
 Sprint Validation Report
 ========================
 ✅ All P0 tasks completed
@@ -281,6 +322,9 @@ Sprint v1.0.0 is ready for release!
 ```
 
 ## Integration with CI/CD
+
+> **Not implemented.** Both jobs POST to `/quality-gate`, which returns 404.
+> Use `pmat quality-gate` from the CLI in CI instead.
 
 ### GitHub Actions Example
 
@@ -358,6 +402,8 @@ pipeline {
 
 ## Advanced API Features
 
+> **Not implemented.** `/batch-analyze`, `/analyze` and `/report` return 404.
+
 ### Batch Analysis
 
 ```bash
@@ -412,6 +458,10 @@ curl -X POST http://localhost:8080/report \
 ```
 
 ## Using PMAT to Document Itself
+
+> **Broken.** `pmat analyze .` exits 2 (`unrecognized subcommand '.'`), and so do
+> `pmat roadmap init --from-analysis`, `pmat roadmap todos --format` and
+> `pmat report --path` (unexpected argument).
 
 ### Generate Book Roadmap
 
@@ -482,13 +532,15 @@ pmat report --path . --format json | jq '.quality_metrics'
 
 ### API Server Benchmarks
 
+> **Not implemented.** `/health` returns 404, so this benchmarks 404 responses.
+
 ```bash
 # Run performance test
 ab -n 1000 -c 10 http://localhost:8080/health
 ```
 
 **Results:**
-```
+```text
 Requests per second:    2500.34 [#/sec]
 Time per request:       4.00 [ms]
 Transfer rate:          450.67 [Kbytes/sec]
@@ -502,13 +554,15 @@ Total:          2    4   1.2      4      10
 
 ### Resource Usage
 
+> **Broken.** `pmat serve --metrics` exits 2: `error: unexpected argument '--metrics' found`.
+
 ```bash
 # Monitor server resources
 pmat serve --metrics
 ```
 
 **Output:**
-```
+```text
 PMAT API Server Metrics
 =======================
 CPU Usage: 2.5%
@@ -532,7 +586,7 @@ lsof -i :8080
 pmat serve --port 9090
 ```
 
-2. **WebSocket Connection Failed**
+2. **WebSocket Connection Failed**: pmat has no WebSocket endpoint, so this always fails.
 ```bash
 # Check WebSocket support
 curl -I -H "Upgrade: websocket" \
@@ -550,4 +604,4 @@ curl -X POST http://localhost:8080/analyze \
 
 ## Summary
 
-The API server and roadmap management features transform PMAT into a complete development operations platform. The HTTP API enables seamless integration with existing tools, while WebSocket support provides real-time feedback. The roadmap system brings agile sprint management directly into the quality analysis workflow, ensuring that every task meets quality standards before completion. This integration of quality gates with sprint management creates a powerful feedback loop that improves both code quality and team velocity.
+`pmat serve` exposes PMAT's tools to MCP clients over streamable HTTP; the REST API and WebSocket described in this chapter were never built. The roadmap system brings agile sprint management directly into the quality analysis workflow, ensuring that every task meets quality standards before completion. This integration of quality gates with sprint management creates a powerful feedback loop that improves both code quality and team velocity.
