@@ -701,12 +701,12 @@ mail -s "Weekly Quality Report - $(date +%Y-%m-%d)" \
 pmat report -p . --format=json --output=report.json
 
 # Extract key metrics
-GRADE=$(jq -r '.executive_summary.quality_metrics.overall_grade' report.json)
-ISSUES=$(jq -r '.executive_summary.risk_assessment.critical_issues' report.json)
+TOTAL=$(jq -r '.summary.total_defects' report.json)
+ISSUES=$(jq -r '.summary.by_severity.critical // 0' report.json)
 
 # Post to Slack
 curl -X POST -H 'Content-type: application/json' \
-  --data "{\"text\":\"📊 Quality Report: Grade $GRADE, $ISSUES critical issues\"}" \
+  --data "{\"text\":\"📊 Quality Report: $TOTAL findings, $ISSUES critical\"}" \
   $SLACK_WEBHOOK_URL
 ```
 
