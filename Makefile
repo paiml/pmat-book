@@ -80,6 +80,9 @@ test-ch02:
 	@chmod +x tests/ch02/test_context.sh
 	@echo "Running Chapter 2 context tests..."
 	@tests/ch02/test_context.sh > test-results/ch02/test_context.log 2>&1 || { cat test-results/ch02/test_context.log; exit 1; }
+	@echo "Running every pmat context command the chapter prints..."
+	@chmod +x tests/ch02/test_02_context_commands_execute.sh
+	@tests/ch02/test_02_context_commands_execute.sh > test-results/ch02/test_02_context_commands_execute.log 2>&1 || { cat test-results/ch02/test_02_context_commands_execute.log; exit 1; }
 	@echo "✅ Chapter 2 tests passed"
 
 test-ch03:

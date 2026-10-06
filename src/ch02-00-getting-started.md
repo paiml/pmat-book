@@ -31,98 +31,67 @@ The simplest way to generate context is to run PMAT in your project directory:
 # Generate context for current directory
 pmat context
 
-# Generate context for specific directory
-pmat context /path/to/project
+# Generate context for a specific directory (-p / --project-path; it is not a positional)
+pmat context -p ../my-other-project
 
-# Save context to file
-pmat context > project_context.txt
+# Save context to a file
+pmat context -o project_context.md
+pmat context > project_context.md
 ```
 
 ### Example Output
 
-When you run `pmat context` on a Python project, you'll see:
+Run on a small project with one Python and one JavaScript file, `pmat context`
+prints (pmat 3.42.0, trimmed):
 
-```
-📁 Repository Context
-=====================
+```markdown
+# Project Context
 
-Project: my-application
-Files: 156
-Total Lines: 8,432
-Languages: Python (85%), JavaScript (10%), YAML (5%)
+**Language**: python
+**Project Path**: .
 
-## Structure
-```
-.
-├── README.md (127 lines)
-├── src/
-│   ├── main.py (245 lines)
-│   ├── models/
-│   │   ├── user.py (189 lines)
-│   │   ├── product.py (234 lines)
-│   │   └── order.py (301 lines)
-│   ├── services/
-│   │   ├── auth.py (156 lines)
-│   │   ├── payment.py (423 lines)
-│   │   └── notification.py (178 lines)
-│   └── utils/
-│       ├── config.py (89 lines)
-│       └── helpers.py (112 lines)
-├── tests/ (2,145 lines total)
-└── docs/ (1,234 lines total)
-```
+## Project Structure
 
-## Key Files
+- **Total Files**: 2
+- **Total Functions**: 3
+- **Median Cyclomatic**: 2.00
+- **Median Cognitive**: 2.00
 
-### src/main.py
-Main application entry point with FastAPI setup, route definitions, and middleware configuration.
+## Quality Scorecard
 
-### src/services/payment.py
-Payment processing service handling Stripe integration, refund logic, and transaction logging.
+- **Overall Health**: 100.0%
+- **Maintainability Index**: not measured
+- **Complexity Score**: 100.0
+- **Test Coverage**: N/A
 
-### src/models/user.py
-User model with SQLAlchemy ORM, authentication methods, and role-based permissions.
+## Files
+
+### ./src/app.py
+
+**File Complexity**: 2 | **Functions**: 1
+
+- **Function**: `add` [complexity: 2] [cognitive: 2] [big-o: O(1)] [satd: 0] [churn: low(1)]
 ```
 
-## Filtering Context
+## Choosing What Goes In
 
-Not all files are relevant for every analysis. PMAT provides powerful filtering options:
-
-### Include Specific Files
+`pmat context` has no `--include` or `--exclude` glob options, and no
+`--max-file-size`. What it analyzes is chosen by three things:
 
 ```bash
-# Include only Python files
-pmat context --include="*.py"
+# Scope to one directory
+pmat context -p src/
 
-# Include multiple patterns
-pmat context --include="*.py,*.js,*.ts"
+# Only one language, or a few
+pmat context --language python
+pmat context --languages python,javascript
 
-# Include by directory
-pmat context --include="src/**/*.py"
+# Files over 500KB are skipped by default; this brings them back
+pmat context --include-large-files
 ```
 
-### Exclude Patterns
-
-```bash
-# Exclude test files
-pmat context --exclude="tests/*,*_test.py"
-
-# Exclude dependencies and build artifacts
-pmat context --exclude="node_modules/,venv/,build/,dist/"
-
-# Exclude by size (files over 1MB)
-pmat context --exclude-large
-```
-
-### Combined Filtering
-
-```bash
-# Python source files only, no tests or vendors
-pmat context \
-    --include="*.py" \
-    --exclude="tests/,vendor/,*_test.py" \
-    --max-file-size=500kb
-```
+In a measured run on pmat 3.42.0, the files under `tests/` and `build/` did
+not appear in the output, with or without a `.gitignore` naming them.
 
 ## Output Formats
 
@@ -197,116 +166,45 @@ pmat context --format markdown > PROJECT_CONTEXT.md
 
 ### LLM-Optimized Format
 
-Specifically designed for AI assistant consumption:
-
 ```bash
 pmat context --format llm-optimized
 ```
 
-This format includes:
-- Structured tags for easy parsing
-- Token-efficient representation
-- Relevance scoring for files
-- Semantic grouping of related code
+As of pmat 3.42.0 this prints the same bytes as `--format markdown`.
 
 ## Context with Analysis
 
-Combine context generation with code analysis for richer insights:
+Quality metrics are part of the context by default: the output above carries
+per-function cyclomatic and cognitive complexity, Big-O, SATD and churn, plus a
+quality scorecard. There is no `--with-analysis` flag. To trade those metrics
+for speed:
 
 ```bash
-# Include quality metrics
-pmat context --with-analysis
-```
-
-Enhanced output includes:
-```
-## Code Quality Analysis
-- **Complexity**: Average 6.2, Max 15 (payment.py:process_transaction)
-- **Duplication**: 3.2% (18 similar blocks detected)
-- **Test Coverage**: 82.5% (2,145 test lines)
-- **Technical Debt**: Grade B+ (Score: 1.8/5.0)
-
-## Security Insights
-- No hard-coded secrets detected
-- 2 dependencies with known vulnerabilities (minor)
-- Authentication properly implemented
-
-## Architecture Patterns
-- MVC-like structure detected
-- Service layer pattern in use
-- Repository pattern for data access
-- Dependency injection configured
-
-## Recommendations
-1. Reduce complexity in payment.py:process_transaction (cyclomatic: 15)
-2. Update vulnerable dependencies: requests==2.25.1, pyyaml==5.3.1
-3. Add missing tests for error handling paths
-4. Consider extracting business logic from models
+# Skip TDG and complexity analysis for a faster run
+pmat context --skip-expensive-metrics
 ```
 
 ## Size Management
 
-For large repositories, manage context size effectively:
-
-### Token Limits
-
-For AI/LLM consumption, limit by tokens:
+`pmat context` has no token, file-count or line limits (`--max-tokens`,
+`--max-files`, `--sort-by`, `--smart-truncate`, `--max-lines-per-file` do not
+exist). To make the context smaller, narrow what it reads:
 
 ```bash
-# Limit to 4000 tokens (GPT-3.5 context window)
-pmat context --max-tokens 4000
+# One directory instead of the whole repository
+pmat context -p src/
 
-# Limit to 8000 tokens (GPT-4 context window)
-pmat context --max-tokens 8000
+# One language
+pmat context --language rust
 
-# Limit to 32000 tokens (Claude context window)
-pmat context --max-tokens 32000
+# Leave out the expensive metrics
+pmat context --skip-expensive-metrics
 ```
 
-### File Limits
+## Caching
 
-Control the number of files included:
-
-```bash
-# Include only top 10 most relevant files
-pmat context --max-files 10
-
-# Prioritize by complexity
-pmat context --max-files 20 --sort-by complexity
-
-# Prioritize by recent changes
-pmat context --max-files 20 --sort-by recency
-```
-
-### Smart Truncation
-
-PMAT intelligently truncates large files:
-
-```bash
-# Smart truncation (keeps important parts)
-pmat context --smart-truncate
-
-# Truncate at specific line count
-pmat context --max-lines-per-file 500
-```
-
-## Caching for Performance
-
-For large repositories, use caching to speed up repeated context generation:
-
-```bash
-# Enable caching
-pmat context --cache
-
-# Force cache refresh
-pmat context --cache --refresh
-
-# Clear cache
-pmat context --clear-cache
-
-# Set cache TTL (time to live)
-pmat context --cache --ttl 3600  # 1 hour
-```
+`pmat context` has no cache options (`--cache`, `--refresh`, `--clear-cache`,
+`--ttl` do not exist).
 
 ## Integration Examples
 
@@ -314,20 +212,20 @@ pmat context --cache --ttl 3600  # 1 hour
 
 ```bash
 # Generate and copy to clipboard (macOS)
-pmat context --ai-format | pbcopy
+pmat context | pbcopy
 
 # Generate and copy to clipboard (Linux)
-pmat context --ai-format | xclip -selection clipboard
+pmat context | xclip -selection clipboard
 
-# Generate with specific instructions
-pmat context --ai-format --prepend "Analyze this codebase for security vulnerabilities:"
+# Put your own instructions first
+{ echo "Analyze this codebase for security vulnerabilities:"; pmat context; } > prompt.md
 ```
 
 ### With VS Code
 
 ```bash
 # Generate context for current workspace
-pmat context --format json > .vscode/pmat-context.json
+pmat context --format json -o .vscode/pmat-context.json
 ```
 
 ### In CI/CD Pipelines
@@ -336,11 +234,11 @@ pmat context --format json > .vscode/pmat-context.json
 # GitHub Actions example
 - name: Generate PMAT Context
   run: |
-    pmat context --format json > context.json
-    pmat context --format markdown > context.md
-    
+    pmat context --format json -o context.json
+    pmat context --format markdown -o context.md
+
 - name: Upload Context Artifacts
-  uses: actions/upload-artifact@v3
+  uses: actions/upload-artifact@v4
   with:
     name: pmat-context
     path: |
@@ -350,103 +248,72 @@ pmat context --format json > .vscode/pmat-context.json
 
 ## Advanced Options
 
-### Custom Templates
+### Templates
 
-Use custom templates for context output:
-
-```bash
-# Use custom template
-pmat context --template templates/context.hbs
-
-# Built-in templates
-pmat context --template minimal
-pmat context --template detailed
-pmat context --template security-focused
-```
+There is no template option (`--template` does not exist). Pick an output with
+`--format` (markdown, json, sarif, llm-optimized), or transform the JSON
+yourself.
 
 ### Multiple Repositories
 
-Analyze multiple repositories in one context:
+`pmat context` reads one project per run; there is no `--repos-file`,
+`--monorepo` or `--packages`. Run it once per path:
 
 ```bash
-# Multiple paths
-pmat context repo1/ repo2/ repo3/
-
-# From file list
-pmat context --repos-file projects.txt
-
-# Monorepo with specific packages
-pmat context --monorepo --packages="api,web,shared"
+pmat context -p repo1 -o repo1-context.md
+pmat context -p repo2 -o repo2-context.md
 ```
 
 ### Incremental Context
 
-For continuous analysis:
-
-```bash
-# Generate incremental context (changes since last run)
-pmat context --incremental
-
-# Changes since specific commit
-pmat context --since HEAD~10
-
-# Changes in last 24 hours
-pmat context --since "24 hours ago"
-```
+There is no incremental mode (`--incremental` and `--since` do not exist);
+every run analyzes the project as it is now.
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### Large Repository Timeout
+#### Large Repository Is Slow
+
+There are no `--timeout`, `--parallel`, `--stream` or `--max-memory` options.
+
 ```bash
-# Increase timeout
-pmat context --timeout 300
+# Skip the expensive metrics
+pmat context --skip-expensive-metrics
 
-# Use parallel processing
-pmat context --parallel
+# Analyze one directory at a time
+pmat context -p src/
 
-# Exclude large directories
-pmat context --exclude="data/,logs/,artifacts/"
-```
-
-#### Memory Issues
-```bash
-# Use streaming mode for large repos
-pmat context --stream
-
-# Limit memory usage
-pmat context --max-memory 2G
+# See where the time goes
+pmat context --verbose
 ```
 
 #### Permission Errors
-```bash
-# Skip files with permission errors
-pmat context --skip-errors
 
-# Run with specific permissions
-sudo pmat context --user $(whoami)
+There is no `--skip-errors` or `--user` option. Run `pmat context` as the user
+who can read the project; to see which files fail, use `--debug`:
+
+```bash
+pmat context --debug
 ```
 
 ## Best Practices
 
-1. **Start Small**: Begin with filtered context before analyzing entire repositories
-2. **Use Caching**: Enable caching for large repositories to improve performance
-3. **Filter Noise**: Exclude test files, dependencies, and generated code for cleaner context
-4. **Choose Right Format**: Use JSON for tools, Markdown for humans, AI-format for LLMs
-5. **Size Appropriately**: Match context size to your consumption method's limits
-6. **Regular Updates**: Refresh context regularly for evolving codebases
-7. **Security First**: Never include sensitive files (.env, secrets, keys) in context
+1. **Start Small**: Scope with `-p` to the directory you care about before analyzing an entire repository
+2. **Filter by Language**: `--language` / `--languages` keep the context to the code you are asking about
+3. **Choose Right Format**: Use JSON for tools, SARIF for code-scanning, Markdown for humans and LLMs
+4. **Go Faster When You Need To**: `--skip-expensive-metrics` drops TDG and complexity analysis
+5. **Regular Updates**: Regenerate context as the codebase changes
+6. **Security First**: Never include sensitive files (.env, secrets, keys) in context
 
 ## Summary
 
 The `pmat context` command is your starting point for AI-powered code analysis. It provides:
 
-- **Flexible Generation**: Multiple formats and filtering options
-- **Smart Analysis**: Optional quality metrics and insights
-- **Performance**: Caching and incremental updates
+- **Multiple Formats**: Markdown, JSON, SARIF
+- **Built-in Analysis**: Complexity, Big-O, SATD and churn per function
+- **Scoping**: By directory (`-p`) and by language (`--language`, `--languages`)
 - **Integration Ready**: Works with any AI tool or LLM
-- **Size Management**: Token and file limits for optimal consumption
 
 Master this command, and you'll unlock the full potential of AI-assisted development with PMAT.
 
