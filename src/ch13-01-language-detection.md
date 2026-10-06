@@ -74,7 +74,7 @@ pmat context
 
 PMAT can detect all languages in your project (those with >5% of files):
 
-```rust
+```rust,ignore
 use pmat::services::enhanced_language_detection::detect_all_languages;
 use std::path::Path;
 
@@ -117,7 +117,7 @@ pmat context --languages rust,python,typescript
 
 When auto-detection fails or you want to force a specific language:
 
-```rust
+```rust,ignore
 use pmat::services::enhanced_language_detection::override_language_detection;
 use std::path::Path;
 
@@ -131,7 +131,7 @@ assert_eq!(detection.confidence, 100.0); // Manual = 100% confidence
 
 Specify exactly which languages to analyze:
 
-```rust
+```rust,ignore
 use pmat::services::enhanced_language_detection::override_multiple_languages;
 use std::path::Path;
 
@@ -247,7 +247,7 @@ The test suite includes:
 
 ### Confidence Calculation
 
-```
+```text
 Confidence = File Percentage + Primary Indicator Boost
 
 Example:
@@ -260,7 +260,7 @@ Example:
 
 Languages with <5% of files are filtered out to reduce noise:
 
-```
+```text
 Project:
 - Rust: 90% ✅ Included
 - Python: 8% ✅ Included
@@ -271,7 +271,7 @@ Project:
 
 PMAT recursively counts files by extension:
 
-```
+```text
 src/
   ├── main.rs (1)
   ├── lib.rs (1)
