@@ -27,16 +27,16 @@ Generate reports in multiple professional formats:
 
 ```bash
 # JSON format (default) - machine-readable
-pmat report .
+pmat report -p .
 
 # Markdown format - human-readable documentation
-pmat report . --md
+pmat report -p . --md
 
 # CSV format - spreadsheet integration  
-pmat report . --csv
+pmat report -p . --csv
 
 # Plain text format - simple output
-pmat report . --txt
+pmat report -p . --txt
 ```
 
 ### Basic Report Structure
@@ -56,7 +56,7 @@ Every PMAT report includes:
 ### Complete JSON Report Example
 
 ```bash
-pmat report . --format=json
+pmat report -p . --format=json
 ```
 
 **Generated Report Structure:**
@@ -275,7 +275,7 @@ pmat report . --format=json
 Generate polished documentation with:
 
 ```bash
-pmat report . --md
+pmat report -p . --md
 ```
 
 **Generated Markdown Report:**
@@ -429,7 +429,7 @@ The project demonstrates **good overall quality** (B+) with specific areas requi
 Generate CSV reports for spreadsheet analysis:
 
 ```bash
-pmat report . --csv
+pmat report -p . --csv
 ```
 
 **CSV Report Structure:**
@@ -488,13 +488,13 @@ Generate targeted reports focusing on specific analysis areas:
 
 ```bash
 # Complexity-focused report
-pmat report . --analyses=complexity --format=json
+pmat report -p . --analyses=complexity --format=json
 
 # Technical debt report only
-pmat report . --analyses=technical_debt --md
+pmat report -p . --analyses=technical-debt --md
 
 # Multi-analysis report
-pmat report . --analyses=complexity,dead_code,duplication --csv
+pmat report -p . --analyses=complexity,dead-code,duplication --csv
 ```
 
 ### Confidence Filtering
@@ -503,13 +503,13 @@ Filter findings by confidence level:
 
 ```bash
 # High-confidence findings only (80%+)
-pmat report . --confidence-threshold=80
+pmat report -p . --confidence-threshold=80
 
 # Medium-confidence and above (60%+)
-pmat report . --confidence-threshold=60
+pmat report -p . --confidence-threshold=60
 
 # All findings (default: 50%+)
-pmat report . --confidence-threshold=50
+pmat report -p . --confidence-threshold=50
 ```
 
 **High-Confidence Report Example:**
@@ -542,62 +542,24 @@ pmat report . --confidence-threshold=50
 
 ### Visualization Support
 
-Include visualization data in reports:
-
-```bash
-pmat report . --include-visualizations --format=json
-```
-
-**Visualization Data:**
-```json
-{
-  "visualizations": {
-    "complexity_distribution": {
-      "type": "histogram",
-      "data": {
-        "bins": ["1-5", "6-10", "11-15", "16-20", "21+"],
-        "counts": [89, 45, 15, 5, 2]
-      },
-      "config": {
-        "title": "Function Complexity Distribution",
-        "x_axis": "Complexity Range",
-        "y_axis": "Function Count"
-      }
-    },
-    "technical_debt_timeline": {
-      "type": "line_chart",
-      "data": {
-        "dates": ["2024-09", "2024-10", "2024-11", "2024-12", "2025-01"],
-        "todo_count": [18, 20, 22, 25, 23],
-        "fixme_count": [12, 14, 15, 16, 15],
-        "hack_count": [8, 7, 6, 7, 6]
-      }
-    },
-    "quality_radar": {
-      "type": "radar_chart",
-      "data": {
-        "metrics": ["Maintainability", "Complexity", "Coverage", "Duplication", "Debt"],
-        "values": [78, 82, 85, 89, 68],
-        "max_value": 100
-      }
-    }
-  }
-}
-```
+`pmat report` does not produce visualization data. `--include-visualizations`
+is refused with exit 1 ("not implemented for `pmat report`") rather than
+silently ignored. For charts, use `pmat report -p . --md`, whose Markdown
+includes a severity distribution and a top-10 hotspot table.
 
 ### Executive Summary Control
 
-Customize executive summary inclusion:
+The executive summary is always part of the report: in Markdown it is the
+`## Executive Summary` section, in JSON the `summary` object. The
+`--include-executive-summary` and `--include-recommendations` flags are
+switches that take no value (`=false` is rejected with exit 2), and as of
+pmat 3.42.0 neither changes the report
+([paiml-mcp-agent-toolkit#1473](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1473)).
+To get a shorter, technical report,
+narrow the analyses instead:
 
 ```bash
-# Full report with executive summary (default)
-pmat report . --include-executive-summary
-
-# Technical report without executive summary
-pmat report . --include-executive-summary=false
-
-# Report with recommendations disabled
-pmat report . --include-recommendations=false
+pmat report -p . --analyses=complexity,dead-code --md
 ```
 
 ## Performance and Optimization
@@ -607,7 +569,7 @@ pmat report . --include-recommendations=false
 Track report generation performance:
 
 ```bash
-pmat report . --perf --format=json
+pmat report -p . --perf --format=json
 ```
 
 **Performance Output:**
@@ -642,17 +604,11 @@ Resource Usage:
 Optimize reports for large codebases:
 
 ```bash
-# Streaming analysis for memory efficiency
-pmat report . --stream --format=json
-
-# Parallel processing
-pmat report . --parallel-jobs=8
-
-# Exclude large files
-pmat report . --max-file-size=1MB
+# Run only the analyses you need
+pmat report -p . --analyses=complexity --format=json
 
 # Focus on specific directories
-pmat report src/ --format=json
+pmat report -p src/ --format=json
 ```
 
 ## Integration and Automation
@@ -677,9 +633,9 @@ jobs:
         
       - name: Generate Quality Reports
         run: |
-          pmat report . --format=json --output=quality-report.json
-          pmat report . --md --output=QUALITY_REPORT.md
-          pmat report . --csv --output=quality-data.csv
+          pmat report -p . --format=json --output=quality-report.json
+          pmat report -p . --md --output=QUALITY_REPORT.md
+          pmat report -p . --csv --output=quality-data.csv
           
       - name: Upload Reports
         uses: actions/upload-artifact@v3
@@ -704,8 +660,8 @@ jobs:
 quality_report:
   stage: analysis
   script:
-    - pmat report . --format=json --output=quality-report.json
-    - pmat report . --md --output=quality-report.md
+    - pmat report -p . --format=json --output=quality-report.json
+    - pmat report -p . --md --output=quality-report.md
   artifacts:
     reports:
       quality: quality-report.json
@@ -727,7 +683,7 @@ quality_report:
 # generate-and-email-report.sh
 
 # Generate report
-pmat report . --md --output=weekly-quality-report.md
+pmat report -p . --md --output=weekly-quality-report.md
 
 # Email to stakeholders
 mail -s "Weekly Quality Report - $(date +%Y-%m-%d)" \
@@ -742,7 +698,7 @@ mail -s "Weekly Quality Report - $(date +%Y-%m-%d)" \
 # slack-quality-report.sh
 
 # Generate JSON report
-pmat report . --format=json --output=report.json
+pmat report -p . --format=json --output=report.json
 
 # Extract key metrics
 GRADE=$(jq -r '.executive_summary.quality_metrics.overall_grade' report.json)
@@ -798,17 +754,13 @@ compress_large_reports = true
 
 ### Report Templates
 
-Use custom report templates:
+`pmat report` has no template system: `--template` and `--list-templates` are
+rejected with exit 2. Choose the shape of a report with `--output-format`
+(alias `--format`; `json`, `markdown`, `csv` or `text`) and the content with
+`--analyses`:
 
 ```bash
-# Use built-in template
-pmat report . --template=executive
-
-# Use custom template file
-pmat report . --template=templates/quarterly-report.json
-
-# Available built-in templates
-pmat report . --list-templates
+pmat report -p . --format markdown --analyses=complexity,technical-debt --output=quarterly-report.md
 ```
 
 ## Troubleshooting
@@ -818,38 +770,29 @@ pmat report . --list-templates
 #### Large Report Files
 ```bash
 # Compress JSON output
-pmat report . --format=json | gzip > report.json.gz
-
-# Use streaming for large projects
-pmat report . --stream --format=json
+pmat report -p . --format=json | gzip > report.json.gz
 
 # Filter by confidence to reduce size
-pmat report . --confidence-threshold=80
+pmat report -p . --confidence-threshold=80
 ```
 
 #### Performance Issues
 ```bash
-# Use parallel processing
-pmat report . --parallel-jobs=$(nproc)
-
 # Focus on specific analysis types
-pmat report . --analyses=complexity,technical_debt
+pmat report -p . --analyses=complexity,technical-debt
 
-# Exclude vendor directories
-pmat report . --exclude="vendor/,node_modules/,target/"
+# Analyze only your own sources, not vendored or generated trees
+pmat report -p src/
 ```
 
 #### Memory Usage
 ```bash
 # Monitor memory usage
-pmat report . --perf --debug
-
-# Use streaming mode
-pmat report . --stream
+pmat report -p . --perf --debug
 
 # Process in batches
-pmat report src/ --format=json
-pmat report tests/ --format=json
+pmat report -p src/ --format=json
+pmat report -p tests/ --format=json
 ```
 
 ## Best Practices

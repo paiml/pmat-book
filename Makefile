@@ -136,6 +136,8 @@ test-ch09:
 	@chmod +x tests/ch09/test_report.sh
 	@echo "Running Chapter 9 report tests..."
 	@tests/ch09/test_report.sh > test-results/ch09/test_report.log 2>&1 || { cat test-results/ch09/test_report.log; exit 1; }
+	@echo "Running every Chapter 9 report command..."
+	@tests/ch09/test_09_report_commands_execute.sh > test-results/ch09/test_09_report_commands_execute.log 2>&1 || { cat test-results/ch09/test_09_report_commands_execute.log; exit 1; }
 	@echo "✅ Chapter 9 tests passed"
 
 test-ch10:
