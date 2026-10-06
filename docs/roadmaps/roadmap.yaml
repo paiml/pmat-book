@@ -14,13 +14,14 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'ch03-00 named 19 tools in 6 categories; on pmat 3.42.0 only quality_gate is on tools/list, and the other 18 (and all three callTool examples) return -32602 "Tool not found".'
-  - 'The "MCP Tools Overview" lists exactly the 20 tools `pmat --mode mcp` returns from tools/list on pmat 3.42.0, in the five groups ch03-02 uses (Code Search 4, Analysis 9, Quality Gating 3, Project Context 3, Planning 1); each one-line description summarises that tool''s own description.'
+  - 'The "MCP Tools Overview" lists exactly the 20 tools `pmat --mode mcp` returns from tools/list on pmat 3.42.0, in the five groups ch03-02 uses (Code Search, Analysis, Quality Gating, Project Context, Planning), with no count on any group heading; each one-line description summarises that tool''s own description.'
   - 'The three "Call a Tool" examples call analyze_complexity, quality_gate and pmat_query_code with parameter names from each tool''s inputSchema (paths/threshold, paths/strict, query/min_grade/limit).'
-  - 'No line hard-codes a tool total: the DOC_STATUS row, the overview sentence, the Tools line, the Protocol Compliance list and the Next Steps link name tools/list instead; the Tools line records "20 in pmat 3.42.0" as a measurement with its version.'
+  - 'No line hard-codes a tool total: the DOC_STATUS row, the overview sentence, the Tools line, the Protocol Compliance list and the Next Steps link name tools/list instead, and no group heading carries a per-group count.'
   - 'Transport says JSON-RPC 2.0 over stdio (`pmat --mode mcp`) or streamable HTTP (`pmat serve --transport http`, bearer token); Protocol Compliance lists only the tools capability, which is all `initialize` advertises on pmat 3.42.0.'
   - 'The architecture diagram and the pre-commit example no longer name tools or source files that do not exist; the pre-commit example calls quality_check_content.'
+  - 'The "What is MCP?" bullets name only what the served tools do (analysis, code search by TDG grade, quality gating, project context); the documentation-validation and WebAssembly bullets, whose tools are not served, are gone.'
   - 'Out of scope, unchanged - the Quick Start and CI `pmat mcp-server` lines (issue 14), the client SDK snippets, and every other chapter.'
-  - 'tests/ch03/test_05_ch03_00_tool_names.sh asks `pmat --mode mcp` for tools/list and fails on a listed or called name the server does not serve, on a served tool the overview omits, and on a hard-coded total; no pmat, no jq or an empty list exits 2. It runs from `make test-ch03`. Measured - 0 mismatches on this branch, 42 on the old chapter, exit 2 with PMAT_BIN=/bin/false.'
+  - 'tests/ch03/test_05_ch03_00_tool_names.sh asks `pmat --mode mcp` for tools/list and fails on a listed or called name the server does not serve, on a served tool the overview omits, and on a hard-coded total ("Total Tools: N", "(N Total)", "(N in pmat x)", "N tools", or "(N tools)" on a heading); no pmat, no jq or an empty list exits 2. It runs from `make test-ch03`. Measured - 0 mismatches on this branch, 48 on the old chapter, 6 on this branch''s first revision (five counted group headings and "(20 in pmat 3.42.0)"), exit 2 with PMAT_BIN=/bin/false.'
   phases: []
   subtasks: []
   estimated_effort: null

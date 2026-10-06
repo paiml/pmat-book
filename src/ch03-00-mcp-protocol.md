@@ -20,18 +20,17 @@
 The Model Context Protocol (MCP) enables seamless integration between PMAT and AI agents like Claude, ChatGPT, and custom AI assistants. PMAT serves its MCP tools in five groups: code search, analysis, quality gating, project context and planning. The list below is what `tools/list` returns; ask the binary rather than trusting a number, because the count moves between builds of one release line.
 
 **Protocol Version**: MCP v2024-11-05
-**Tools**: whatever `tools/list` returns (20 in pmat 3.42.0)
+**Tools**: whatever `tools/list` returns
 **Transport**: JSON-RPC 2.0 over stdio (`pmat --mode mcp`), or streamable HTTP (`pmat serve --transport http`, bearer token required)
 
 ## What is MCP?
 
 Model Context Protocol (MCP) is a standardized protocol for AI agents to interact with tools and services. PMAT exposes its code analysis capabilities via MCP, enabling:
 
-- **AI-powered code review** - Automated quality analysis with actionable recommendations
-- **Automated documentation validation** - Zero hallucinations via semantic entropy detection
-- **Quality gate integration** - Technical Debt Grading (TDG) for CI/CD pipelines
-- **Technical debt analysis** - Comprehensive code quality metrics with A+ to F grades
-- **WebAssembly deep analysis** - Bytecode-level optimization and issue detection
+- **AI-powered code review** - Complexity, Big-O, dead-code and SATD analysis an agent can run on a path
+- **Code search by intent** - Natural-language search over functions, filtered by TDG grade (A+ to F)
+- **Quality gate integration** - The quality-gate suite, and grading of proposed file content before it is written
+- **Project context** - File tree, dependency graph and summaries for an agent's prompt
 
 ## Quick Start
 
@@ -112,13 +111,13 @@ The groups below hold every tool `pmat --mode mcp` returns from `tools/list`
 (pmat 3.42.0). [Available Tools](ch03-02-mcp-tools.md) has each tool's
 parameters.
 
-### Code Search (4 tools)
+### Code Search
 - **`pmat_query_code`** - Natural-language code search with TDG quality filters
 - **`pmat_get_function`** - One function's metadata, optionally with source
 - **`pmat_find_similar`** - Functions similar to a reference function
 - **`pmat_index_stats`** - Function counts and grade distribution of the code index
 
-### Analysis (9 tools)
+### Analysis
 - **`analyze_complexity`** - Cyclomatic and cognitive complexity
 - **`analyze_big_o`** - Big-O time complexity of functions
 - **`analyze_dag`** - Call, import or inheritance graph
@@ -129,17 +128,17 @@ parameters.
 - **`analyze_reachability`** - Tracked `.rs` files no compilation unit reaches
 - **`analyze_vacuous_tests`** - `#[test]` functions that cannot fail
 
-### Quality Gating (3 tools)
+### Quality Gating
 - **`quality_gate`** - The `pmat quality-gate --checks all` suite
 - **`quality_check_content`** - Grade proposed file content against the project's gate
 - **`quality_proxy`** - The same grading; it serves the same description and parameters as `quality_check_content`
 
-### Project Context (3 tools)
+### Project Context
 - **`generate_context`** - File tree and optional dependency graph for an agent
 - **`scaffold_project`** - High-level project summary
 - **`git_operation`** - Working-tree status of a repository
 
-### Planning (1 tool)
+### Planning
 - **`pdmt_deterministic_todos`** - Deterministic todo lists from a list of requirements
 
 

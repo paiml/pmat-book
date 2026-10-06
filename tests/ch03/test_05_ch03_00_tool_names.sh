@@ -8,7 +8,8 @@
 #   - a name in a `- **`name`**` overview item or a callTool('name') call that
 #     tools/list does not return fails;
 #   - a tool tools/list returns that the overview does not list fails;
-#   - a hard-coded total ("Total Tools: N", "(N Total)", "N MCP tools") fails,
+#   - a hard-coded total ("Total Tools: N", "(N Total)", "(N in pmat x)",
+#     "N tools", "(N tools)" on a group heading) fails,
 #     because the count moves between builds of one release line.
 # Exit 0 = the chapter matches the server, 1 = it does not, 2 = cannot measure
 # (no pmat, no jq, or an empty tools/list), which is never a pass.
@@ -47,7 +48,7 @@ done < <(comm -23 <(printf '%s\n' "$live") <(printf '%s\n' "$listed") | grep -v 
 while read -r l; do
   echo "❌ FAIL: hard-coded tool total (ask tools/list instead): $l"
   fail=$((fail + 1))
-done < <(grep -nE 'Total Tools\*\*: [0-9]|\([0-9]+ Total\)|[0-9]+ MCP tools|Tools \([0-9]+ tools\)' "$CHAPTER")
+done < <(grep -nE 'Total Tools\*\*: [0-9]|\([0-9]+ Total\)|\([0-9]+ in pmat|\b[0-9]+ (MCP )?tools?\b' "$CHAPTER")
 
 echo "checked $(printf '%s\n' "$live" | grep -c .) served tool(s) against $(printf '%s\n' "$listed" | grep -c .) listed and $(printf '%s\n' "$called" | grep -c .) called name(s) in $CHAPTER: $fail mismatch(es)"
 [ "$fail" = 0 ]
