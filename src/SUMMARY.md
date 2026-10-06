@@ -40,6 +40,7 @@
 - [Chapter 12: Custom Quality Rules](ch11-00-custom-rules.md)
 - [Chapter 13: Architecture Analysis](ch12-00-architecture.md)
 - [Chapter 14: Multi-Language Project Examples](ch13-00-language-examples.md)
+  - [Multi-Language Detection](ch13-01-language-detection.md)
 - [Chapter 15: Complete MCP Tools Reference](ch15-00-mcp-tools.md)
 - [Chapter 16: Deep Context Analysis](ch16-00-deep-context.md)
 - [Chapter 17: WebAssembly Analysis and Security](ch17-00-wasm-analysis.md)
