@@ -1,7 +1,7 @@
 # PMAT Book Makefile
 # Quality Gates and Development Commands
 
-.PHONY: all build serve test clean lint validate help install-deps
+.PHONY: all build serve test clean lint validate help install-deps check-chapter-numbers
 
 # Default target
 all: validate build
@@ -256,8 +256,12 @@ test-ch21:
 
 test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch25 test-ch26 test-ch30
 
+# SUMMARY.md and each chapter page's H1 carry the same number (#5)
+check-chapter-numbers:
+	@sh scripts/check-chapter-numbers.sh src
+
 # Lint code examples
-lint:
+lint: check-chapter-numbers
 	@echo "🎨 Linting code examples..."
 	@# TODO: Add linting for bash and JSON examples
 

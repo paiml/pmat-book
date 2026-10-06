@@ -1,4 +1,4 @@
-# Chapter 10: Auto-clippy Integration
+# Chapter 11: Auto-clippy Integration
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (8/8 examples)

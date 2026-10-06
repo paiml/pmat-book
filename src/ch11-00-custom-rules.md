@@ -1,4 +1,4 @@
-# Chapter 11: Custom Quality Rules
+# Chapter 12: Custom Quality Rules
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (8/8 examples)
