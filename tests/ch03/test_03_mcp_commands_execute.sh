@@ -47,7 +47,7 @@ else
     fi
 
     HELP=$(pmat serve --help 2>&1)
-    for flag in --transport --host --port; do
+    for flag in --transport --host --port --debug; do
         if printf '%s\n' "$HELP" | grep -q -- "$flag"; then
             test_pass "\`pmat serve\` takes $flag"
         else

@@ -228,6 +228,7 @@ node scripts/validate-docs.js || exit 1
 # .github/workflows/quality.yml
 - name: Quality Gate
   run: |
+    export PMAT_MCP_HTTP_TOKEN=$(pmat mcp token)  # the client sends it as a Bearer token
     pmat serve --transport http --port 8080 &
     sleep 2
     node scripts/quality-gate.js
