@@ -469,6 +469,6 @@ Run `ls examples/*.rs` to see all 80+ available examples.
 
 ## See Also
 
-- [Chapter 5.1: Complete Command Reference](ch05-01-commands.md)
-- [Chapter 5.2: Configuration](ch05-02-config.md)
-- [Chapter 5.3: Workflows](ch05-03-workflows.md)
+- [Chapter 5: The Analyze Command Suite](ch05-00-analyze-suite.md)
+- [Appendix C: Configuration Options](appendix-c-config.md)
+- [Appendix D: Troubleshooting](appendix-d-troubleshooting.md)

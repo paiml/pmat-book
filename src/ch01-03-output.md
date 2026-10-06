@@ -408,6 +408,6 @@ fi
 ## Next Steps
 
 Now that you understand PMAT's output, explore:
-- [Chapter 2: Core Concepts](ch02-00-core-concepts.md) - Deep dive into analysis
+- [Chapter 2: Getting Started with PMAT](ch02-00-getting-started.md) - Deep dive into analysis
 - [Chapter 3: MCP Protocol](ch03-00-mcp-protocol.md) - AI agent integration
-- [Chapter 4: Advanced Features](ch04-00-advanced.md) - TDG and similarity detection
+- [Chapter 4: Technical Debt Grading (TDG)](ch04-01-tdg.md) - TDG and its enforcement

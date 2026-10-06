@@ -1130,6 +1130,6 @@ QDD transforms quality from an afterthought into the driving force of developmen
 
 ## Next Steps
 
-- [Chapter 15: Advanced TDG Storage and Persistence](ch15-00-tdg-storage.md)
-- [Chapter 16: Pre-commit Hooks Management](ch16-00-hooks.md)
-- [Chapter 17: Enhanced Auto-Clippy Integration](ch17-00-auto-clippy.md)
+- [TDG Enforcement System](ch04-02-tdg-enforcement.md)
+- [Chapter 10: Pre-commit Hooks Management](ch09-00-precommit-hooks.md)
+- [Chapter 11: Auto-clippy Integration](ch10-00-auto-clippy.md)

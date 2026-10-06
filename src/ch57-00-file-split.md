@@ -111,5 +111,5 @@ cargo run --example split_demo
 ## See Also
 
 - [Chapter 56: Compliance Governance](ch56-00-comply.md) — `pmat comply check` with `--include-project`
-- [Pre-commit hook template](../templates/hooks/pre-commit-tdg.sh) — File health enforcement
-- [File Health Specification](../docs/specifications/max-lines.md) — Scientific foundation
+- [Pre-commit hook template](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/templates/hooks/pre-commit-tdg.sh) — File health enforcement
+- [Chapter 43: File Health and Max-Lines (CB-040)](ch43-00-file-health.md) — the max-lines rule

@@ -328,8 +328,7 @@ pmat context --language python -o python_context.md
 
 ## Next Steps
 
-- [Chapter 13.2: Multi-Language Context Generation](ch13-02-multi-language-context.md) (Coming in v2.185.0)
-- [Chapter 13.3: Language-Specific Analysis](ch13-03-language-specific.md)
+- [Chapter 14: Multi-Language Project Examples](ch13-00-language-examples.md)
 - [Chapter 5: Analysis Suite](ch05-00-analyze-suite.md)
 
 ## Related Issues

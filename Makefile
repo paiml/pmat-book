@@ -1,7 +1,7 @@
 # PMAT Book Makefile
 # Quality Gates and Development Commands
 
-.PHONY: all build serve test clean lint validate help install-deps
+.PHONY: all build serve test clean lint validate help install-deps test-links
 
 # Default target
 all: validate build
@@ -262,7 +262,10 @@ lint:
 	@# TODO: Add linting for bash and JSON examples
 
 # Validate markdown links
-lint-markdown:
+test-links:
+	@tests/links/test_in_prose_links.sh
+
+lint-markdown: test-links
 	@echo "🔗 Validating markdown links..."
 	@if command -v mdbook-linkcheck >/dev/null 2>&1; then \
 		mdbook-linkcheck --standalone .; \

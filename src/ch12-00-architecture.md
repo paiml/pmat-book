@@ -849,6 +849,5 @@ With architecture analysis, you can maintain clean, maintainable codebases that 
 
 ## Next Steps
 
-- [Chapter 13: Performance Analysis](ch13-00-performance.md)
-- [Chapter 14: Large Codebase Optimization](ch14-00-large-codebases.md)
-- [Appendix I: Architecture Patterns Reference](appendix-i-architecture-patterns.md)
+- [Chapter 23: Performance Testing Suite](ch23-00-testing.md)
+- [Chapter 16: Deep Context Analysis](ch16-00-deep-context.md)

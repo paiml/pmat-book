@@ -769,6 +769,5 @@ With custom rules, PMAT becomes a powerful tool for maintaining not just code qu
 
 ## Next Steps
 
-- [Chapter 12: Architecture Analysis](ch12-00-architecture.md)
-- [Chapter 13: Performance Analysis](ch13-00-performance.md)
-- [Appendix H: Custom Rules Reference](appendix-h-rules-reference.md)
+- [Chapter 13: Architecture Analysis](ch12-00-architecture.md)
+- [Chapter 23: Performance Testing Suite](ch23-00-testing.md)

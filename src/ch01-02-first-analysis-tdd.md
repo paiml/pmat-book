@@ -326,5 +326,4 @@ This ensures predictable, reproducible test results across all environments.
 
 Now that you've seen TDD-verified analysis examples, explore:
 - [Understanding Output](ch01-03-output.md) - Interpret the results
-- [Core Concepts](ch02-00-core-concepts.md) - Deeper analysis capabilities
-- [Test Results](ch02-00-core-concepts.md) - View actual test output
+- [Chapter 2: Getting Started with PMAT](ch02-00-getting-started.md) - Deeper analysis capabilities
