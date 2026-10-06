@@ -122,3 +122,24 @@ jobs:
       with:
         name: book
         path: book/
+
+  chapter-wiring:
+    # Issue #6: every chapter script is run by make test or ledgered with a reason.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Every chapter script is wired or ledgered
+      run: make test-chapter-wiring
+
+  all-chapters:
+    # The matrix above runs ch01-ch08 only; this runs every target in
+    # test-all-chapters. No needs:, so another job failing cannot skip it.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install PMAT
+      run: |
+        cargo install pmat
+        pmat --version
+    - name: Run every chapter target
+      run: make test-all-chapters

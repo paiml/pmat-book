@@ -1,7 +1,15 @@
 # PMAT Book Makefile
 # Quality Gates and Development Commands
 
-.PHONY: all build serve test clean lint validate help install-deps
+.PHONY: all build serve test clean lint validate help install-deps test-chapter-wiring
+
+# Run one chapter script, keep its log, print it on failure (issue #6).
+# $(1) = results subdir, $(2) = script path.
+define run_script
+	@mkdir -p test-results/$(1)
+	@chmod +x $(2)
+	@$(2) > test-results/$(1)/$(notdir $(basename $(2))).log 2>&1 || { cat test-results/$(1)/$(notdir $(basename $(2))).log; exit 1; }
+endef
 
 # Default target
 all: validate build
@@ -17,6 +25,7 @@ help:
 	@echo ""
 	@echo "🧪 TESTING OPERATIONS:"
 	@echo "  make test              - Test all code examples"
+	@echo "  make test-chapter-wiring - Check every chapter script is run or ledgered"
 	@echo "  make test-ch01         - Test Chapter 1 examples"
 	@echo "  make test-ch02         - Test Chapter 2 examples"
 	@echo "  make test-ch03         - Test Chapter 3 examples"
@@ -62,7 +71,7 @@ clean:
 	@echo "✅ Clean complete"
 
 # Test all code examples
-test: test-all-chapters
+test: test-chapter-wiring test-all-chapters
 	@echo "✅ All tests completed"
 
 # Test specific chapters
@@ -72,6 +81,7 @@ test-ch01:
 	@chmod +x tests/ch01/test_simple.sh
 	@echo "Running Chapter 1 TDD validation..."
 	@tests/ch01/test_simple.sh > test-results/ch01/test_simple.log 2>&1 || { cat test-results/ch01/test_simple.log; exit 1; }
+	$(call run_script,ch01,tests/ch01/test_01_installation.sh)
 	@echo "✅ Chapter 1 tests passed"
 
 test-ch02:
@@ -168,6 +178,7 @@ test-ch13:
 	@chmod +x tests/ch13/test_minimal.sh
 	@echo "Running Chapter 13 language examples tests..."
 	@tests/ch13/test_minimal.sh > test-results/ch13/test_minimal.log 2>&1 || { cat test-results/ch13/test_minimal.log; exit 1; }
+	$(call run_script,ch13,tests/ch13/test_performance.sh)
 	@echo "✅ Chapter 13 tests passed"
 
 test-ch14:
@@ -192,6 +203,7 @@ test-ch16:
 	@chmod +x tests/ch16/test_deep_context_minimal.sh
 	@echo "Running Chapter 16 deep context tests..."
 	@tests/ch16/test_deep_context_minimal.sh > test-results/ch16/test_deep_context_minimal.log 2>&1 || { cat test-results/ch16/test_deep_context_minimal.log; exit 1; }
+	$(call run_script,ch16,tests/ch16/test_cicd.sh)
 	@echo "✅ Chapter 16 tests passed"
 
 test-ch17:
@@ -246,6 +258,7 @@ test-ch20:
 	@echo "🧪 Testing Chapter 20: API Integration..."
 	@mkdir -p test-results/ch20
 	@tests/ch18/test_api.sh > test-results/ch20/test_api.log 2>&1 || { cat test-results/ch20/test_api.log; exit 1; }
+	$(call run_script,ch20,tests/ch18/test_api_minimal.sh)
 	@echo "✅ Chapter 20 tests passed"
 
 test-ch21:
@@ -254,7 +267,29 @@ test-ch21:
 	@tests/ch19/test_ai.sh > test-results/ch21/test_ai.log 2>&1 || { cat test-results/ch21/test_ai.log; exit 1; }
 	@echo "✅ Chapter 21 tests passed"
 
-test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch25 test-ch26 test-ch30
+test-ch22:
+	@echo "🧪 Testing Chapter 22: System Diagnostics and Health Monitoring..."
+	$(call run_script,ch22,tests/ch22/test_diagnostics.sh)
+	$(call run_script,ch22,tests/ch22/test_health_monitoring.sh)
+	@echo "✅ Chapter 22 tests passed"
+
+test-ch23:
+	@echo "🧪 Testing Chapter 23: Performance Testing Suite..."
+	$(call run_script,ch23,tests/ch23/test_performance.sh)
+	@echo "✅ Chapter 23 tests passed"
+
+test-ch24:
+	@echo "🧪 Testing Chapter 24: Memory and Cache Management..."
+	$(call run_script,ch24,tests/ch24/test_cache.sh)
+	$(call run_script,ch24,tests/ch24/test_memory.sh)
+	@echo "✅ Chapter 24 tests passed"
+
+# Every chapter script is run by a target here or listed, with a reason, in
+# tests/chapter-scripts-not-in-make-test.txt (issue #6).
+test-chapter-wiring:
+	@tests/meta/test_chapter_scripts_wired.sh
+
+test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch19 test-ch20 test-ch21 test-ch22 test-ch23 test-ch24 test-ch25 test-ch26 test-ch30
 
 # Lint code examples
 lint:

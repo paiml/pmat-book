@@ -1,0 +1,40 @@
+# Chapter test scripts that `make test` does NOT run, and why (issue #6).
+#
+# Every tests/chNN/*.sh is either named in the Makefile (and reachable from
+# test-all-chapters) or listed here, never both and never neither;
+# tests/meta/test_chapter_scripts_wired.sh enforces it in both directions.
+# This file is a debt ledger: the goal is an empty file. Fix a script, wire
+# it into its chapter target, delete its line.
+#
+# Measured 2026-10-06 with pmat 3.42.0, each script run alone, 90 s timeout.
+# red         = ran and exited non-zero
+# timeout     = still running at 90 s
+# unmeasured  = not run: it calls python3/pip, kill/pkill, or starts a
+#               background server or daemon, so it was not safe to run on a
+#               shared host. Its status is unknown, not passing.
+#
+# path                                      status      reason
+tests/ch01/test_02_first_analysis.sh        red         exit 2: "Current directory analysis" fails
+tests/ch03/test_02_mcp_tools.sh             red         "PMAT analysis failed" (1 check of its MCP tool tests)
+tests/ch15/test_team_workflows.sh           red         writes .github/workflows/team-workflow.yml without creating the directory
+tests/ch23/test_benchmarks.sh               red         writes src/lib.rs without creating src/
+tests/ch20/test_refactor_auto.sh            timeout     Test 1 (auto refactor --dry-run) still running at 90 s
+tests/ch01/test_01_installation_simple.sh   unmeasured  python3
+tests/ch09/test_precommit_hooks.sh          unmeasured  python3
+tests/ch10/test_auto_clippy.sh              unmeasured  python3
+tests/ch13/test_language_examples.sh        unmeasured  python3
+tests/ch14/test_large_codebases.sh          unmeasured  python3
+tests/ch15/test_issue_053_batch2.sh         unmeasured  python3
+tests/ch15/test_issue_053_batch3.sh         unmeasured  python3
+tests/ch15/test_issue_053_batch4.sh         unmeasured  python3
+tests/ch15/test_issue_053_batch5.sh         unmeasured  python3
+tests/ch16/test_deep_context.sh             unmeasured  python3
+tests/ch17/test_wasm_features.sh            unmeasured  python3
+tests/ch21/test_scaffold.sh                 unmeasured  python3
+tests/ch21/test_templates.sh                unmeasured  python3
+tests/ch03/test_01_mcp_setup.sh             unmeasured  python3; pkill -f "pmat.*mcp.*serve"
+tests/ch15/test_mcp_tools.sh                unmeasured  python3; kill
+tests/ch18/test_api_server.sh               unmeasured  starts a background server; kill
+tests/ch19/test_agent_daemon.sh             unmeasured  starts a background daemon; kill
+tests/ch19/test_agent_monitoring.sh         unmeasured  starts a background daemon; kill
+tests/ch20/test_refactor_interactive.sh     unmeasured  background process; kill
