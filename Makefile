@@ -154,6 +154,7 @@ test-ch10:
 	@chmod +x tests/ch10/test_precommit.sh
 	@echo "Running Chapter 10 pre-commit hooks tests..."
 	@tests/ch10/test_precommit.sh > test-results/ch10/test_precommit.log 2>&1 || { cat test-results/ch10/test_precommit.log; exit 1; }
+	$(call run_script,ch10,tests/ch10/test_auto_clippy.sh)
 	@echo "✅ Chapter 10 tests passed"
 
 test-ch11:
@@ -179,6 +180,7 @@ test-ch13:
 	@echo "Running Chapter 13 language examples tests..."
 	@tests/ch13/test_minimal.sh > test-results/ch13/test_minimal.log 2>&1 || { cat test-results/ch13/test_minimal.log; exit 1; }
 	$(call run_script,ch13,tests/ch13/test_performance.sh)
+	$(call run_script,ch13,tests/ch13/test_language_examples.sh)
 	@echo "✅ Chapter 13 tests passed"
 
 test-ch14:
@@ -204,6 +206,7 @@ test-ch16:
 	@echo "Running Chapter 16 deep context tests..."
 	@tests/ch16/test_deep_context_minimal.sh > test-results/ch16/test_deep_context_minimal.log 2>&1 || { cat test-results/ch16/test_deep_context_minimal.log; exit 1; }
 	$(call run_script,ch16,tests/ch16/test_cicd.sh)
+	$(call run_script,ch16,tests/ch16/test_deep_context.sh)
 	@echo "✅ Chapter 16 tests passed"
 
 test-ch17:
@@ -220,6 +223,7 @@ test-ch18:
 	@chmod +x tests/ch14/test_qdd.sh
 	@echo "Running Chapter 18 QDD tests..."
 	@tests/ch14/test_qdd.sh > test-results/ch18/test_qdd.log 2>&1 || { cat test-results/ch18/test_qdd.log; exit 1; }
+	$(call run_script,ch18,tests/ch14/test_large_codebases.sh)
 	@echo "✅ Chapter 18 QDD tests passed"
 
 test-ch25:
@@ -265,6 +269,8 @@ test-ch21:
 	@echo "🧪 Testing Chapter 21: AI Integration..."
 	@mkdir -p test-results/ch21
 	@tests/ch19/test_ai.sh > test-results/ch21/test_ai.log 2>&1 || { cat test-results/ch21/test_ai.log; exit 1; }
+	$(call run_script,ch21,tests/ch21/test_scaffold.sh)
+	$(call run_script,ch21,tests/ch21/test_templates.sh)
 	@echo "✅ Chapter 21 tests passed"
 
 test-ch22:

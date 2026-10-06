@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Issue #6: a chapter test script that no make target names can never fail.
 #
-# Every tests/chNN/*.sh must be EITHER named in the Makefile OR listed in
+# Every tests/chNN/*.sh must be EITHER run by a test-chNN recipe OR listed in
 # tests/chapter-scripts-not-in-make-test.txt with a reason, never both and
 # never neither. A ledger line whose script is gone fails too, so the ledger
 # cannot go stale. Every test-chNN target must be a prerequisite of
@@ -21,7 +21,18 @@ fail=0
 bad() { echo "FAIL: $*"; fail=$((fail + 1)); }
 
 scripts=$(find "$ROOT/tests" -path "$ROOT/tests/ch*" -name "*.sh" -type f | sed "s|^$ROOT/||" | LC_ALL=C sort)
-named=$({ grep -oE 'tests/ch[0-9]+/[A-Za-z0-9_]+\.sh' "$MK" || true; } | LC_ALL=C sort -u)
+# Only recipe lines of test-chNN targets count: a path in a comment, an echo
+# in help, or a target nothing runs would otherwise pass as "wired".
+named=$(awk '
+    /^[^\t#][^:=]*:/ { split($0, a, ":"); tgt = a[1] }
+    /^\t/ && tgt ~ /^test-ch[0-9]+$/ && $0 !~ /^\t[[:space:]]*#/ {
+        line = $0
+        while (match(line, /tests\/ch[0-9]+\/[A-Za-z0-9_]+\.sh/)) {
+            print substr(line, RSTART, RLENGTH)
+            line = substr(line, RSTART + RLENGTH)
+        }
+    }
+' "$MK" | LC_ALL=C sort -u)
 listed=$({ [ ! -f "$LEDGER" ] || grep -oE '^tests/ch[0-9]+/[A-Za-z0-9_]+\.sh' "$LEDGER" || true; } | LC_ALL=C sort)
 
 n=0
@@ -52,6 +63,11 @@ for t in $defined; do
 done
 for t in $aggregate; do
     grep -qxF "$t" <<<"$defined" || bad "test-all-chapters needs $t, which is not defined"
+done
+# make test is what CI and contributors run; the aggregate is only wired if it reaches it.
+testdeps=$({ grep -E '^test:' "$MK" || true; } | cut -d: -f2)
+for t in test-chapter-wiring test-all-chapters; do
+    grep -qw -- "$t" <<<"$testdeps" || bad "make test does not depend on $t"
 done
 
 echo "scanned $n chapter script(s): $(wc -w <<<"$named") named by make, $(wc -w <<<"$listed") in the ledger; $(wc -w <<<"$defined") test-chNN target(s); $fail failure(s)"

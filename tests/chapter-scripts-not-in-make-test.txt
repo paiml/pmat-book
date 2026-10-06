@@ -21,19 +21,13 @@ tests/ch23/test_benchmarks.sh               red         writes src/lib.rs withou
 tests/ch20/test_refactor_auto.sh            timeout     Test 1 (auto refactor --dry-run) still running at 90 s
 tests/ch01/test_01_installation_simple.sh   unmeasured  python3
 tests/ch09/test_precommit_hooks.sh          unmeasured  python3
-tests/ch10/test_auto_clippy.sh              unmeasured  python3
-tests/ch13/test_language_examples.sh        unmeasured  python3
-tests/ch14/test_large_codebases.sh          unmeasured  python3
 tests/ch15/test_issue_053_batch2.sh         unmeasured  python3
 tests/ch15/test_issue_053_batch3.sh         unmeasured  python3
 tests/ch15/test_issue_053_batch4.sh         unmeasured  python3
 tests/ch15/test_issue_053_batch5.sh         unmeasured  python3
-tests/ch16/test_deep_context.sh             unmeasured  python3
 tests/ch17/test_wasm_features.sh            unmeasured  python3
-tests/ch21/test_scaffold.sh                 unmeasured  python3
-tests/ch21/test_templates.sh                unmeasured  python3
 tests/ch03/test_01_mcp_setup.sh             unmeasured  python3; pkill -f "pmat.*mcp.*serve"
-tests/ch15/test_mcp_tools.sh                unmeasured  python3; kill
+tests/ch15/test_mcp_tools.sh                unmeasured  kill
 tests/ch18/test_api_server.sh               unmeasured  starts a background server; kill
 tests/ch19/test_agent_daemon.sh             unmeasured  starts a background daemon; kill
 tests/ch19/test_agent_monitoring.sh         unmeasured  starts a background daemon; kill
