@@ -13,7 +13,12 @@ roadmap:
   updated: 2026-10-05T22:06:51Z
   spec: null
   acceptance_criteria:
-  - ~130 printed pmat analyze <path> commands exit 2 on pmat 3.42; each must parse.
+  - ~130 printed `pmat analyze <path>` commands exit 2 on pmat 3.42.
+  - Every `pmat analyze` command printed under src/ parses on pmat 3.42.0 (no clap exit 2) - a subcommand is always named and the path goes in -p/--path (or --file for one file).
+  - Bare `pmat analyze <path>` maps to `pmat analyze comprehensive -p <path>`; `--detailed`/`--summary` map to `--format detailed`/`--format summary`.
+  - A flag no pmat release has (e.g. --microservices-analysis, --max-memory, --storage-backend, --trend --period, --rules, --sample, --languages) is dropped, or its line is replaced by the real command that does the job; only the immediately adjacent sentence or comment is changed where it claimed the invented flag. No new sections, no rewritten chapters.
+  - A command that parses but returns non-zero because the analysis has nothing to measure (an empty example dir, a placeholder path) is acceptable; `pmat analyze tdg --ml` stays although pmat reports it unimplemented, because the flag parses.
+  - Out of scope, unchanged - sample output blocks (CSV samples, jq field paths) and test scripts under tests/.
   phases: []
   subtasks: []
   estimated_effort: null
