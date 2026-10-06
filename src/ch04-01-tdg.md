@@ -146,22 +146,29 @@ pmat analyze tdg src/
 # Show only critical files (TDG > 2.5)
 pmat analyze tdg . --critical-only
 
-# Custom threshold filtering
-pmat analyze tdg . --threshold 2.0
-
 # Include component breakdown
 pmat analyze tdg . --include-components
 
 # Limit to top 10 files
 pmat analyze tdg . --top-files 10
-
-# ML-based scoring (GH-97) - Uses aprender LinearRegression
-pmat analyze tdg . --ml
-pmat tdg . --ml  # Short form
-
-# Combined ML mode with other options
-pmat analyze tdg . --ml --include-components --format json
 ```
+
+`analyze tdg` reports every file it analyses and always exits 0. It accepts
+`--threshold`, but does not apply it:
+
+```
+$ pmat analyze tdg . --threshold 2.0
+⚠️  --threshold 2 was not applied: `analyze tdg` reports every analysed file
+   (see -n/--top-files and --critical-only). --threshold gates
+   `analyze build-tdg` only.
+```
+
+To fail a build on a score, use `pmat tdg check-quality --min-grade <GRADE>`
+(see [GitHub Actions](#github-actions)).
+
+`--ml` is not implemented. TDG scores are still computed by the heuristic
+formulas below, so `pmat analyze tdg . --ml` exits 1 with an error that says so
+(GH-97).
 
 ### Example Output
 
@@ -319,19 +326,18 @@ critical_paths:
 
 ## Advanced Features
 
-### Transactional Hashed TDG System
+### TDG Storage
 
-PMAT 2.68+ includes enterprise-grade features for large-scale analysis:
+`analyze tdg` has no `--storage-backend`, `--priority`, `--incremental` or
+`--cache-enabled` flag; each one exits 2. The stored TDG data is managed
+through `pmat tdg storage`:
 
 ```bash
-# Use persistent storage backend
-pmat analyze tdg . --storage-backend sled
+# Show storage statistics
+pmat tdg storage stats
 
-# Priority-based analysis
-pmat analyze tdg src/critical --priority high
-
-# Incremental analysis with caching
-pmat analyze tdg . --incremental --cache-enabled
+# Clean up hot cache entries
+pmat tdg storage cleanup
 ```
 
 ### MCP Integration
@@ -348,16 +354,6 @@ TDG is fully integrated with the Model Context Protocol:
     "include_components": true
   }
 }
-```
-
-### Performance Profiling
-
-```bash
-# Profile TDG analysis performance
-pmat tdg performance-profile . --duration 30
-
-# Generate flame graphs
-pmat tdg flame-graph . --output tdg-flame.svg
 ```
 
 ## CI/CD Integration
@@ -387,10 +383,10 @@ jobs:
             --format json \
             --output tdg-report.json
             
-      - name: Check TDG Thresholds
+      - name: Check TDG Grades
         run: |
-          # Fail if any file has TDG > 3.0
-          pmat analyze tdg . --threshold 3.0 || exit 1
+          # Fail if any file grades below B (exits 1 on a violation)
+          pmat tdg check-quality --path . --min-grade B
           
       - name: Generate TDG Report
         run: |
@@ -417,11 +413,10 @@ jobs:
 ### Quality Gates
 
 ```bash
-# Enforce quality gates in CI/CD
-pmat quality-gate \
-  --tdg-threshold 2.0 \
-  --min-grade B \
-  --fail-on-regression
+# Enforce quality gates in CI/CD (quality-gate has no --tdg-threshold,
+# --min-grade or --fail-on-regression; each exits 2)
+pmat tdg check-quality --path . --min-grade B
+pmat tdg check-regression --baseline tdg-baseline.json --path . --fail-on-regression
 ```
 
 ## Real-World Examples
@@ -457,17 +452,12 @@ File: src/legacy/order_processor.py
 ### Example 2: Microservice Analysis
 
 ```bash
-# Analyze microservices with custom config
-cat > tdg-micro.toml << EOF
-[tdg.weights]
-complexity = 0.25
-churn = 0.30
-coupling = 0.25  # Higher weight for microservices
-duplication = 0.10
-domain_risk = 0.10
-EOF
+# `analyze tdg` has no --config flag (exit 2). Configuration is read from
+# pmat.toml in the current directory, then the defaults:
+pmat tdg config sources
 
-pmat analyze tdg services/ --config tdg-micro.toml
+# Analyze one service directory
+pmat analyze tdg --path services/
 ```
 
 ### Example 3: Hotspot Detection
@@ -526,10 +516,13 @@ pmat analyze tdg . \
 
 ```bash
 # Create baseline for tracking
-pmat analyze tdg . --format json > tdg-baseline.json
+pmat tdg baseline create --path . --output tdg-baseline.json
 
 # Compare against baseline
-pmat analyze tdg . --compare-baseline tdg-baseline.json
+pmat tdg baseline compare --baseline tdg-baseline.json --path .
+
+# Fail when quality regressed against it
+pmat tdg check-regression --baseline tdg-baseline.json --path . --fail-on-regression
 ```
 
 ### 2. Incremental Improvement
@@ -538,8 +531,8 @@ pmat analyze tdg . --compare-baseline tdg-baseline.json
 # Focus on worst files first
 pmat analyze tdg . --top-files 5 --critical-only
 
-# Track improvement over time
-pmat analyze tdg . --trend --period 30d
+# Track improvement over time (see Git-Commit Correlation below)
+pmat tdg history --since HEAD~30
 ```
 
 ### 3. Team Standards
@@ -566,13 +559,10 @@ min_grade_for_release = "B+"
 - Verify weight configuration
 
 #### Inconsistent Scores
-- Enable caching: `--cache-enabled`
-- Use storage backend for persistence
 - Check for concurrent modifications
+- Inspect the stored data: `pmat tdg storage stats`
 
 #### Performance Issues
-- Use incremental analysis: `--incremental`
-- Enable parallel processing: `--parallel`
 - Limit scope: `--top-files 20`
 
 ## Git-Commit Correlation (v2.179.0+)

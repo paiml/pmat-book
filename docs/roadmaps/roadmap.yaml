@@ -1,0 +1,26 @@
+roadmap_version: '1.0'
+github_enabled: true
+github_repo: paiml/pmat-book
+roadmap:
+- id: PMAT-020
+  github_issue: 20
+  item_type: task
+  title: ch04-01-tdg.md documents only flags and subcommands pmat accepts, and its CI gate can fail
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-10-06T23:49:52Z
+  updated: 2026-10-06T23:49:57.173814611+00:00
+  spec: null
+  acceptance_criteria:
+  - "GH-20: src/ch04-01-tdg.md names no flag or subcommand that pmat 3.42.0 rejects. Removed (each exit 2): --storage-backend, --priority, --incremental, --cache-enabled, --compare-baseline, --trend, --period, --parallel, --config, tdg performance-profile, tdg flame-graph, quality-gate --tdg-threshold/--min-grade/--fail-on-regression"
+  - "--ml (exit 1, not implemented) is removed, and the chapter states that analyze tdg accepts but does not apply --threshold and exits 0"
+  - "The CI 'Check TDG Grades' step is pmat tdg check-quality --path . --min-grade B, which exits 1 on a violation (measured with --min-grade A+ on a fixture); baseline create/compare and check-regression --fail-on-regression run (exit 0)"
+  - "Out of scope: the positional path form (pmat analyze tdg .) is #10; Example 3's jq reads a .components.churn field the JSON output does not have"
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 57
