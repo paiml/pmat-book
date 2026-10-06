@@ -18,6 +18,8 @@ roadmap:
   - Bare `pmat analyze <path>` maps to `pmat analyze comprehensive -p <path>`; `--detailed`/`--summary` map to `--format detailed`/`--format summary`.
   - A flag no pmat release has (e.g. --microservices-analysis, --max-memory, --storage-backend, --trend --period, --rules, --sample, --languages) is dropped, or its line is replaced by the real command that does the job; only the immediately adjacent sentence or comment is changed where it claimed the invented flag. No new sections, no rewritten chapters.
   - A command that parses but returns non-zero because the analysis has nothing to measure (an empty example dir, a placeholder path) is acceptable; `pmat analyze tdg --ml` stays although pmat reports it unimplemented, because the flag parses.
+  - 'Verified against `pmat <cmd> --help` on pmat 3.42.0 (a command new to the book is not an invented one) - `analyze comprehensive` has --file, --files (comma-separated list), --include <glob>, --include-complexity, --include-duplicates and --format summary|detailed|...; `analyze defect-prediction` has --format csv; `analyze dag`, `analyze hardcoded-paths`, `analyze defects` and `analyze graph-metrics` are real subcommands; `tdg storage stats`, `tdg history --since`, `tdg baseline create --path --output` and `tdg baseline compare --baseline --path` exist. All 71 rewritten commands were run - 0 exit 2.'
+  - A heading or comment that named an invented feature loses only that word (e.g. "Incremental CI/CD Analysis" becomes "CI/CD Analysis").
   - Out of scope, unchanged - sample output blocks (CSV samples, jq field paths) and test scripts under tests/.
   phases: []
   subtasks: []

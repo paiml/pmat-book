@@ -526,10 +526,10 @@ pmat analyze tdg -p . \
 
 ```bash
 # Create baseline for tracking
-pmat tdg baseline create -p . -o tdg-baseline.json
+pmat tdg baseline create --path . --output tdg-baseline.json
 
 # Compare against baseline
-pmat tdg baseline compare -b tdg-baseline.json -p .
+pmat tdg baseline compare --baseline tdg-baseline.json --path .
 ```
 
 ### 2. Incremental Improvement

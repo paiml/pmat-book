@@ -319,7 +319,7 @@ pmat analyze comprehensive -p . && pmat report --format=html
 pmat security scan --severity=high && pmat notify slack
 ```
 
-### CI/CD Quality Gate
+### CI/CD Analysis
 ```bash
 pmat quality-gate --fail-on-violation
 ```
