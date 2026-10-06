@@ -701,6 +701,7 @@ pmat analyze comprehensive -p . --format json > analysis.json
 ### CSV Format
 
 ```bash
+# `analyze defects` has no CSV format; defect-prediction does
 pmat analyze defect-prediction -p . --format csv > analysis.csv
 ```
 
@@ -844,8 +845,8 @@ include_recommendations = true
 # Analyze one directory at a time
 pmat analyze comprehensive -p src/
 
-# Analyze only specific files
-pmat analyze comprehensive --files src/main.rs
+# Analyze one specific file
+pmat analyze comprehensive --file src/main.rs
 
 # Exclude large directories
 pmat analyze comprehensive -p . --exclude "**/{node_modules,venv,build}/**"
@@ -867,8 +868,9 @@ pmat analyze comprehensive -p .
 # Analyze one directory at a time
 pmat analyze comprehensive -p src/
 
-# Analyze specific files
-pmat analyze comprehensive --files src/main.rs,src/lib.rs
+# Analyze specific files, one at a time
+pmat analyze comprehensive --file src/main.rs
+pmat analyze comprehensive --file src/lib.rs
 ```
 
 ## Summary

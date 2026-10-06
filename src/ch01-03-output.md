@@ -175,17 +175,12 @@ PMAT has no HTML output format; generate Markdown and render it:
 pmat analyze comprehensive -p . --format markdown > report.md
 ```
 
-Features:
-- Interactive charts
-- Drill-down capabilities
-- Exportable visualizations
-- Team sharing ready
-
 ### CSV Format
 
 For spreadsheet analysis:
 
 ```bash
+# `analyze defects` has no CSV format; defect-prediction does
 pmat analyze defect-prediction -p . --format csv
 ```
 
@@ -345,9 +340,6 @@ pmat analyze complexity -p .
 
 # Only show duplication
 pmat analyze duplicates -p .
-
-# Multiple metrics
-pmat analyze comprehensive -p . --include-complexity --include-duplicates
 ```
 
 ### Filter by Severity

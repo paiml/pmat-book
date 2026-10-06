@@ -1503,8 +1503,9 @@ For large polyglot projects:
 # Analyze one directory at a time
 pmat analyze comprehensive -p src/
 
-# Analyze only the files you changed
-pmat analyze comprehensive --files src/main.rs,src/lib.rs
+# Analyze the files you changed, one at a time
+pmat analyze comprehensive --file src/main.rs
+pmat analyze comprehensive --file src/lib.rs
 ```
 
 ### Custom Language Support

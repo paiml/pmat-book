@@ -324,9 +324,6 @@ critical_paths:
 PMAT 2.68+ includes enterprise-grade features for large-scale analysis:
 
 ```bash
-# Inspect the persistent storage backend
-pmat tdg storage stats
-
 # Analyze a critical path
 pmat analyze tdg -p src/critical
 
