@@ -258,7 +258,7 @@
 | Command | Description | Example |
 |---------|-------------|---------|
 | `pmat doctor` | Diagnostics | `pmat doctor --fix` |
-| `pmat debug` | Debug mode | `pmat debug --trace` |
+| `pmat debug` | Time-travel debugging; its `serve` and `replay` subcommands are not implemented and exit 2 (Chapter 29) | `pmat debug --help` |
 | `pmat benchmark` | Benchmarking | `pmat benchmark --iterations=100` |
 | `pmat info` | System info | `pmat info --environment` |
 

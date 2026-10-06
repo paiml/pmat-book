@@ -1,5 +1,13 @@
 # 29.1 Recording Execution
 
+> **Not implemented.** No command on this page works in pmat 3.42.0.
+> `pmat debug serve` and `pmat debug replay` exit 2 with
+> `error: pmat debug serve is not implemented (DEBUG-002)` and
+> `error: pmat debug replay is not implemented (DEBUG-003)`;
+> `pmat debug timeline` and `pmat debug compare` do not exist
+> (`error: unrecognized subcommand 'timeline'` or `'compare'`, exit 2). The
+> page is a design sketch; see the [chapter status](ch29-00-time-travel-debugging.md).
+
 ## Starting a DAP Server with Recording
 
 The `pmat debug serve` command starts a Debug Adapter Protocol (DAP) server that debuggers can connect to. When you enable recording, all execution traces are saved to `.pmat` files.

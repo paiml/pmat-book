@@ -1,5 +1,13 @@
 # 29.4 TDD Examples
 
+> **Not implemented.** No command on this page works in pmat 3.42.0.
+> `pmat debug serve` and `pmat debug replay` exit 2 with
+> `error: pmat debug serve is not implemented (DEBUG-002)` and
+> `error: pmat debug replay is not implemented (DEBUG-003)`;
+> `pmat debug timeline` and `pmat debug compare` do not exist
+> (`error: unrecognized subcommand 'timeline'` or `'compare'`, exit 2). The
+> page is a design sketch; see the [chapter status](ch29-00-time-travel-debugging.md).
+
 This section demonstrates complete test-driven development workflows using PMAT's time-travel debugging features. All examples follow the **EXTREME TDD** methodology used to build these features in Sprint 77.
 
 ## Example 1: RED → GREEN → REFACTOR with Timeline Debugging
