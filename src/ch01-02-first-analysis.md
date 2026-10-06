@@ -209,7 +209,7 @@ Add to your GitHub Actions:
 Generate Markdown reports:
 
 ```bash
-pmat analyze comprehensive -p . --format markdown -o report.md
+pmat analyze comprehensive -p . --format markdown --output report.md
 open report.md  # Opens in your default viewer
 ```
 

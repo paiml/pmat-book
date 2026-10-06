@@ -14,14 +14,15 @@ roadmap:
   spec: null
   acceptance_criteria:
   - ~130 printed `pmat analyze <path>` commands exit 2 on pmat 3.42.
-  - Every `pmat analyze` command printed under src/ parses on pmat 3.42.0 (no clap exit 2) - a subcommand is always named and the path goes in -p/--path (or --file for one file).
+  - Every printed `pmat analyze <path>` form - bare (`pmat analyze .`) or after a subcommand (`pmat analyze complexity .`, `pmat analyze tdg src/legacy/`) - now parses on pmat 3.42.0 (no clap exit 2); a subcommand is always named and the path goes in -p/--path (or --file for one file).
   - Bare `pmat analyze <path>` maps to `pmat analyze comprehensive -p <path>`; `--detailed`/`--summary` map to `--format detailed`/`--format summary`.
   - A flag no pmat release has (e.g. --microservices-analysis, --max-memory, --storage-backend, --trend --period, --rules, --sample, --languages) is dropped, or its line is replaced by the real command that does the job; only the immediately adjacent sentence or comment is changed where it claimed the invented flag. No new sections, no rewritten chapters.
   - A command that parses but returns non-zero because the analysis has nothing to measure (an empty example dir, a placeholder path) is acceptable; `pmat analyze tdg --ml` stays although pmat reports it unimplemented, because the flag parses.
   - 'Verified against `pmat <cmd> --help` on pmat 3.42.0 (a command new to the book is not an invented one) - `analyze comprehensive` has --file <one file>, --include <glob> and --format summary|detailed|markdown; `analyze defects` formats are text|json|junit only, so CSV examples use `analyze defect-prediction --format csv` (a comment above each says so); `analyze dag`, `analyze hardcoded-paths` and `analyze graph-metrics` are real subcommands; `tdg history --since`, `tdg baseline create --path --output` and `tdg baseline compare --baseline --path` exist. All rewritten commands were run - 0 exit 2.'
   - A heading or comment that named an invented feature loses only that word (e.g. "Incremental CI/CD Analysis" becomes "CI/CD Analysis").
-  - Where an invented flag had no faithful real equivalent it is dropped with its lines (the "Multiple metrics" --metrics example, the --storage-backend sled example) and a list that described an output PMAT does not produce (the HTML report "Features") is removed with it.
-  - Out of scope, unchanged - sample output blocks (CSV samples, jq field paths) and test scripts under tests/.
+  - A "Command Tested" label matches the command its test script runs (ch30 - tests/ch30/test_01_pmatignore.sh runs `pmat analyze complexity --path . --format json`). Long flags (--output, --path, --baseline) are used where the book already does. `pmat tdg services/ --config tdg-micro.toml` replaces the analyze form because only `pmat tdg` has --config.
+  - Where an invented flag had no faithful real equivalent it is dropped with its lines (the "Multiple metrics" --metrics example, the two --storage-backend sled lines - the subsection and its other commands stay; the --config-consistency line) and a list that described an output PMAT does not produce (the HTML report "Features") is removed with it.
+  - Out of scope, unchanged - sample output blocks (CSV samples, jq field paths), test scripts under tests/, and the 44 commands that name a subcommand or flag pmat does not have without a positional path (architecture, security, similarity, wasm flags...); those are measured and listed in issue 60.
   phases: []
   subtasks: []
   estimated_effort: null

@@ -427,7 +427,7 @@ pmat quality-gate \
 
 ```bash
 # Analyze legacy module
-pmat analyze tdg src/legacy/ --include-components
+pmat analyze tdg -p src/legacy/ --include-components
 
 # Output
 File: src/legacy/order_processor.py
@@ -464,7 +464,7 @@ duplication = 0.10
 domain_risk = 0.10
 EOF
 
-pmat analyze tdg services/ --config tdg-micro.toml
+pmat tdg services/ --config tdg-micro.toml
 ```
 
 ### Example 3: Hotspot Detection

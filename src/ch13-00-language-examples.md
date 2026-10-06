@@ -1408,9 +1408,6 @@ pmat analyze dag -p .
 
 # Scan for known defect patterns
 pmat analyze defects -p .
-
-# Find machine-specific paths baked into source
-pmat analyze hardcoded-paths -p .
 ```
 
 ### 4. Graduated Quality Enforcement

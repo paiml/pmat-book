@@ -83,7 +83,7 @@ pmat analyze complexity
 pmat analyze complexity --threshold 10
 
 # Analyze specific files
-pmat analyze complexity src/services/
+pmat analyze complexity -p src/services/
 
 # Output in different formats
 pmat analyze complexity --format json
@@ -169,7 +169,7 @@ Identify and remove unused code to reduce maintenance burden:
 pmat analyze dead-code
 
 # Check specific directories
-pmat analyze dead-code src/legacy/
+pmat analyze dead-code -p src/legacy/
 
 # Export dead code list
 pmat analyze dead-code --export dead-code-list.txt
@@ -316,7 +316,7 @@ Identify critical defects that cause production failures:
 pmat analyze defects
 
 # Scan specific directory
-pmat analyze defects src/
+pmat analyze defects -p src/
 
 # Scan single file
 pmat analyze defects --file src/main.rs

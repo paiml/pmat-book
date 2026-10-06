@@ -33,7 +33,7 @@ File exclusions improve analysis performance and focus quality metrics on code y
 ## Example 1: Basic .pmatignore File (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 64
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Excludes 3 directories correctly
 - ✅ Finds only 3 source files (src/main.rs, lib/utils.rs, docs/README.md)
@@ -77,7 +77,7 @@ tmp/**
 ### Running Analysis
 
 ```bash
-pmat analyze comprehensive -p . --format json
+pmat analyze complexity --path . --format json
 ```
 
 ### Verified Output
@@ -111,7 +111,7 @@ pmat analyze comprehensive -p . --format json
 ## Example 2: Legacy .paimlignore Support (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 113
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Recognizes legacy `.paimlignore` filename
 - ✅ Applies exclusion patterns correctly
@@ -128,7 +128,7 @@ target/
 ### Running Analysis
 
 ```bash
-pmat analyze comprehensive -p . --format json
+pmat analyze complexity --path . --format json
 ```
 
 **Result**: PMAT respects legacy `.paimlignore` files for backward compatibility with older projects that used the "paiml" naming.
@@ -138,7 +138,7 @@ pmat analyze comprehensive -p . --format json
 ## Example 3: .pmatignore Precedence (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 132
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ `.pmatignore` takes precedence over `.paimlignore`
 - ✅ Only `.pmatignore` patterns applied
@@ -175,7 +175,7 @@ tmp/
 ## Example 4: Wildcard Patterns (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 151
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ `cache/**` excludes all cache subdirectories
 - ✅ Wildcard patterns work correctly
@@ -204,7 +204,7 @@ cache/**
 ### Running Analysis
 
 ```bash
-pmat analyze comprehensive -p . --format json
+pmat analyze complexity --path . --format json
 ```
 
 **Result**: All files under `cache/` are excluded, regardless of nesting depth.
@@ -214,7 +214,7 @@ pmat analyze comprehensive -p . --format json
 ## Example 5: Comment Syntax (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 168
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Comments starting with `#` are ignored
 - ✅ Inline comments work correctly
@@ -237,7 +237,7 @@ target/
 ## Example 6: .gitignore Integration (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 186
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ `.gitignore` patterns automatically respected
 - ✅ Build artifacts excluded via `.gitignore`
@@ -265,7 +265,7 @@ build/
 ### Running Analysis
 
 ```bash
-pmat analyze comprehensive -p . --format json
+pmat analyze complexity --path . --format json
 ```
 
 **Result**: Files matching `.gitignore` patterns are automatically excluded.
@@ -275,7 +275,7 @@ pmat analyze comprehensive -p . --format json
 ## Example 7: Complex Real-World Scenario (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 202
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Finds exactly 2 source files
 - ✅ Excludes all test directories (unit, integration, e2e)
@@ -316,7 +316,7 @@ target/**
 ### Running Analysis
 
 ```bash
-pmat analyze comprehensive -p . --format json
+pmat analyze complexity --path . --format json
 ```
 
 ### Verified Output
@@ -344,7 +344,7 @@ pmat analyze comprehensive -p . --format json
 ## Example 8: Empty .pmatignore File (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 264
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Empty `.pmatignore` doesn't exclude files
 - ✅ Only `.gitignore` exclusions apply
@@ -362,7 +362,7 @@ pmat analyze comprehensive -p . --format json
 ## Example 9: Case Sensitivity (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 281
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Pattern matching is case-sensitive
 - ✅ Lowercase `tests/` doesn't match `Tests/` or `TESTS/`
@@ -393,7 +393,7 @@ tests/
 ## Example 10: Performance With Large Exclusion List (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 304
-**Command Tested**: `pmat analyze comprehensive -p . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Analysis completes in < 5 seconds
 - ✅ Finds all 50 source files correctly

@@ -16,7 +16,7 @@
 | `pmat analyze` | Run standard analysis | `pmat analyze comprehensive -p .` |
 | `pmat scan` | Quick scan | `pmat scan --focus=security` |
 | `pmat watch` | Continuous monitoring | `pmat watch --on-change` |
-| `pmat analyze tdg` | Technical debt grading | `pmat analyze tdg --detailed` |
+| `pmat analyze tdg` | Technical debt grading | `pmat analyze tdg -p .` |
 | `pmat complexity` | Complexity analysis | `pmat complexity --by-function` |
 | `pmat similarity` | Code similarity | `pmat similarity --threshold=0.8` |
 | `pmat dead-code` | Dead code detection | `pmat dead-code --export-list` |
