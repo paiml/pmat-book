@@ -326,9 +326,6 @@ PMAT 2.68+ includes enterprise-grade features for large-scale analysis:
 ```bash
 # Analyze a critical path
 pmat analyze tdg -p src/critical
-
-# Re-run the analysis
-pmat analyze tdg -p .
 ```
 
 ### MCP Integration

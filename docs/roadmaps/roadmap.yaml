@@ -5,7 +5,7 @@ roadmap:
 - id: PMAT-010
   github_issue: 10
   item_type: task
-  title: 'Every printed pmat analyze command parses: subcommand + -p, no invented flags'
+  title: 'Every printed pmat analyze <path> command parses: a subcommand plus -p/--path (or --file), no invented flags'
   status: planned
   priority: medium
   assigned_to: null
@@ -22,10 +22,10 @@ roadmap:
   - A heading or comment that named an invented feature loses only that word (e.g. "Incremental CI/CD Analysis" becomes "CI/CD Analysis").
   - A "Command Tested" label matches the command its test script runs (ch30 - tests/ch30/test_01_pmatignore.sh runs `pmat analyze complexity --path . --format json`). Long flags (--output, --path, --baseline) are used where the book already does. `pmat tdg services/ --config tdg-micro.toml` replaces the analyze form because only `pmat tdg` has --config.
   - 'The two test scripts a changed "Command Tested" label names get the same command rewrite, so each label names what its test runs - tests/ch01/test_02_first_analysis.sh (8 lines) and tests/ch04/test_tdg.sh (7 lines). Measured - ch04 exits 0 before and after; ch01 exits 2 on main (commands do not parse) and 1 on this branch (5 output-shape assertions on fields pmat 3.42 does not emit, issue 61).'
-  - '`-p`, `--path` and `--file` are all accepted: `-p` is the short form of `--path`, and `--file` is the single-file form of comprehensive, complexity and defects (pmat 3.42.0 --help). `comprehensive --include` takes a glob ("Include file patterns (e.g. \"**/*.rs\")").'
+  - '`-p`, `--path` and `--file` are all accepted: `-p` is the short form of `--path`, and `--file` is the single-file form of comprehensive, complexity and defects (pmat 3.42.0 --help). `comprehensive --include` and `--exclude` take a glob ("Include/Exclude file patterns"). `pmat tdg history --since <ref>` is the real trend command (`pmat tdg history --help`).'
   - '`pmat analyze satd` filters with --severity (pmat 3.42.0 `satd --help`); the book''s older `satd --priority` example is itself an invented flag and is listed in issue 60, so it is not the reference form.'
   - 'Where a printed command writes to a `.json` file, `--format json` is added: without it `pmat analyze comprehensive --output x.json` writes the plain-text report (measured), so the file would not be JSON (ch18 book-analysis.json).'
-  - Where an invented flag had no faithful real equivalent it is dropped with its lines (the "Multiple metrics" --metrics example, the two --storage-backend sled lines - the subsection and its other commands stay; the --config-consistency line) and a list that described an output PMAT does not produce (the HTML report "Features") is removed with it.
+  - Where an invented flag had no faithful real equivalent it is dropped with its lines (the "Multiple metrics" --metrics example; in ch04-01 "Advanced Features" the --storage-backend sled and --incremental --cache-enabled lines, while the critical-path line keeps its path and loses --priority; the --config-consistency line) and a list that described an output PMAT does not produce (the HTML report "Features") is removed with it.
   - Out of scope, unchanged - sample output blocks (CSV samples, jq field paths), the output-shape assertions in test scripts (issue 61), test scripts other than the two below, and the 44 commands that name a subcommand or flag pmat does not have without a positional path (architecture, security, similarity, wasm flags...); those are measured and listed in issue 60.
   phases: []
   subtasks: []

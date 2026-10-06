@@ -435,7 +435,7 @@ logs/
 ### Running Analysis
 
 ```bash
-time pmat analyze comprehensive -p . --format json
+time pmat analyze complexity --path . --format json
 ```
 
 **Result**: Analysis completes in ~2-3 seconds despite large exclusion list. PMAT uses efficient ripgrep-style filtering.
