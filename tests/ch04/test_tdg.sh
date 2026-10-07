@@ -363,6 +363,8 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
         cat >> hist/src/lib.rs << 'RS'
 pub fn f(a: i32, b: i32, c: i32, d: i32) -> i32 { let mut r = 0; for i in 0..a { if i > b { if i % 2 == 0 { if c > d { for j in 0..c { if j > i { if j % 3 == 0 { r += 1; } else if j % 5 == 0 { r -= 1; } else { r += 2; } } } } else { while r < d { r += 1; if r > 100 { break; } } } } else if i % 3 == 0 { match i % 4 { 0 => r += 1, 1 => r -= 1, 2 => r *= 2, _ => r = 0 } } } } r }
 RS
+        # The default allowance tolerates this small drop (100 to 96, grade unchanged).
+        expect_rc 0 "check-regression --fail-on-regression allows a small drop by default" sh -c "cd hist && $PMAT_BIN tdg check-regression --baseline ../hist-baseline.json --path . --fail-on-regression"
         expect_rc 1 "check-regression --fail-on-regression --max-score-drop 0 on a regressed tree" sh -c "cd hist && $PMAT_BIN tdg check-regression --baseline ../hist-baseline.json --path . --fail-on-regression --max-score-drop 0"
     else
         test_fail "could not build the two-commit git repo for tdg history"
