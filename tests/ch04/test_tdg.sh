@@ -298,6 +298,9 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
     # at one grade and fails at a stricter one.
     expect_rc 0 "check-quality --min-grade F passes" $PMAT_BIN tdg check-quality --path . --min-grade F
     expect_rc 1 "check-quality --min-grade A+ fails" $PMAT_BIN tdg check-quality --path . --min-grade A+
+    # The test files above include high_complexity.py, so this tree fails A+;
+    # analyze tdg still exits 0 on it, whatever the scores.
+    expect_rc 0 "analyze tdg exits 0 on a tree that fails A+" $PMAT_BIN analyze tdg --path .
 
     expect_rc 0 "analyze tdg --format json --output" $PMAT_BIN analyze tdg --path . --format json --output tdg-report.json
     expect_rc 0 "tdg baseline create" $PMAT_BIN tdg baseline create --path . --output tdg-baseline.json
@@ -331,7 +334,7 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
     expect_rc 1 "tdg history --since HEAD~30 on a 2-commit repo" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~30"
 
     # --threshold is accepted but not applied, and the command still exits 0.
-    if $PMAT_BIN analyze tdg --path . --threshold 2.0 2>&1 | grep -q 'was not applied'; then
+    if $PMAT_BIN analyze tdg --path . --threshold 2.0 2>&1 | grep -qF -- '--threshold 2 was not applied'; then
         test_pass "--threshold warns that it was not applied"
     else
         test_fail "--threshold did not print the not-applied warning"
@@ -355,7 +358,11 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
         expect_rc 2 "quality-gate $flag is rejected" $PMAT_BIN quality-gate $flag
     done
 else
-    echo "⏭️  SKIP: no pmat binary; documented commands not exercised"
+    if [ "${TDG_REQUIRE_PMAT:-0}" = 1 ]; then
+        test_fail "TDG_REQUIRE_PMAT=1 but no pmat binary"
+    else
+        echo "⏭️  SKIP: no pmat binary; documented commands not exercised (set TDG_REQUIRE_PMAT=1 to fail instead)"
+    fi
 fi
 
 # Test 6: TDG configuration
