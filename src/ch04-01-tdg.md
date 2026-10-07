@@ -582,7 +582,7 @@ Track TDG scores at specific git commits for "quality archaeology" workflows. Di
 pmat tdg src/lib.rs --with-git-context
 
 # Analysis output shows TDG score
-# Git context stored in ~/.pmat/ for history queries
+# Git context stored in ./.pmat/ for history queries
 ```
 
 #### Query TDG History
