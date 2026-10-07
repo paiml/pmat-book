@@ -163,7 +163,7 @@ $ pmat analyze tdg . --threshold 2.0
    `analyze build-tdg` only.
 ```
 
-To fail a build on a score, use `pmat tdg check-quality --min-grade <GRADE>`
+To fail a build on a score, use `pmat tdg check-quality --path . --min-grade <GRADE>`
 (see [GitHub Actions](#github-actions)).
 
 `--ml` is not implemented. TDG scores are still computed by the heuristic

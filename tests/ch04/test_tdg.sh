@@ -235,14 +235,14 @@ if [ "$MOCK_MODE" = false ]; then
         test_fail "Critical files filtering failed"
     fi
     
-    # Test custom threshold
+    # --threshold is accepted but not applied (see the chapter)
     if $PMAT_BIN analyze tdg . --threshold 2.0 > threshold_files.txt 2>&1; then
-        test_pass "Custom threshold filtering completed"
+        test_pass "--threshold accepted (not applied)"
     else
-        test_fail "Custom threshold filtering failed"
+        test_fail "--threshold rejected"
     fi
 else
-    test_pass "Mock threshold filtering completed"
+    test_pass "Mock threshold check completed"
 fi
 
 # Test 5: Different output formats
@@ -268,6 +268,65 @@ else
     echo '{"tdg_scores": []}' > tdg.json
     echo "# TDG Report" > tdg.md
     test_pass "Mock output formats generated"
+fi
+
+# Test 5b: the commands the chapter documents, run against real pmat.
+# Runs whenever a pmat binary exists (independent of MOCK_MODE) and uses the
+# --path form. Each assertion is an exit code the chapter states.
+echo ""
+echo "Test 5b: documented TDG commands (real pmat)"
+
+expect_rc() {
+    # expect_rc <want> <label> <cmd...>
+    local want=$1 label=$2 got
+    shift 2
+    "$@" > /dev/null 2>&1 && got=0 || got=$?
+    if [ "$got" -eq "$want" ]; then
+        test_pass "$label (exit $got)"
+    else
+        test_fail "$label: expected exit $want, got $got"
+    fi
+}
+
+if command -v "$PMAT_BIN" > /dev/null 2>&1; then
+    # The CI gate in the chapter must be able to fail: the same tree passes
+    # at one grade and fails at a stricter one.
+    expect_rc 0 "check-quality --min-grade F passes" $PMAT_BIN tdg check-quality --path . --min-grade F
+    expect_rc 1 "check-quality --min-grade A+ fails" $PMAT_BIN tdg check-quality --path . --min-grade A+
+
+    expect_rc 0 "analyze tdg --format json --output" $PMAT_BIN analyze tdg --path . --format json --output tdg-report.json
+    expect_rc 0 "tdg baseline create" $PMAT_BIN tdg baseline create --path . --output tdg-baseline.json
+    expect_rc 0 "tdg baseline compare" $PMAT_BIN tdg baseline compare --baseline tdg-baseline.json --path .
+    expect_rc 0 "tdg check-regression --fail-on-regression" $PMAT_BIN tdg check-regression --baseline tdg-baseline.json --path . --fail-on-regression
+    expect_rc 0 "tdg storage stats" $PMAT_BIN tdg storage stats
+    expect_rc 0 "tdg config sources" $PMAT_BIN tdg config sources
+
+    # --threshold is accepted but not applied, and the command still exits 0.
+    if $PMAT_BIN analyze tdg --path . --threshold 2.0 2>&1 | grep -q 'was not applied'; then
+        test_pass "--threshold warns that it was not applied"
+    else
+        test_fail "--threshold did not print the not-applied warning"
+    fi
+    expect_rc 1 "analyze tdg --ml is not implemented" $PMAT_BIN analyze tdg --path . --ml
+
+    # Flags and subcommands the chapter says do not exist.
+    for flag in --storage-backend --priority --incremental --cache-enabled \
+                --compare-baseline --trend --period --parallel --config; do
+        expect_rc 2 "analyze tdg $flag is rejected" $PMAT_BIN analyze tdg --path . $flag x
+    done
+    # Not subcommands: `pmat tdg <word>` reads the word as a path and exits 5.
+    for sub in performance-profile flame-graph; do
+        if $PMAT_BIN tdg --help 2>&1 | grep -qw -- "$sub"; then
+            test_fail "tdg --help lists $sub"
+        else
+            test_pass "tdg --help does not list $sub"
+        fi
+    done
+    for flag in --tdg-threshold --min-grade --fail-on-regression; do
+        expect_rc 2 "quality-gate $flag is rejected" $PMAT_BIN quality-gate $flag
+    done
+else
+    echo "⏭️  SKIP: no pmat binary; documented commands not exercised"
 fi
 
 # Test 6: TDG configuration
