@@ -335,7 +335,7 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
 
     # tdg history needs a git repo; --since HEAD~N needs N commits (exit 1 otherwise).
     mkdir -p hist/src
-    (
+    if (
         cd hist &&
         printf 'fn a(x: i32) -> i32 { if x > 1 { x } else { 0 } }\n' > src/lib.rs &&
         git init -q &&
@@ -343,9 +343,12 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
         git -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t commit -qm one &&
         printf 'fn b() {}\n' >> src/lib.rs &&
         git -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t commit -qam two
-    ) > /dev/null 2>&1
-    expect_rc 0 "tdg history --since HEAD~1" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~1"
-    expect_rc 1 "tdg history --since HEAD~30 on a 2-commit repo" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~30"
+    ) > /dev/null 2>&1; then
+        expect_rc 0 "tdg history --since HEAD~1" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~1"
+        expect_rc 1 "tdg history --since HEAD~30 on a 2-commit repo" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~30"
+    else
+        test_fail "could not build the two-commit git repo for tdg history"
+    fi
 
     # --threshold is accepted but not applied, and the command still exits 0.
     if $PMAT_BIN analyze tdg --path . --threshold 2.0 2>&1 | grep -qF -- '--threshold 2 was not applied'; then
@@ -354,6 +357,11 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
         test_fail "--threshold did not print the not-applied warning"
     fi
     expect_rc 1 "analyze tdg --ml is not implemented" $PMAT_BIN analyze tdg --path . --ml
+    if $PMAT_BIN analyze tdg --path . --ml 2>&1 | grep -qF -- "--ml is not implemented"; then
+        test_pass "--ml says it is not implemented"
+    else
+        test_fail "--ml did not say it is not implemented"
+    fi
 
     # Flags and subcommands the chapter says do not exist.
     for flag in --storage-backend --priority --incremental --cache-enabled \
