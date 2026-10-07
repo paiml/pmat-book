@@ -293,6 +293,19 @@ expect_rc() {
     fi
 }
 
+expect_unknown() {
+    # expect_unknown <flag> <cmd...>: pmat must reject <flag> as an unknown
+    # argument. Exit 2 alone is not enough: a known flag missing its value
+    # also exits 2, so match clap's "unexpected argument" text for the flag.
+    local flag=$1
+    shift
+    if "$@" 2>&1 | grep -qF -- "unexpected argument '$flag'"; then
+        test_pass "$* is rejected as an unknown argument"
+    else
+        test_fail "$* was not rejected as an unknown argument"
+    fi
+}
+
 if command -v "$PMAT_BIN" > /dev/null 2>&1; then
     # The CI gate in the chapter must be able to fail: the same tree passes
     # at one grade and fails at a stricter one.
@@ -310,6 +323,7 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
     expect_rc 0 "tdg config sources" $PMAT_BIN tdg config sources
     expect_rc 0 "analyze tdg --critical-only" $PMAT_BIN analyze tdg --path . --critical-only
     expect_rc 0 "analyze tdg --include-components" $PMAT_BIN analyze tdg --path . --include-components
+    expect_rc 0 "analyze tdg --include-components --format json" $PMAT_BIN analyze tdg --path . --include-components --format json
     expect_rc 0 "analyze tdg --top-files 10" $PMAT_BIN analyze tdg --path . --top-files 10
     # Storage lives in ./.pmat, so cleanup here touches only this temp dir.
     expect_rc 0 "tdg storage cleanup" $PMAT_BIN tdg storage cleanup
@@ -344,7 +358,7 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
     # Flags and subcommands the chapter says do not exist.
     for flag in --storage-backend --priority --incremental --cache-enabled \
                 --compare-baseline --trend --period --parallel --config; do
-        expect_rc 2 "analyze tdg $flag is rejected" $PMAT_BIN analyze tdg --path . $flag x
+        expect_unknown "$flag" $PMAT_BIN analyze tdg --path . $flag x
     done
     # Not subcommands: `pmat tdg <word>` reads the word as a path and exits 5.
     for sub in performance-profile flame-graph; do
@@ -355,7 +369,7 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
         fi
     done
     for flag in --tdg-threshold --min-grade --fail-on-regression; do
-        expect_rc 2 "quality-gate $flag is rejected" $PMAT_BIN quality-gate $flag
+        expect_unknown "$flag" $PMAT_BIN quality-gate $flag x
     done
 else
     if [ "${TDG_REQUIRE_PMAT:-0}" = 1 ]; then
