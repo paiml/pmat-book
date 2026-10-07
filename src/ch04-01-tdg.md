@@ -138,26 +138,26 @@ Assesses business and security criticality:
 
 ```bash
 # Basic TDG analysis of current directory
-pmat analyze tdg .
+pmat analyze tdg -p .
 
 # Analyze specific path
-pmat analyze tdg src/
+pmat analyze tdg -p src/
 
 # Show only critical files (TDG > 2.5)
-pmat analyze tdg . --critical-only
+pmat analyze tdg -p . --critical-only
 
 # Include component breakdown
-pmat analyze tdg . --include-components
+pmat analyze tdg -p . --include-components
 
 # Limit to top 10 files
-pmat analyze tdg . --top-files 10
+pmat analyze tdg -p . --top-files 10
 ```
 
 `analyze tdg` reports every file it analyses and exits 0 whatever the scores. It accepts
 `--threshold`, but does not apply it:
 
 ```
-$ pmat analyze tdg . --threshold 2.0
+$ pmat analyze tdg -p . --threshold 2.0
 ⚠️  --threshold 2 was not applied: `analyze tdg` reports every analysed file
    (see -n/--top-files and --critical-only). --threshold gates
    `analyze build-tdg` only.
@@ -167,7 +167,7 @@ To fail a build on a score, use `pmat tdg check-quality --path . --min-grade <GR
 (see [GitHub Actions](#github-actions)).
 
 `--ml` is not implemented. TDG scores are still computed by the heuristic
-formulas below, so `pmat analyze tdg . --ml` exits 1 with an error that says so
+formulas below, so `pmat analyze tdg -p . --ml` exits 1 with an error that says so
 (GH-97).
 
 ### Example Output
@@ -207,7 +207,7 @@ Understanding individual components helps target specific improvements:
 
 ```bash
 # Show detailed component breakdown
-pmat analyze tdg . --include-components --format json
+pmat analyze tdg -p . --include-components --format json
 ```
 
 ### Example Component Output
@@ -379,7 +379,7 @@ jobs:
         
       - name: Run TDG Analysis
         run: |
-          pmat analyze tdg . \
+          pmat analyze tdg -p . \
             --format json \
             --output tdg-report.json
             
@@ -390,7 +390,7 @@ jobs:
           
       - name: Generate TDG Report
         run: |
-          pmat analyze tdg . \
+          pmat analyze tdg -p . \
             --include-components \
             --format markdown > tdg-report.md
             
@@ -425,7 +425,7 @@ pmat tdg check-regression --baseline tdg-baseline.json --path . --fail-on-regres
 
 ```bash
 # Analyze legacy module
-pmat analyze tdg src/legacy/ --include-components
+pmat analyze tdg -p src/legacy/ --include-components
 
 # Output
 File: src/legacy/order_processor.py
@@ -457,14 +457,14 @@ File: src/legacy/order_processor.py
 pmat tdg config sources
 
 # Analyze one service directory
-pmat analyze tdg --path services/
+pmat analyze tdg -p services/
 ```
 
 ### Example 3: Hotspot Detection
 
 ```bash
 # Find high-churn, high-complexity files
-pmat analyze tdg . \
+pmat analyze tdg -p . \
   --include-components \
   --format json | \
   jq '.files[] | 
@@ -533,7 +533,7 @@ drop.
 
 ```bash
 # Focus on worst files first
-pmat analyze tdg . --top-files 5 --critical-only
+pmat analyze tdg -p . --top-files 5 --critical-only
 
 # Track improvement over time (see Git-Commit Correlation below)
 pmat tdg history --since HEAD~30

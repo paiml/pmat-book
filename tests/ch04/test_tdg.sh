@@ -10,6 +10,7 @@ echo "=== Testing Chapter 4.1: Technical Debt Grading (TDG) ==="
 PMAT_BIN=""
 if command -v pmat &> /dev/null; then
     PMAT_BIN="pmat"
+    MOCK_MODE=false
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
@@ -176,7 +177,7 @@ echo ""
 echo "Test 2: Basic TDG analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze tdg . > tdg_output.txt 2>&1; then
+    if $PMAT_BIN analyze tdg -p . > tdg_output.txt 2>&1; then
         test_pass "TDG analysis completed"
         
         # Check if output contains expected elements
@@ -199,7 +200,7 @@ echo ""
 echo "Test 3: TDG with component breakdown"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze tdg . --include-components > tdg_components.txt 2>&1; then
+    if $PMAT_BIN analyze tdg -p . --include-components > tdg_components.txt 2>&1; then
         test_pass "TDG with components completed"
     else
         test_fail "TDG with components failed"
@@ -234,14 +235,14 @@ echo "Test 4: TDG threshold filtering"
 
 if [ "$MOCK_MODE" = false ]; then
     # Test critical threshold
-    if $PMAT_BIN analyze tdg . --critical-only > critical_files.txt 2>&1; then
+    if $PMAT_BIN analyze tdg -p . --critical-only > critical_files.txt 2>&1; then
         test_pass "Critical files filtering completed"
     else
         test_fail "Critical files filtering failed"
     fi
     
     # --threshold is accepted but not applied (see the chapter)
-    if $PMAT_BIN analyze tdg . --threshold 2.0 > threshold_files.txt 2>&1; then
+    if $PMAT_BIN analyze tdg -p . --threshold 2.0 > threshold_files.txt 2>&1; then
         test_pass "--threshold accepted (not applied)"
     else
         test_fail "--threshold rejected"
@@ -256,14 +257,14 @@ echo "Test 5: TDG output formats"
 
 if [ "$MOCK_MODE" = false ]; then
     # JSON format
-    if $PMAT_BIN analyze tdg . --format json > tdg.json 2>&1; then
+    if $PMAT_BIN analyze tdg -p . --format json > tdg.json 2>&1; then
         test_pass "JSON output generated"
     else
         test_fail "JSON output failed"
     fi
     
     # Markdown format
-    if $PMAT_BIN analyze tdg . --format markdown > tdg.md 2>&1; then
+    if $PMAT_BIN analyze tdg -p . --format markdown > tdg.md 2>&1; then
         test_pass "Markdown output generated"
     else
         test_fail "Markdown output failed"
@@ -438,7 +439,7 @@ echo ""
 echo "Test 7: TDG to letter grade conversion"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze tdg . --format json 2>/dev/null | grep -qE '(grade|Grade)' ; then
+    if $PMAT_BIN analyze tdg -p . --format json 2>/dev/null | grep -qE '(grade|Grade)' ; then
         test_pass "Grade conversion found in output"
     else
         echo "Note: Grade conversion may be in different format"

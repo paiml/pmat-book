@@ -83,7 +83,7 @@ EOF
 # Test 1: Analyze current directory
 echo "Test 1: Analyze current directory"
 setup_test_project
-if pmat analyze . &> /dev/null; then
+if pmat analyze comprehensive -p . &> /dev/null; then
     test_pass "Current directory analysis"
 else
     test_fail "Current directory analysis"
@@ -91,7 +91,7 @@ fi
 
 # Test 2: Analyze with JSON output
 echo "Test 2: JSON output format"
-OUTPUT=$(pmat analyze . --format json 2>/dev/null)
+OUTPUT=$(pmat analyze comprehensive -p . --format json 2>/dev/null)
 if echo "$OUTPUT" | jq -e '.repository.total_files' &> /dev/null; then
     test_pass "JSON output contains repository info"
     
@@ -108,7 +108,7 @@ fi
 
 # Test 3: Test TDG analysis
 echo "Test 3: Technical Debt Grading"
-TDG_OUTPUT=$(pmat analyze tdg . --format json 2>/dev/null)
+TDG_OUTPUT=$(pmat analyze tdg -p . --format json 2>/dev/null)
 if echo "$TDG_OUTPUT" | jq -e '.grade' &> /dev/null; then
     GRADE=$(echo "$TDG_OUTPUT" | jq -r '.grade')
     test_pass "TDG analysis complete, Grade: $GRADE"
@@ -126,7 +126,7 @@ fi
 
 # Test 4: Test summary format
 echo "Test 4: Summary format"
-if pmat analyze . --summary 2>&1 | grep -q "Files:"; then
+if pmat analyze comprehensive -p . --format summary 2>&1 | grep -q "Files:"; then
     test_pass "Summary format contains file count"
 else
     test_fail "Summary format missing file count"
@@ -134,7 +134,7 @@ fi
 
 # Test 5: Test specific file analysis
 echo "Test 5: Single file analysis"
-if pmat analyze src/main.py &> /dev/null; then
+if pmat analyze comprehensive --file src/main.py &> /dev/null; then
     test_pass "Single file analysis works"
 else
     test_fail "Single file analysis failed"
@@ -142,7 +142,7 @@ fi
 
 # Test 6: Test language detection
 echo "Test 6: Language detection"
-LANG_OUTPUT=$(pmat analyze . --format json 2>/dev/null)
+LANG_OUTPUT=$(pmat analyze comprehensive -p . --format json 2>/dev/null)
 if echo "$LANG_OUTPUT" | jq -e '.languages | has("Python")' &> /dev/null; then
     test_pass "Python language detected"
     
@@ -158,7 +158,7 @@ fi
 
 # Test 7: Test complexity metrics
 echo "Test 7: Complexity metrics"
-METRICS=$(pmat analyze . --format json 2>/dev/null)
+METRICS=$(pmat analyze comprehensive -p . --format json 2>/dev/null)
 if echo "$METRICS" | jq -e '.metrics.complexity' &> /dev/null; then
     test_pass "Complexity metrics present"
 else
@@ -167,7 +167,7 @@ fi
 
 # Test 8: Test recommendations
 echo "Test 8: Recommendations"
-TDG_WITH_RECS=$(pmat analyze tdg . --format json 2>/dev/null)
+TDG_WITH_RECS=$(pmat analyze tdg -p . --format json 2>/dev/null)
 if echo "$TDG_WITH_RECS" | jq -e '.recommendations' &> /dev/null; then
     REC_COUNT=$(echo "$TDG_WITH_RECS" | jq '.recommendations | length')
     test_pass "Recommendations provided: $REC_COUNT"

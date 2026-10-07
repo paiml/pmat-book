@@ -2,6 +2,42 @@ roadmap_version: '1.0'
 github_enabled: true
 github_repo: paiml/pmat-book
 roadmap:
+- id: PMAT-010
+  github_issue: 10
+  item_type: task
+  title: 'Every printed pmat analyze <path> command parses: a subcommand plus -p/--path (or --file), no invented flags'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-05T22:06:51Z
+  updated: 2026-10-05T22:06:51Z
+  spec: null
+  acceptance_criteria:
+  - ~130 printed `pmat analyze <path>` commands exit 2 on pmat 3.42.
+  - Every printed `pmat analyze <path>` form outside ch30 (split to issue 61, see below) - bare (`pmat analyze .`) or after a subcommand (`pmat analyze complexity .`, `pmat analyze tdg src/legacy/`) - now parses on pmat 3.42.0 (no clap exit 2); a subcommand is always named and the path goes in -p/--path (or --file for one file).
+  - Bare `pmat analyze <path>` maps to `pmat analyze comprehensive -p <path>`; `--detailed`/`--summary` map to `--format detailed`/`--format summary`.
+  - A flag no pmat release has (e.g. --microservices-analysis, --max-memory, --storage-backend, --trend --period, --rules, --sample, --languages) is dropped, or its line is replaced by the real command that does the job; only the immediately adjacent sentence or comment is changed where it claimed the invented flag. No new sections, no rewritten chapters.
+  - A command that parses but returns non-zero because the analysis has nothing to measure (an empty example dir, a placeholder path) is acceptable; `pmat analyze tdg --ml` stays although pmat reports it unimplemented, because the flag parses.
+  - 'Verified against `pmat <cmd> --help` on pmat 3.42.0 (a command new to the book is not an invented one) - `analyze comprehensive` has --file <one file>, --include <glob> and --format summary|detailed|markdown; `analyze defects` formats are text|json|junit only, so CSV examples use `analyze defect-prediction --format csv` (a comment above each says so); `analyze dag`, `analyze hardcoded-paths` and `analyze graph-metrics` are real subcommands; `tdg history --since`, `tdg baseline create --path --output` and `tdg baseline compare --baseline --path` exist. All rewritten commands were run - 0 exit 2.'
+  - A heading or comment that named an invented feature loses only that word (e.g. "Incremental CI/CD Analysis" becomes "CI/CD Analysis").
+  - 'ch30 is split out of this ticket and left unchanged: its commands, Command Tested labels and Verified Output JSON change together under issue 61, so no command is shown beside output it does not produce. Measured on pmat 3.42.0 with --help appended, exit 0: `analyze complexity --project-path .` (an accepted alias, left as printed) and `quality-gate --checks complexity,dead-code,satd` (already used in ch07). Long flags (--output, --path, --baseline) are used where the book already does.'
+  - 'The -p/--path rule is for `pmat analyze <sub>`. Top-level `pmat tdg` takes its path only as a positional [PATH] (pmat 3.42.0: `pmat tdg --path . --help` exits 2), so `pmat tdg services/ --config tdg-micro.toml` is its correct form; `pmat tdg history` takes an optional --path and defaults to the current repo.'
+  - 'Each removed or replaced flag was measured as invented on pmat 3.42.0 (the old form with --help appended, clap exit 2): `analyze --incremental --since=main` 2, `analyze comprehensive -p . --sample 1000` 2, `--quick` 2, `analyze tdg -p . --threshold B` 2 (threshold is a float), `analyze tdg --path . --config x.toml` 2 (hence top-level `pmat tdg <path> --config`). Each replacement exits 0: `analyze tdg -p . --threshold 2.0`, `analyze comprehensive -p . --format summary`, `analyze comprehensive --help`.'
+  - 'Executed on pmat 3.42.0 (exit codes, not --help) - `pmat tdg baseline create --path src --output b.json` 0; `pmat tdg baseline compare --baseline b.json --path src` 0; `pmat tdg history --since HEAD~5` 0. These are existing pmat tdg subcommands, already used unchanged in ch04-02-tdg-enforcement.md and ch73. `pmat tdg <path> --config <file>` parses; it is the only form with --config (`pmat analyze tdg` has none), so it is not a shorthand for `pmat analyze tdg -p`.'
+  - 'Out of scope - the ch04-01 Example 2 TOML body: pmat rejects its `[tdg.weights]` schema (`missing field weights`), a sample-content defect recorded on issue 60; this ticket fixes the command line only.'
+  - 'The two test scripts a changed "Command Tested" label names get the same command rewrite, so each label names what its test runs - tests/ch01/test_02_first_analysis.sh (8 lines) and tests/ch04/test_tdg.sh (7 lines). Measured - ch04 exits 0 before and after; ch01 exits 2 on main (commands do not parse) and 1 on this branch (5 output-shape assertions on fields pmat 3.42 does not emit, issue 61).'
+  - '`-p`, `--path` and `--file` are all accepted: `-p` is the short form of `--path`, and `--file` is the single-file form of comprehensive, complexity and defects (pmat 3.42.0 --help). `comprehensive --include` and `--exclude` take a glob ("Include/Exclude file patterns"). `pmat tdg history --since <ref>` is the real trend command (`pmat tdg history --help`).'
+  - '`pmat analyze satd` filters with --severity (pmat 3.42.0 `satd --help`); the book''s older `satd --priority` example is itself an invented flag and is listed in issue 60, so it is not the reference form.'
+  - 'Where a printed command writes to a `.json` file, `--format json` is added: without it `pmat analyze comprehensive --output x.json` writes the plain-text report (measured), so the file would not be JSON (ch18 book-analysis.json).'
+  - Where an invented flag had no faithful real equivalent it is dropped with its lines (the "Multiple metrics" --metrics example; in ch04-01 "Advanced Features" the --storage-backend sled and --incremental --cache-enabled lines, while the critical-path line keeps its path and loses --priority; the --config-consistency line) and a list that described an output PMAT does not produce (the HTML report "Features") is removed with it.
+  - Out of scope, unchanged - sample output blocks (CSV samples, jq field paths), the output-shape assertions in test scripts (issue 61), test scripts other than the two below, and the 44 commands that name a subcommand or flag pmat does not have without a positional path (architecture, security, similarity, wasm flags...); those are measured and listed in issue 60.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 57
 - id: PMAT-020
   github_issue: 20
   item_type: task
@@ -16,8 +52,8 @@ roadmap:
   - "GH-20: src/ch04-01-tdg.md names no flag or subcommand that pmat 3.42.0 rejects. Removed (each exits 2): --storage-backend, --priority, --incremental, --cache-enabled, --compare-baseline, --trend, --period, --parallel, --config, quality-gate --tdg-threshold/--min-grade/--fail-on-regression. Removed: tdg performance-profile and tdg flame-graph, which pmat tdg --help does not list (pmat tdg reads the word as a path and exits 5). tests/ch04/test_tdg.sh asserts each of these against real pmat"
   - "--ml (exit 1, not implemented) is removed, and the chapter states that analyze tdg accepts but does not apply --threshold and exits 0"
   - "The CI 'Check TDG Grades' step is pmat tdg check-quality --path . --min-grade B, which exits 1 on a violation (measured with --min-grade A+ on a fixture); baseline create/compare and check-regression --fail-on-regression run (exit 0)"
-  - "The CI gate in the title is the chapter's documented GitHub Actions step. tests/ch04/test_tdg.sh Test 5b runs every documented command against real pmat whenever a pmat binary exists (50 pass, 0 fail on 3.42.0, including history --range/--path/--format json/--commit after a capture, and check-regression --max-score-drop 0 exiting 1 on a regressed tree; each removed flag is matched by clap's \"unexpected argument\" text, and a mutant passing --format x, a real flag with a bad value, goes red). On the suite's own fixture tree (with high_complexity.py) --min-grade F exits 0, A+ exits 1 and analyze tdg still exits 0, so the step can fail and analyze tdg alone cannot. A mutant expecting A+ to pass goes red. The book's CI installs no pmat and prints SKIP; TDG_REQUIRE_PMAT=1 turns the skip into a failure (measured)"
-  - "Out of scope: the positional path form (pmat analyze tdg .) is #10, and the suite's MOCK_MODE stays unset when pmat is on PATH, so Tests 2-5 run their mock branch (turning them on surfaces #10); Example 3's jq reads a .components.churn field the JSON output does not have; pmat tdg <file> --with-git-context does not record the commit for history --commit, while pmat tdg . does (pmat defect, paiml/paiml-mcp-agent-toolkit#1476)"
+  - "The CI gate in the title is the chapter's documented GitHub Actions step. tests/ch04/test_tdg.sh Test 5b runs every documented command against real pmat whenever a pmat binary exists (53 pass, 0 fail on 3.42.0, with Tests 2-5 now run against real pmat because MOCK_MODE is set false when pmat is on PATH, including history --range/--path/--format json/--commit after a capture, and check-regression --max-score-drop 0 exiting 1 on a regressed tree; each removed flag is matched by clap's \"unexpected argument\" text, and a mutant passing --format x, a real flag with a bad value, goes red). On the suite's own fixture tree (with high_complexity.py) --min-grade F exits 0, A+ exits 1 and analyze tdg still exits 0, so the step can fail and analyze tdg alone cannot. A mutant expecting A+ to pass goes red. The book's CI installs no pmat and prints SKIP; TDG_REQUIRE_PMAT=1 turns the skip into a failure (measured)"
+  - "Builds on #10's branch (fix/10-analyze-subcommands, merged in): every analyze tdg example uses -p, so #10 lands first. Out of scope: Example 3's jq reads a .components.churn field the JSON output does not have; pmat tdg <file> --with-git-context does not record the commit for history --commit, while pmat tdg . does (pmat defect, paiml/paiml-mcp-agent-toolkit#1476)"
   phases: []
   subtasks: []
   estimated_effort: null

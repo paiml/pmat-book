@@ -98,7 +98,7 @@ PMAT supports multiple output formats to integrate with your workflow:
 Structured data for programmatic use:
 
 ```bash
-pmat analyze . --format json
+pmat analyze comprehensive -p . --format json
 ```
 
 ```json
@@ -141,7 +141,7 @@ pmat analyze . --format json
 Human-readable reports:
 
 ```bash
-pmat analyze . --format markdown
+pmat analyze comprehensive -p . --format markdown
 ```
 
 ```markdown
@@ -169,24 +169,19 @@ Overall Score: 82.5/100
 
 ### HTML Format
 
-Interactive web reports:
+PMAT has no HTML output format; generate Markdown and render it:
 
 ```bash
-pmat analyze . --format html > report.html
+pmat analyze comprehensive -p . --format markdown > report.md
 ```
-
-Features:
-- Interactive charts
-- Drill-down capabilities
-- Exportable visualizations
-- Team sharing ready
 
 ### CSV Format
 
 For spreadsheet analysis:
 
 ```bash
-pmat analyze . --format csv
+# `analyze defects` has no CSV format; defect-prediction does
+pmat analyze defect-prediction -p . --format csv
 ```
 
 ```csv
@@ -200,7 +195,7 @@ src/utils.py,Python,156,2.1,0.00,0.92
 For IDE and CI/CD integration:
 
 ```bash
-pmat analyze . --format sarif
+pmat analyze comprehensive -p . --format sarif
 ```
 
 Compatible with:
@@ -341,33 +336,30 @@ PMAT provides actionable recommendations:
 
 ```bash
 # Only show complexity issues
-pmat analyze . --metrics complexity
+pmat analyze complexity -p .
 
 # Only show duplication
-pmat analyze . --metrics duplication
-
-# Multiple metrics
-pmat analyze . --metrics "complexity,documentation"
+pmat analyze duplicates -p .
 ```
 
 ### Filter by Severity
 
 ```bash
-# Only high-priority issues
-pmat analyze . --severity high
+# Only high-severity technical debt
+pmat analyze satd -p . --severity high
 
-# High and medium
-pmat analyze . --severity "high,medium"
+# Medium severity
+pmat analyze satd -p . --severity medium
 ```
 
 ### Language-Specific Analysis
 
 ```bash
 # Only analyze Python files
-pmat analyze . --languages python
+pmat analyze comprehensive -p . --include "**/*.py"
 
 # Multiple languages
-pmat analyze . --languages "python,javascript"
+pmat analyze comprehensive -p . --include "**/*.{py,js}"
 ```
 
 ## Integration Examples
@@ -382,7 +374,7 @@ pmat analyze . --languages "python,javascript"
     {
       "label": "PMAT Analysis",
       "type": "shell",
-      "command": "pmat analyze . --format sarif > pmat.sarif",
+      "command": "pmat analyze comprehensive -p . --format sarif > pmat.sarif",
       "problemMatcher": "$pmat"
     }
   ]
@@ -394,7 +386,7 @@ pmat analyze . --languages "python,javascript"
 ```bash
 #!/bin/bash
 # .git/hooks/pre-push
-GRADE=$(pmat analyze . --format json | jq -r '.grade')
+GRADE=$(pmat analyze comprehensive -p . --format json | jq -r '.grade')
 if [[ "$GRADE" < "B" ]]; then
   echo "Warning: Code quality grade $GRADE is below B"
   read -p "Continue push? (y/n) " -n 1 -r

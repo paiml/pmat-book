@@ -35,7 +35,7 @@ sonarqube configure
 pylint --generate-rcfile
 
 # PMAT just works
-pmat analyze .
+pmat analyze comprehensive -p .
 ```
 
 ### Instant Results
@@ -58,13 +58,13 @@ PMAT follows the Toyota Way principles:
 
 ### 1. Repository Analysis
 ```bash
-pmat analyze /path/to/repo
+pmat analyze comprehensive -p /path/to/repo
 ```
 Instant insights into any codebase - structure, languages, complexity, and patterns.
 
 ### 2. Technical Debt Grading (TDG)
 ```bash
-pmat analyze tdg /path/to/repo
+pmat analyze tdg -p /path/to/repo
 ```
 Six orthogonal metrics provide comprehensive quality scoring:
 - Structural Complexity
