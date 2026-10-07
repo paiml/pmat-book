@@ -28,6 +28,11 @@ if [ "$PMAT_BIN" != "pmat" ] && [ -x "$PMAT_BIN" ]; then
     echo "Using PMAT binary: $PMAT_BIN"
 fi
 
+# The tests cd into a temp dir below, so make a relative binary path absolute.
+case "$PMAT_BIN" in
+    */*) PMAT_BIN="$(cd "$(dirname "$PMAT_BIN")" && pwd)/$(basename "$PMAT_BIN")" ;;
+esac
+
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
 
@@ -300,6 +305,30 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
     expect_rc 0 "tdg check-regression --fail-on-regression" $PMAT_BIN tdg check-regression --baseline tdg-baseline.json --path . --fail-on-regression
     expect_rc 0 "tdg storage stats" $PMAT_BIN tdg storage stats
     expect_rc 0 "tdg config sources" $PMAT_BIN tdg config sources
+    expect_rc 0 "analyze tdg --critical-only" $PMAT_BIN analyze tdg --path . --critical-only
+    expect_rc 0 "analyze tdg --include-components" $PMAT_BIN analyze tdg --path . --include-components
+    expect_rc 0 "analyze tdg --top-files 10" $PMAT_BIN analyze tdg --path . --top-files 10
+    # Storage lives in ./.pmat, so cleanup here touches only this temp dir.
+    expect_rc 0 "tdg storage cleanup" $PMAT_BIN tdg storage cleanup
+    if $PMAT_BIN tdg config sources 2>&1 | grep -q 'pmat.toml (current directory)'; then
+        test_pass "tdg config sources names pmat.toml in the current directory"
+    else
+        test_fail "tdg config sources does not name pmat.toml in the current directory"
+    fi
+
+    # tdg history needs a git repo; --since HEAD~N needs N commits (exit 1 otherwise).
+    mkdir -p hist/src
+    (
+        cd hist &&
+        printf 'fn a(x: i32) -> i32 { if x > 1 { x } else { 0 } }\n' > src/lib.rs &&
+        git init -q &&
+        git -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t add -A &&
+        git -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t commit -qm one &&
+        printf 'fn b() {}\n' >> src/lib.rs &&
+        git -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t commit -qam two
+    ) > /dev/null 2>&1
+    expect_rc 0 "tdg history --since HEAD~1" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~1"
+    expect_rc 1 "tdg history --since HEAD~30 on a 2-commit repo" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~30"
 
     # --threshold is accepted but not applied, and the command still exits 0.
     if $PMAT_BIN analyze tdg --path . --threshold 2.0 2>&1 | grep -q 'was not applied'; then

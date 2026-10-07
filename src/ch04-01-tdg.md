@@ -153,7 +153,7 @@ pmat analyze tdg . --include-components
 pmat analyze tdg . --top-files 10
 ```
 
-`analyze tdg` reports every file it analyses and always exits 0. It accepts
+`analyze tdg` reports every file it analyses and exits 0 whatever the scores. It accepts
 `--threshold`, but does not apply it:
 
 ```
