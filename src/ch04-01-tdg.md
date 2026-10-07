@@ -774,9 +774,9 @@ pmat tdg history --range v1.0.0..HEAD
 ```
 
 **3. Storage Location**
-- Git context stored in `~/.pmat/tdg-warm/` (recent)
-- Archived to `~/.pmat/tdg-cold/` after 30 days
-- Use `--storage-path` to customize location
+- Git context is stored in `.pmat/tdg-warm.db` and `.pmat/tdg-cold.db` under
+  the directory you run pmat from
+- There is no flag to move it: `--storage-path` exits 2
 
 ### Limitations
 

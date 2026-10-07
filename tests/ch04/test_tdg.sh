@@ -356,6 +356,14 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
         expect_rc 1 "tdg history --commit HEAD before a capture" sh -c "cd hist && $PMAT_BIN tdg history --commit HEAD"
         expect_rc 0 "tdg . --with-git-context" sh -c "cd hist && $PMAT_BIN tdg . --with-git-context"
         expect_rc 0 "tdg history --commit HEAD after a capture" sh -c "cd hist && $PMAT_BIN tdg history --commit HEAD"
+        expect_rc 0 "tdg src/lib.rs --with-git-context" sh -c "cd hist && $PMAT_BIN tdg src/lib.rs --with-git-context"
+        expect_rc 0 "tdg src/ --with-git-context" sh -c "cd hist && $PMAT_BIN tdg src/ --with-git-context"
+        if [ -f hist/.pmat/tdg-warm.db ] && [ -f hist/.pmat/tdg-cold.db ]; then
+            test_pass "git context stored in .pmat/tdg-warm.db and .pmat/tdg-cold.db"
+        else
+            test_fail "git context not found in .pmat/tdg-warm.db and .pmat/tdg-cold.db"
+        fi
+        expect_unknown --storage-path sh -c "cd hist && $PMAT_BIN tdg . --storage-path x"
 
         # The regression gate can fail: a more complex function in a
         # baselined file drops its score, and --max-score-drop 0 rejects any drop.
