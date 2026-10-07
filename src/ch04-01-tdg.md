@@ -525,6 +525,10 @@ pmat tdg baseline compare --baseline tdg-baseline.json --path .
 pmat tdg check-regression --baseline tdg-baseline.json --path . --fail-on-regression
 ```
 
+`check-regression` allows a small score drop by default: a file going from
+100 to 96 with no grade change passes. Add `--max-score-drop 0` to fail on any
+drop.
+
 ### 2. Incremental Improvement
 
 ```bash

@@ -299,7 +299,9 @@ expect_unknown() {
     # also exits 2, so match clap's "unexpected argument" text for the flag.
     local flag=$1
     shift
-    if "$@" 2>&1 | grep -qF -- "unexpected argument '$flag'"; then
+    local out rc
+    out=$("$@" 2>&1) && rc=0 || rc=$?
+    if [ "$rc" -eq 2 ] && printf '%s\n' "$out" | grep -qF -- "unexpected argument '$flag'"; then
         test_pass "$* is rejected as an unknown argument"
     else
         test_fail "$* was not rejected as an unknown argument"
@@ -346,6 +348,21 @@ if command -v "$PMAT_BIN" > /dev/null 2>&1; then
     ) > /dev/null 2>&1; then
         expect_rc 0 "tdg history --since HEAD~1" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~1"
         expect_rc 1 "tdg history --since HEAD~30 on a 2-commit repo" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~30"
+        expect_rc 0 "tdg history --range HEAD~1..HEAD" sh -c "cd hist && $PMAT_BIN tdg history --range HEAD~1..HEAD"
+        expect_rc 0 "tdg history --path --since" sh -c "cd hist && $PMAT_BIN tdg history --path src/lib.rs --since HEAD~1"
+        expect_rc 0 "tdg history --format json" sh -c "cd hist && $PMAT_BIN tdg history --since HEAD~1 --format json"
+        # --commit reads a record captured by `pmat tdg . --with-git-context`.
+        expect_rc 1 "tdg history --commit HEAD before a capture" sh -c "cd hist && $PMAT_BIN tdg history --commit HEAD"
+        expect_rc 0 "tdg . --with-git-context" sh -c "cd hist && $PMAT_BIN tdg . --with-git-context"
+        expect_rc 0 "tdg history --commit HEAD after a capture" sh -c "cd hist && $PMAT_BIN tdg history --commit HEAD"
+
+        # The regression gate can fail: a more complex function in a
+        # baselined file drops its score, and --max-score-drop 0 rejects any drop.
+        expect_rc 0 "baseline of the history repo" sh -c "cd hist && $PMAT_BIN tdg baseline create --path . --output ../hist-baseline.json"
+        cat >> hist/src/lib.rs << 'RS'
+pub fn f(a: i32, b: i32, c: i32, d: i32) -> i32 { let mut r = 0; for i in 0..a { if i > b { if i % 2 == 0 { if c > d { for j in 0..c { if j > i { if j % 3 == 0 { r += 1; } else if j % 5 == 0 { r -= 1; } else { r += 2; } } } } else { while r < d { r += 1; if r > 100 { break; } } } } else if i % 3 == 0 { match i % 4 { 0 => r += 1, 1 => r -= 1, 2 => r *= 2, _ => r = 0 } } } } r }
+RS
+        expect_rc 1 "check-regression --fail-on-regression --max-score-drop 0 on a regressed tree" sh -c "cd hist && $PMAT_BIN tdg check-regression --baseline ../hist-baseline.json --path . --fail-on-regression --max-score-drop 0"
     else
         test_fail "could not build the two-commit git repo for tdg history"
     fi
