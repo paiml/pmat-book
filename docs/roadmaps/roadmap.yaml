@@ -1,0 +1,664 @@
+roadmap_version: '1.0'
+github_enabled: true
+github_repo: paiml/pmat-book
+roadmap:
+- id: BOOK-3
+  github_issue: 3
+  item_type: task
+  title: 'Two chapters are absent from SUMMARY.md, render to no HTML, and 404 on the published site'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#3 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-4
+  github_issue: 4
+  item_type: task
+  title: '25 in-prose links across 14 chapters point at 22 files that do not exist; all 404 on the published book'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#4 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-5
+  github_issue: 5
+  item_type: task
+  title: 'SUMMARY.md numbers six chapters differently from the number printed on the chapter''s own page'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#5 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-6
+  github_issue: 6
+  item_type: task
+  title: '33 of 57 chapter test scripts are named by no Makefile target, and CI runs only 8 of the 24 targets that exist'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#6 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-7
+  github_issue: 7
+  item_type: task
+  title: 'Six test-chNN targets run another chapter''s script and print "Chapter NN tests passed" for a chapter they never touch'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#7 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-8
+  github_issue: 8
+  item_type: task
+  title: 'Three duplicate/superseded chapter pairs with no banner saying which is current (incl. two MCP-tools chapters with disjoint tool lists)'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:triage
+  acceptance_criteria:
+  - '#8 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-9
+  github_issue: 9
+  item_type: task
+  title: 'pmat-dogfood.yml pins pmat 2.69.0, which no longer compiles: 200/200 runs failed and its link-check gate has never executed'
+  status: planned
+  priority: high
+  release: v3.43.0
+  epic: 57
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#9 closed by a merged PR, and the test.yml + pmat-dogfood.yml runs on that merge commit are green'
+- id: BOOK-10
+  github_issue: 10
+  item_type: task
+  title: '`pmat analyze <path>` does not parse — `analyze` requires a subcommand; printed 131 times across 18 chapters incl. the introduction'
+  status: planned
+  priority: high
+  release: v3.43.0
+  epic: 57
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#10 closed by a merged PR, and the test.yml + pmat-dogfood.yml runs on that merge commit are green'
+- id: BOOK-11
+  github_issue: 11
+  item_type: task
+  title: 'ch03-02-mcp-tools.md documents 25 MCP tools; 20 of them do not exist in pmat 3.32.0'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#11 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-12
+  github_issue: 12
+  item_type: task
+  title: 'Chapter 29 teaches `pmat debug` as working: `timeline`/`compare` do not exist and `serve`/`replay` are NOT IMPLEMENTED and exit 2 (48 commands, 6 files)'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#12 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-13
+  github_issue: 13
+  item_type: task
+  title: 'ch03-00-mcp-protocol.md gets the MCP tool COUNT right (19) and 18 of the 19 NAMES wrong'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#13 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-14
+  github_issue: 14
+  item_type: task
+  title: 'Four chapters tell readers to run `pmat mcp-server`, which is not a subcommand (exit 2) — including two Claude Desktop configs that cannot start'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#14 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-15
+  github_issue: 15
+  item_type: task
+  title: 'ch15-00-mcp-tools.md presents WebSocket and SSE MCP modes as supported; both exit 2 as "not yet implemented"'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#15 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-16
+  github_issue: 16
+  item_type: task
+  title: 'ch18-00-api.md documents a REST API and WebSocket on :8080; every documented endpoint returns 404'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#16 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-17
+  github_issue: 17
+  item_type: task
+  title: 'ch04-01-tdg.md says TDG is 0.0-5.0 with lower better; pmat 3.32.0 scores 0-100 with higher better'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#17 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-18
+  github_issue: 18
+  item_type: task
+  title: 'ch04-01-tdg.md claims critical defects auto-fail with "Score 0.0/100" and "Exit Code: 1"; measured 41.9/100 and exit 0'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#18 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-19
+  github_issue: 19
+  item_type: task
+  title: '8 chapter test scripts silently run in MOCK_MODE whenever pmat is on PATH — 88 PASSes, 0 real pmat invocations'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#19 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-20
+  github_issue: 20
+  item_type: task
+  title: 'ch04-01-tdg.md documents 7 `analyze tdg` flags and 2 `pmat tdg` subcommands that do not exist, plus `--threshold` which the binary says it ignores'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#20 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-21
+  github_issue: 21
+  item_type: task
+  title: 'ch39-00-unified-help.md asserts "There is no `pmat mcp` command"; `pmat mcp` is the command that prints how to connect'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#21 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-22
+  github_issue: 22
+  item_type: task
+  title: 'ch22-00-diagnostics.md documents `pmat diagnose --serve` with a six-endpoint dashboard; the flag does not exist (exit 2)'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#22 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-23
+  github_issue: 23
+  item_type: task
+  title: 'ch19-00-agent.md and appendix-b document `pmat agent mcp-server`; it exits 1 on any `cargo install pmat` binary'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#23 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-24
+  github_issue: 24
+  item_type: task
+  title: 'ch56 series documents 8 `pmat work` subcommands that do not exist (verify, codegen, bind, rebind, unbind, downgrade, kani, classify-bug)'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#24 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-25
+  github_issue: 25
+  item_type: task
+  title: 'ch09-00-report: all 31 `pmat report` commands fail — chapter uses a positional path and --md/--csv/--txt/--format, but report takes -p and -f'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#25 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-26
+  github_issue: 26
+  item_type: task
+  title: 'ch08-00-demo: all 28 `pmat demo` commands pass a positional path that clap rejects — and `demo` is not in the default build anyway (exit 1)'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#26 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-27
+  github_issue: 27
+  item_type: task
+  title: 'ch17-00-wasm-analysis: all 27 commands fail — 8 invented flags plus `analyze wasm-multi`, and `analyze wasm` needs --features wasm-ast'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#27 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-28
+  github_issue: 28
+  item_type: task
+  title: 'ch02-00-getting-started: all 38 `pmat context` commands are rejected — chapter documents --include/--exclude/--max-tokens/--cache, none of which exist'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#28 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-29
+  github_issue: 29
+  item_type: task
+  title: 'ch12-00-architecture: `pmat architecture` is not a command — all 39 examples exit 2, while the chapter banner claims ''100% Working (8/8)'''
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#29 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-30
+  github_issue: 30
+  item_type: task
+  title: 'ch11-00-custom-rules: `pmat rules` is not a command — all 29 examples exit 2, and tests/ch11/test_custom_rules.sh never invokes pmat'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#30 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-31
+  github_issue: 31
+  item_type: task
+  title: 'ch28-00-mutation-testing: `pmat mutate` was removed after 2.175.0 — all 28 commands in the chapter exit 2'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#31 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-32
+  github_issue: 32
+  item_type: task
+  title: 'ch10-00-auto-clippy: `pmat clippy` is not a command (it is `pmat analyze clippy`) — all 19 examples exit 2 and the cited test script mocks the command'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#32 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-33
+  github_issue: 33
+  item_type: task
+  title: 'appendix-b-commands: the command reference documents 31 top-level commands that do not exist; 185 of its 282 commands are rejected by pmat 3.32.0'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#33 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-34
+  github_issue: 34
+  item_type: task
+  title: 'ch05-00-analyze-suite: 44 of 65 commands rejected — 4 nonexistent analyze subcommands, positional paths, invented flags, and `--format csv`'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#34 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-35
+  github_issue: 35
+  item_type: task
+  title: 'ch14-00-qdd: 41 of 44 commands rejected — qdd subcommands take -p/--path not a positional, and 5 documented subcommands do not exist'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#35 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-36
+  github_issue: 36
+  item_type: task
+  title: 'ch24-00-memory: 34 of 42 commands rejected — `pmat cache` has only `stats` (chapter documents 6 subcommands) and `memory configure` flags were renamed'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#36 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-37
+  github_issue: 37
+  item_type: task
+  title: 'ch23-00-testing: all 21 `pmat test` invocations rejected — every flag the chapter documents (--baseline, --rps, --flame-graph, --valgrind, …) is invented'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#37 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-38
+  github_issue: 38
+  item_type: task
+  title: 'ch04-01-tdg: 21 of 43 commands rejected — `analyze tdg` takes -p/--path not a positional (18 lines), plus 8 invented flags and 3 fake quality-gate flags'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#38 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-39
+  github_issue: 39
+  item_type: task
+  title: 'ch21-00-templates: 22 of 38 commands rejected — `scaffold project` takes <TOOLCHAIN> + -t/--templates, not a template name with --name/--path'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#39 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-40
+  github_issue: 40
+  item_type: task
+  title: 'ch26-00-graph-statistics: all 13 commands rejected — `--metrics pagerank` should be `page-rank`, `--format table` is not a value, `--pagerank-damping` is `--damping-factor`'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#40 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-41
+  github_issue: 41
+  item_type: task
+  title: 'ch09-01-prompt-command: 19 of 43 commands rejected — `prompt ticket/implement/scaffold-new-repo` take -t/--ticket and -s/--spec, not a positional file'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#41 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-42
+  github_issue: 42
+  item_type: task
+  title: 'ch13-00-language-examples: 28 of 53 commands rejected, while `make test-ch13` runs test_minimal.sh which contains zero pmat invocations'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#42 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-43
+  github_issue: 43
+  item_type: task
+  title: 'Command audit remainder: 169 further broken commands across 39 chapters (one table per file)'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#43 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-45
+  github_issue: 45
+  item_type: task
+  title: 'Six test-ch* targets assert only that their own heredocs wrote a file — 42 PASSes that test cat, not pmat'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#45 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-46
+  github_issue: 46
+  item_type: task
+  title: 'Four _minimal test scripts assert only that a heading string exists in the book''s own markdown; ch17''s is green while the command it names is unavailable'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#46 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-47
+  github_issue: 47
+  item_type: task
+  title: 'make test-ch30 fails 5/5 because the test reads .summary.files; pmat emits .files — pmat''s .pmatignore handling is correct'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#47 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-48
+  github_issue: 48
+  item_type: task
+  title: 'test-ch25 and test-ch26 assert on pmat''s source tree via a hardcoded /home/noah path, under a server/ directory deleted in January'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#48 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-49
+  github_issue: 49
+  item_type: task
+  title: '17 assertions score a skipped check as PASS — tests/ch01/test_01_installation.sh passes 7/7 with pmat uninstalled'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#49 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-50
+  github_issue: 50
+  item_type: task
+  title: 'make test-ch19 dies at line 29 — three scripts write a heredoc into a directory they create 14 lines later, or never'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#50 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-51
+  github_issue: 51
+  item_type: task
+  title: 'tests/ch01/test_01_installation_simple.sh does not parse: a markdown fence in double quotes opens an unterminated command substitution'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#51 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-52
+  github_issue: 52
+  item_type: task
+  title: 'tests/ch18/test_api_server.sh hangs forever — bare `wait` waits on the server it started; its first assertion is `if <cmd> &`, which cannot fail'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#52 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-53
+  github_issue: 53
+  item_type: task
+  title: 'test.yml''s dogfood-pmat quality gate has never executed (140/140 runs skipped it), and all three of its pmat commands are rejected — the gate would pass on `Grade null`'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#53 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-55
+  github_issue: 55
+  item_type: task
+  title: 'dogfood-pmat has never run in 143 test.yml runs, and all three of its pmat commands are invalid'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#55 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-56
+  github_issue: 56
+  item_type: task
+  title: 'pmat-dogfood.yml never starts: upload-artifact@v3 auto-fails every job at admission'
+  status: planned
+  priority: high
+  release: v3.43.0
+  epic: 57
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#56 closed by a merged PR, and the test.yml + pmat-dogfood.yml runs on that merge commit are green'
+- id: BOOK-58
+  github_issue: 58
+  item_type: task
+  title: '18 internal chapter links point at files that do not exist; the dogfood link gate will fail on them'
+  status: planned
+  priority: high
+  release: v3.43.0
+  epic: 57
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#58 closed by a merged PR, and the test.yml + pmat-dogfood.yml runs on that merge commit are green'
+- id: BOOK-60
+  github_issue: 60
+  item_type: task
+  title: 'docs: 44 printed pmat analyze commands name subcommands or flags pmat does not have'
+  status: planned
+  priority: medium
+  release: v3.44.0
+  epic: 63
+  labels:
+  - kind:docs
+  acceptance_criteria:
+  - '#60 closed by a merged PR that re-runs every command it changes against the pinned pmat release'
+- id: BOOK-61
+  github_issue: 61
+  item_type: task
+  title: 'tests: ch01 test_02 asserts JSON fields pmat analyze no longer emits'
+  status: planned
+  priority: high
+  release: v3.43.0
+  epic: 57
+  labels:
+  - kind:code
+  acceptance_criteria:
+  - '#61 closed by a merged PR, and the test.yml + pmat-dogfood.yml runs on that merge commit are green'
