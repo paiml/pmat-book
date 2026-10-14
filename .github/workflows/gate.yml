@@ -22,7 +22,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, "planted/PMAT-065-*"]
   merge_group:
   workflow_dispatch:
 

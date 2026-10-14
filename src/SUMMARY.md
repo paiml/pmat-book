@@ -126,3 +126,4 @@
 - [Appendix C: Configuration Options](appendix-c-config.md)
 - [Appendix D: Troubleshooting](appendix-d-troubleshooting.md)
 - [Appendix E: Resources](appendix-e-resources.md)
+- [Planted missing chapter](ch99-planted-missing.md)
