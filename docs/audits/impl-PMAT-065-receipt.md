@@ -26,7 +26,8 @@ Each planted branch is `fix/gate-job` plus a push trigger for
 | planted/PMAT-065-vacuous | `needs: []` | 38635306647 | success | failure (`gate needs no jobs`) | FAIL |
 
 `fix/gate-job` itself has no run yet: its triggers are `pull_request` and
-`merge_group` on main, and `push` to main, so it first runs when its PR opens.
+`merge_group` on main, `push` to main, and manual `workflow_dispatch`, so it
+first runs on its own when its PR opens.
 The green control is the same tree with one trigger line added.
 
 ## Scope question for reviewers
@@ -40,3 +41,16 @@ gating on `book-build` alone right? Answer in your summary.
 ## Out of scope
 
 No ruleset is changed. No other workflow is changed.
+
+## Quorum rounds (author claude-opus-5-5; no Opus lane)
+
+- Round A, planted control: `needs: []` on top of 3a4925f (local commit
+  02e97f5, not for merge). gemini-4-argon-high, claude-sonnet-5-5 and
+  claude-haiku-4-5 each returned FAIL naming `.github/workflows/gate.yml:78`.
+  Artifact: `docs/audits/quorum-PMAT-065-A-control.json`.
+- Round B, the real diff at 3a4925f: the same three lanes returned PASS. All
+  three answered the scope question: gating on `book-build` alone is right.
+  Artifact: `docs/audits/quorum-PMAT-065-B.json`. Its one note (this receipt
+  left out `workflow_dispatch`) is fixed above.
+- Sign-off: a separate round with a different lane set, bound to the commit
+  that adds this section. Artifact: `docs/audits/quorum-PMAT-065-signoff.json`.
