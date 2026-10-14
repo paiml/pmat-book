@@ -25,6 +25,10 @@ Each planted branch is `fix/gate-job` plus a push trigger for
 | planted/PMAT-065-red | SUMMARY.md lists a missing chapter | 38635300918 | failure (`Chapter file not found, ch99-planted-missing.md`) | failure (`1 of 1 needed job(s) did not succeed`) | FAIL |
 | planted/PMAT-065-vacuous | `needs: []` | 38635306647 | success | failure (`gate needs no jobs`) | FAIL |
 
+Every job id, conclusion and job URL above is in
+`docs/audits/PMAT-065-planted-runs.tsv`, written from the GitHub Actions API
+(`actions/runs` and `actions/runs/<id>/jobs`) at 20:55Z.
+
 `fix/gate-job` itself has no run yet: its triggers are `pull_request` and
 `merge_group` on main, `push` to main, and manual `workflow_dispatch`, so it
 first runs on its own when its PR opens.
@@ -52,5 +56,11 @@ No ruleset is changed. No other workflow is changed.
   three answered the scope question: gating on `book-build` alone is right.
   Artifact: `docs/audits/quorum-PMAT-065-B.json`. Its one note (this receipt
   left out `workflow_dispatch`) is fixed above.
-- Sign-off: a separate round with a different lane set, bound to the commit
-  that adds this section. Artifact: `docs/audits/quorum-PMAT-065-signoff.json`.
+- Sign-off round 1 (claude-haiku-4-5, gemini-4-argon-medium, claude-sonnet-5-5)
+  at b61e5cb: PASS, FAIL, PASS. The FAIL: this receipt named the round A and
+  B artifacts, but they were not committed. They are committed here, verbatim
+  (round 1 too: `docs/audits/quorum-PMAT-065-signoff-r1.json`)
+  as the quorum script wrote them, with the run table above.
+- Sign-off round 2: the same lane set, bound to the commit that adds them.
+  Its artifact, `docs/audits/quorum-PMAT-065-signoff.json`, is added in the
+  next commit, which changes no file this round judged.
