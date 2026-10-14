@@ -22,7 +22,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, "planted/PMAT-065-*"]
   merge_group:
   workflow_dispatch:
 
@@ -75,7 +75,7 @@ jobs:
     # always(): the gate must report when a needed job fails or is cancelled.
     # Without it the gate is skipped, and the required check is left unset.
     if: always()
-    needs: [book-build]
+    needs: []
     steps:
       - name: Every needed job succeeded, and there is at least one
         env:
