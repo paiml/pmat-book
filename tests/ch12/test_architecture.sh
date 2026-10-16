@@ -1,410 +1,300 @@
 #!/bin/bash
 # TDD Test: Chapter 12 - Architecture Analysis
-# Tests all architecture analysis examples documented in the book
+#
+# WHAT THIS REPLACES
+#
+# The previous version of this file wrote five YAML files (.pmat/architecture.yaml,
+# .pmat/microservices.yaml, .pmat/patterns/custom-patterns.yaml, pmat.toml,
+# .pmat/architecture-exceptions.yaml) and then asserted that the files it had
+# just written existed. It never invoked pmat. It passed for a year while all 39
+# `pmat architecture ...` examples in the chapter exited with
+# `error: unrecognized subcommand`, and the chapter carried a "✅ 100% Working"
+# badge on the strength of it.
+#
+# Every assertion below runs the real binary against a real fixture. If a claim
+# in src/ch12-00-architecture.md stops being true, this test goes red.
+#
+# No cargo toolchain is required — every command exercised here is pmat's own
+# AST/git analysis.
 
-set -e
+set -u
 
 echo "=== Testing Chapter 12: Architecture Analysis ==="
 
+PMAT_BIN=""
+if command -v pmat &> /dev/null; then
+    PMAT_BIN="pmat"
+elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
+    PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
+elif [ -x "../paiml-mcp-agent-toolkit/target/debug/pmat" ]; then
+    PMAT_BIN="../paiml-mcp-agent-toolkit/target/debug/pmat"
+fi
+
+if [ -z "$PMAT_BIN" ]; then
+    echo "⚠️  SKIPPED: pmat not found on PATH — this run verified NOTHING"
+    echo "   Install it with: cargo install pmat"
+    exit 0
+fi
+
+PMAT_BIN=$(command -v "$PMAT_BIN" || echo "$PMAT_BIN")
+echo "Using PMAT binary: $PMAT_BIN"
+"$PMAT_BIN" --version | head -1
+
+PASS_COUNT=0
+FAIL_COUNT=0
+test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
+test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+
 TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
+cleanup() { rm -rf "$TEST_DIR"; }
+trap cleanup EXIT
 
-# Initialize git repo
-git init --initial-branch=main
+# ---------------------------------------------------------------------------
+# Fixture: the three-module crate printed in the chapter.
+#   api -> domain, api -> store, store -> domain, handler() -> load()
+# ---------------------------------------------------------------------------
+mkdir -p "$TEST_DIR/arch/src/api" "$TEST_DIR/arch/src/domain" "$TEST_DIR/arch/src/store"
+cd "$TEST_DIR/arch" || exit 1
 
-# Test 1: Architecture configuration
-echo "Test 1: Architecture configuration"
-mkdir -p .pmat
-cat > .pmat/architecture.yaml << 'EOF'
-layers:
-  - name: "presentation"
-    path_patterns: ["*/controllers/*", "*/views/*", "*/templates/*"]
-    can_import: ["business", "shared"]
-    cannot_import: ["persistence", "infrastructure"]
-    
-  - name: "business" 
-    path_patterns: ["*/services/*", "*/domain/*", "*/use_cases/*"]
-    can_import: ["shared", "persistence_interfaces"]
-    cannot_import: ["presentation", "infrastructure"]
-    
-  - name: "persistence"
-    path_patterns: ["*/repositories/*", "*/dao/*", "*/models/*"]
-    can_import: ["shared"]
-    cannot_import: ["presentation", "business"]
-    
-  - name: "infrastructure"
-    path_patterns: ["*/external/*", "*/adapters/*", "*/config/*"]
-    can_import: ["shared"]
-    cannot_import: ["presentation", "business", "persistence"]
+cat > Cargo.toml << 'EOF'
+[package]
+name = "arch"
+version = "0.1.0"
+edition = "2021"
+EOF
+cat > src/lib.rs << 'EOF'
+pub mod api;
+pub mod domain;
+pub mod store;
+EOF
+cat > src/api/mod.rs << 'EOF'
+use crate::domain::User;
+use crate::store::load;
 
-validation_rules:
-  - "presentation_layer_only_calls_business"
-  - "no_direct_database_access_from_controllers"
-  - "business_logic_independent_of_frameworks"
-  - "shared_modules_have_no_dependencies"
+pub fn handler(id: u32) -> Option<User> {
+    load(id)
+}
+EOF
+cat > src/domain/mod.rs << 'EOF'
+pub struct User {
+    pub id: u32,
+    pub name: String,
+}
+
+impl User {
+    pub fn label(&self) -> String {
+        format!("{}#{}", self.name, self.id)
+    }
+}
+EOF
+cat > src/store/mod.rs << 'EOF'
+use crate::domain::User;
+
+pub fn load(id: u32) -> Option<User> {
+    if id == 0 {
+        return None;
+    }
+    Some(User { id, name: "demo".into() })
+}
 EOF
 
-if [ -f .pmat/architecture.yaml ]; then
-    echo "✅ Architecture configuration created"
+git init -q .
+git -c user.email=book@example.com -c user.name=book add -A
+git -c user.email=book@example.com -c user.name=book commit -qm "init" --no-verify
+echo "// touched" >> src/store/mod.rs
+git -c user.email=book@example.com -c user.name=book add -A
+git -c user.email=book@example.com -c user.name=book commit -qm "touch store" --no-verify
+
+# ---------------------------------------------------------------------------
+# Test 1: the default full-dependency graph, and its node/edge counts
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 1: analyze dag (full-dependency)"
+DAG_OUT=$("$PMAT_BIN" analyze dag -p . 2>&1)
+if echo "$DAG_OUT" | grep -qE "full-dependency: rendered [0-9]+ nodes and [0-9]+ edges"; then
+    test_pass "dag reports a node and edge count before the graph"
 else
-    echo "❌ Failed to create architecture configuration"
-    exit 1
+    test_fail "dag no longer reports node/edge counts: $DAG_OUT"
 fi
 
-# Test 2: Microservices configuration
-echo "Test 2: Microservices configuration"
-cat > .pmat/microservices.yaml << 'EOF'
-architecture_type: "microservices"
-
-services:
-  - name: "user-service"
-    path: "services/user"
-    boundaries: ["users", "authentication", "profiles"]
-    databases: ["user_db"]
-    apis: ["users_api_v1", "auth_api_v1"]
-    
-  - name: "order-service"  
-    path: "services/order"
-    boundaries: ["orders", "shopping_cart", "checkout"]
-    databases: ["order_db"]
-    apis: ["orders_api_v1"]
-
-  - name: "payment-service"
-    path: "services/payment" 
-    boundaries: ["payments", "billing", "invoices"]
-    databases: ["payment_db"]
-    apis: ["payments_api_v1"]
-
-constraints:
-  database_per_service: true
-  no_shared_databases: true
-  api_communication_only: true
-  async_messaging: "preferred"
-
-integration_patterns:
-  event_sourcing: ["order-service", "payment-service"]
-  cqrs: ["user-service"]
-  saga_orchestration: true
-EOF
-
-if [ -f .pmat/microservices.yaml ]; then
-    echo "✅ Microservices configuration created"
+EDGES=$(echo "$DAG_OUT" | sed -nE 's/.*rendered [0-9]+ nodes and ([0-9]+) edges.*/\1/p')
+if [ "${EDGES:-0}" -gt 0 ]; then
+    test_pass "dag resolved $EDGES edges (a zero-edge graph would mean nothing resolved)"
 else
-    echo "❌ Failed to create microservices configuration"
-    exit 1
+    test_fail "dag resolved 0 edges on a fixture with three real imports"
 fi
 
-# Test 3: Custom pattern detection
-echo "Test 3: Custom pattern detection"
-mkdir -p .pmat/patterns
-cat > .pmat/patterns/custom-patterns.yaml << 'EOF'
-patterns:
-  - name: "hexagonal_architecture"
-    description: "Ports and Adapters pattern"
-    confidence_threshold: 0.85
-    
-    structure:
-      core_domain:
-        path_patterns: ["*/domain/*", "*/core/*"]
-        must_not_depend_on: ["adapters", "infrastructure"]
-        
-      ports:
-        path_patterns: ["*/ports/*", "*/interfaces/*"]
-        must_be: "abstract_classes_or_protocols"
-        
-      adapters:
-        path_patterns: ["*/adapters/*", "*/infrastructure/*"]
-        must_implement: "ports"
-        can_depend_on: ["external_libraries"]
-        
-    validation_rules:
-      - "core_domain_independent_of_frameworks"
-      - "all_external_access_through_ports"
-      - "adapters_implement_specific_ports"
+# The chapter prints these four edges verbatim.
+for edge in "src_api_mod -.-> src_domain_mod" \
+            "src_api_mod -.-> src_store_mod" \
+            "src_store_mod -.-> src_domain_mod" \
+            "src_api_mod_handler --> src_store_mod_load"; do
+    if echo "$DAG_OUT" | grep -qF "$edge"; then
+        test_pass "edge present: $edge"
+    else
+        test_fail "edge missing from the graph: $edge"
+    fi
+done
 
-  - name: "event_sourcing"
-    description: "Event Sourcing pattern implementation"
-    
-    required_components:
-      - name: "event_store"
-        must_exist: true
-        patterns: ["*EventStore*", "*event_store*"]
-        
-      - name: "aggregates"
-        must_exist: true
-        patterns: ["*Aggregate*", "*aggregate*"]
-        methods: ["apply_event", "get_uncommitted_events"]
-        
-      - name: "events"
-        must_exist: true
-        patterns: ["*Event*", "*event*"]
-        inherits_from: ["DomainEvent", "Event"]
-        
-      - name: "event_handlers"
-        patterns: ["*Handler*", "*handler*"]
-        methods: ["handle"]
-        
-    validation_rules:
-      - "events_are_immutable"
-      - "aggregates_raise_events"
-      - "event_store_persists_events"
-      - "handlers_are_idempotent"
-EOF
-
-if [ -f .pmat/patterns/custom-patterns.yaml ]; then
-    echo "✅ Custom pattern configuration created"
+# ---------------------------------------------------------------------------
+# Test 2: the four --dag-type values
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 2: --dag-type"
+CALL_OUT=$("$PMAT_BIN" analyze dag -p . --dag-type call-graph 2>&1)
+if echo "$CALL_OUT" | grep -qF "src_api_mod_handler --> src_store_mod_load"; then
+    test_pass "call-graph contains handler -> load"
 else
-    echo "❌ Failed to create custom pattern configuration"
-    exit 1
+    test_fail "call-graph lost the only call edge: $CALL_OUT"
 fi
 
-# Test 4: Sample project structure
-echo "Test 4: Sample project structure"
-mkdir -p {controllers,services,repositories,models,domain,infrastructure}
-
-cat > controllers/user_controller.py << 'EOF'
-from services.user_service import UserService
-
-class UserController:
-    def __init__(self):
-        self.user_service = UserService()
-    
-    def get_user(self, user_id):
-        return self.user_service.get_user(user_id)
-EOF
-
-cat > services/user_service.py << 'EOF'
-from repositories.user_repository import UserRepository
-
-class UserService:
-    def __init__(self):
-        self.user_repo = UserRepository()
-    
-    def get_user(self, user_id):
-        return self.user_repo.find_by_id(user_id)
-EOF
-
-cat > repositories/user_repository.py << 'EOF'
-from models.user import User
-
-class UserRepository:
-    def find_by_id(self, user_id):
-        # Database access logic
-        return User(id=user_id)
-EOF
-
-cat > models/user.py << 'EOF'
-class User:
-    def __init__(self, id, name=None, email=None):
-        self.id = id
-        self.name = name
-        self.email = email
-EOF
-
-if [ -f controllers/user_controller.py ] && [ -f services/user_service.py ]; then
-    echo "✅ Sample project structure created"
+IMP_OUT=$("$PMAT_BIN" analyze dag -p . --dag-type import-graph --filter-external 2>&1)
+if echo "$IMP_OUT" | grep -qE "filter-external: dropped [0-9]+ external node\(s\) of [0-9]+"; then
+    test_pass "--filter-external reports what it dropped"
 else
-    echo "❌ Failed to create sample project"
-    exit 1
+    test_fail "--filter-external no longer reports its effect: $IMP_OUT"
 fi
 
-# Test 5: PMAT architecture configuration
-echo "Test 5: PMAT architecture configuration"
-cat > pmat.toml << 'EOF'
-[architecture]
-enabled = true
-analyze_dependencies = true
-detect_patterns = true
-validate_layers = true
-track_evolution = true
-
-[architecture.analysis]
-max_coupling_threshold = 0.7
-min_cohesion_threshold = 0.6
-max_dependency_depth = 5
-circular_dependencies = "error"
-
-[architecture.patterns]
-detect_all = true
-confidence_threshold = 0.8
-custom_patterns = [
-    "mvc_pattern",
-    "hexagonal_architecture",
-    "event_sourcing"
-]
-
-[architecture.layers]
-config_file = ".pmat/architecture.yaml"
-strict_validation = true
-allow_test_violations = true
-
-[architecture.metrics]
-calculate_maintainability_index = true
-track_technical_debt = true
-complexity_analysis = true
-
-[architecture.visualization]
-generate_graphs = true
-output_format = "svg"
-include_metrics = true
-color_by_coupling = true
-
-[architecture.reporting]
-include_recommendations = true
-explain_violations = true
-suggest_refactoring = true
-benchmark_against_industry = true
-EOF
-
-if [ -f pmat.toml ]; then
-    echo "✅ PMAT architecture configuration created"
+INH_OUT=$("$PMAT_BIN" analyze dag -p . --dag-type inheritance 2>&1)
+if echo "$INH_OUT" | grep -q "empty:"; then
+    test_pass "an empty inheritance graph explains itself instead of printing a bare graph"
 else
-    echo "❌ Failed to create PMAT configuration"
-    exit 1
+    test_fail "empty inheritance graph no longer explains itself: $INH_OUT"
 fi
 
-# Test 6: Architecture exceptions
-echo "Test 6: Architecture exceptions"
-cat > .pmat/architecture-exceptions.yaml << 'EOF'
-exceptions:
-  layer_violations:
-    - file: "controllers/legacy_controller.py"
-      reason: "Legacy code - planned for refactoring"
-      expires: "2025-12-31"
-      
-    - pattern: "*/migrations/*"
-      reason: "Database migrations need direct model access"
-      
-  circular_dependencies:
-    - modules: ["user.models", "auth.models"]
-      reason: "Historical coupling - breaking in v2.0"
-      tracking_issue: "ARCH-123"
-      
-  pattern_violations:
-    - file: "utils/singleton_config.py"
-      pattern: "singleton"
-      reason: "Configuration requires global state"
-EOF
-
-if [ -f .pmat/architecture-exceptions.yaml ]; then
-    echo "✅ Architecture exceptions created"
+# ---------------------------------------------------------------------------
+# Test 3: -o writes Mermaid to a file
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 3: dag -o"
+"$PMAT_BIN" analyze dag -p . --show-complexity -o dag.mmd >/dev/null 2>&1
+if [ -f dag.mmd ] && head -1 dag.mmd | grep -q "graph TD"; then
+    test_pass "-o wrote a Mermaid document"
 else
-    echo "❌ Failed to create architecture exceptions"
-    exit 1
+    test_fail "-o did not write a Mermaid document"
 fi
 
-# Test 7: GitHub Actions workflow
-echo "Test 7: GitHub Actions workflow"
-mkdir -p .github/workflows
-cat > .github/workflows/architecture-analysis.yml << 'EOF'
-name: Architecture Analysis
-
-on:
-  pull_request:
-    paths: ['src/**', 'services/**']
-  push:
-    branches: [main, develop]
-
-jobs:
-  architecture-analysis:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - name: Install PMAT
-        run: cargo install pmat
-          
-      - name: Run Architecture Analysis
-        run: |
-          # Mock architecture analysis - would run pmat commands
-          echo "Running architecture analysis..."
-          echo '{"coupling": 0.45, "violations": 2}' > architecture-report.json
-          
-      - name: Validate Architecture
-        run: |
-          echo "Validating architectural constraints..."
-          # Would run: pmat architecture validate-layers
-          
-      - name: Generate Visualization
-        run: |
-          echo "Generating dependency graph..."
-          # Would run: pmat architecture graph
+# ---------------------------------------------------------------------------
+# Test 4: a dependency cycle is DRAWN but never flagged (chapter's claim)
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 4: cycles are visible, not detected"
+mkdir -p "$TEST_DIR/cyc/src"
+(
+  cd "$TEST_DIR/cyc" || exit 1
+  cat > Cargo.toml << 'EOF'
+[package]
+name = "cyc"
+version = "0.1.0"
+edition = "2021"
 EOF
-
-if [ -f .github/workflows/architecture-analysis.yml ]; then
-    echo "✅ GitHub Actions workflow created"
+  printf 'pub mod a;\npub mod b;\n' > src/lib.rs
+  cat > src/a.rs << 'EOF'
+use crate::b::from_b;
+pub fn from_a() -> i32 { from_b() + 1 }
+pub fn seed() -> i32 { 1 }
+EOF
+  cat > src/b.rs << 'EOF'
+use crate::a::seed;
+pub fn from_b() -> i32 { seed() + 1 }
+EOF
+)
+CYC_OUT=$(cd "$TEST_DIR/cyc" && "$PMAT_BIN" analyze dag -p . --dag-type import-graph 2>&1)
+CYC_RC=$?
+if echo "$CYC_OUT" | grep -qF "src_a -.-> src_b" && echo "$CYC_OUT" | grep -qF "src_b -.-> src_a"; then
+    test_pass "both directions of the cycle appear in the graph"
 else
-    echo "❌ Failed to create GitHub Actions workflow"
-    exit 1
+    test_fail "the cycle is no longer drawn: $CYC_OUT"
+fi
+if [ "$CYC_RC" -eq 0 ]; then
+    test_pass "a cycle does not change the exit code (chapter: cycles are never flagged)"
+else
+    test_fail "dag now exits $CYC_RC on a cycle — the chapter's claim is stale"
 fi
 
-# Test 8: Example repository pattern
-echo "Test 8: Repository pattern example"
-mkdir -p domain/interfaces
-cat > domain/interfaces/user_repository.py << 'EOF'
-from abc import ABC, abstractmethod
-from typing import Optional
-from models.user import User
-
-class IUserRepository(ABC):
-    @abstractmethod
-    def find_by_id(self, user_id: str) -> Optional[User]:
-        pass
-    
-    @abstractmethod
-    def save(self, user: User) -> User:
-        pass
-    
-    @abstractmethod
-    def delete(self, user_id: str) -> bool:
-        pass
-EOF
-
-cat > infrastructure/sql_user_repository.py << 'EOF'
-from typing import Optional
-from domain.interfaces.user_repository import IUserRepository
-from models.user import User
-
-class SqlUserRepository(IUserRepository):
-    def find_by_id(self, user_id: str) -> Optional[User]:
-        # SQL implementation
-        return User(id=user_id, name="John Doe")
-    
-    def save(self, user: User) -> User:
-        # SQL save implementation
-        return user
-    
-    def delete(self, user_id: str) -> bool:
-        # SQL delete implementation
-        return True
-EOF
-
-if [ -f domain/interfaces/user_repository.py ] && [ -f infrastructure/sql_user_repository.py ]; then
-    echo "✅ Repository pattern example created"
+# ---------------------------------------------------------------------------
+# Test 5: duplicates, with a denominator
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 5: analyze duplicates"
+DUP_OUT=$("$PMAT_BIN" analyze duplicates -p . 2>&1)
+if echo "$DUP_OUT" | grep -qE "Duplication: [0-9.]+% \([0-9]+ / [0-9]+ lines\)"; then
+    DUP_TOTAL=$(echo "$DUP_OUT" | sed -nE 's|.*Duplication: [0-9.]+% \([0-9]+ / ([0-9]+) lines\).*|\1|p' | head -1)
+    if [ "${DUP_TOTAL:-0}" -gt 0 ]; then
+        test_pass "duplicates reports a non-zero denominator ($DUP_TOTAL lines examined)"
+    else
+        test_fail "duplicates examined 0 lines — a 0% result would be meaningless"
+    fi
 else
-    echo "❌ Failed to create repository pattern example"
-    exit 1
+    test_fail "duplicates no longer reports lines examined: $DUP_OUT"
 fi
 
-# Cleanup
-cd /
-rm -rf "$TEST_DIR"
+# ---------------------------------------------------------------------------
+# Test 6: split reports modularity and reverse dependencies
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 6: pmat split"
+SPLIT_OUT=$("$PMAT_BIN" split src/store/mod.rs 2>&1)
+if echo "$SPLIT_OUT" | grep -q "Modularity:"; then
+    test_pass "split reports a Louvain modularity score"
+else
+    test_fail "split no longer reports Modularity: $SPLIT_OUT"
+fi
+if echo "$SPLIT_OUT" | grep -q "src/api/mod.rs"; then
+    test_pass "split's Impact section names the importing file"
+else
+    test_fail "split no longer reports reverse dependencies: $SPLIT_OUT"
+fi
+
+AUTO_OUT=$("$PMAT_BIN" split --auto 2>&1)
+if echo "$AUTO_OUT" | grep -qE "Threshold: [0-9]+ lines"; then
+    test_pass "split --auto reports the size threshold it used"
+else
+    test_fail "split --auto changed shape: $AUTO_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 7: bottleneck reads git history and reports its denominator
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 7: analyze bottleneck"
+BOT_OUT=$("$PMAT_BIN" analyze bottleneck -p . --period 365 --threshold 1 2>&1)
+if echo "$BOT_OUT" | grep -qE "Total commits: [0-9]+"; then
+    BOT_COMMITS=$(echo "$BOT_OUT" | sed -nE 's/.*Total commits: ([0-9]+).*/\1/p' | head -1)
+    if [ "${BOT_COMMITS:-0}" -gt 0 ]; then
+        test_pass "bottleneck read $BOT_COMMITS commit(s) of history"
+    else
+        test_fail "bottleneck read 0 commits from a repo with 2 — a silent zero"
+    fi
+else
+    test_fail "bottleneck no longer reports its commit denominator: $BOT_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 8: graph-metrics — the chapter warns it reports zero edges. Keep that
+# warning honest: if this ever starts resolving edges, the chapter is stale.
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 8: analyze graph-metrics (chapter documents a zero-edge defect)"
+GM_OUT=$("$PMAT_BIN" analyze graph-metrics -p . 2>&1)
+GM_EDGES=$(echo "$GM_OUT" | sed -nE 's/.*Total edges: ([0-9]+).*/\1/p' | head -1)
+if [ "${GM_EDGES:-x}" = "0" ]; then
+    test_pass "graph-metrics still reports 0 edges (chapter's warning is current)"
+else
+    test_fail "graph-metrics now reports $GM_EDGES edges — remove the warning from the chapter"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 9: the command the OLD chapter documented must stay gone
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 9: the architecture subcommand remains nonexistent"
+if "$PMAT_BIN" architecture --help >/dev/null 2>&1; then
+    test_fail "an 'architecture' subcommand now exists — the chapter's banner is stale"
+else
+    test_pass "no 'architecture' subcommand (banner is still correct)"
+fi
 
 echo ""
-echo "=== Chapter 12 Test Summary ==="
-echo "✅ All 8 architecture analysis tests passed!"
-echo ""
-echo "Architecture configurations validated:"
-echo "- Architecture layer configuration"
-echo "- Microservices configuration"
-echo "- Custom pattern detection"
-echo "- Sample project structure"
-echo "- PMAT architecture configuration"
-echo "- Architecture exceptions"
-echo "- GitHub Actions workflow"
-echo "- Repository pattern example"
-
-exit 0
+echo "=== Chapter 12: $PASS_COUNT passed, $FAIL_COUNT failed ==="
+[ "$FAIL_COUNT" -eq 0 ] || exit 1

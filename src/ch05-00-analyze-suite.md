@@ -21,55 +21,87 @@ The `pmat analyze` command suite provides deep insights into your codebase throu
 
 ## Basic Analysis
 
-Start with a comprehensive analysis of your entire repository:
+`pmat analyze` is a **parent command**: on its own it has nothing to run, and
+`pmat analyze .` fails with `error: unrecognized subcommand`. The subcommand that
+runs every analyser at once is `comprehensive`, and it takes the project path
+through `-p`/`--path`, never as a positional argument:
 
 ```bash
-# Analyze current directory
-pmat analyze .
+# Analyze current directory (--path defaults to `.`, so this is the short form)
+pmat analyze comprehensive
 
 # Analyze specific directory
-pmat analyze src/
+pmat analyze comprehensive -p src/
 
 # Analyze with detailed output
-pmat analyze . --detailed
+pmat analyze comprehensive -p . --format detailed
 
 # Save analysis to file
-pmat analyze . --output analysis-report.txt
+pmat analyze comprehensive -p . --output analysis-report.txt
 ```
+
+`pmat analyze --help` lists the other thirty-odd subcommands; the rest of this
+chapter walks the ones you will reach for most.
 
 ### Example Output
 
+Run against a four-file Python/JavaScript project with one deliberately gnarly
+function and three TODO/FIXME/HACK comments, `pmat analyze comprehensive -p .`
+prints this (progress lines on stderr, report on stdout):
+
 ```
-📊 Repository Analysis
-======================
+🔍 Running comprehensive analysis...
+Warning: dead_code analysis failed: Cargo check failed: error: could not find `Cargo.toml` in /path/to/project
 
-Files Analyzed: 156
-Total Lines: 12,450
-Languages: Python (75%), JavaScript (20%), YAML (5%)
+ℹ️  Duplicate detection is not part of comprehensive analysis; run `pmat analyze duplicates` for clone results.
+🐛 Predicting defects...
+✓ Comprehensive analysis completed
+Comprehensive Code Analysis Report
 
-## Metrics Summary
-- Cyclomatic Complexity: 6.8 (average), 42 (max)
-- Technical Debt Grade: B+ (1.8/5.0)
-- Code Duplication: 8.5%
-- Test Coverage: 82%
-- Dead Code: 3 functions, 127 lines
+Executive Summary
 
-## Quality Assessment
-✅ Strengths:
-- Good test coverage (>80%)
-- Low average complexity
-- Consistent code style
+  Project analysis completed with 4 total files analyzed.
 
-⚠️ Areas for Improvement:
-- High complexity in payment_processor.py (42)
-- Duplication in validation logic (8.5%)
-- 3 unused functions detected
+  Quality Score: 90.0%
+  Total Files:   4
+  Total Issues:  4
+  Critical:      4
 
-## Recommendations
-1. Refactor payment_processor.py to reduce complexity
-2. Extract common validation into shared utilities
-3. Remove or document dead code
+  Key Recommendations
+
+    - Consider refactoring high-complexity functions
+    - Address technical debt items (TODO/FIXME comments)
+
+Complexity Analysis
+
+  Files Analyzed:     4
+  Average Complexity: 4.3
+  Max Complexity:     39
+  Violations:         1
+
+  Top Complexity Violations
+
+    1. ./src/payment_processor.py - process (complexity: 39)
+
+Technical Debt (SATD) Analysis
+
+  Files Analyzed: 2
+  Violations:     3
+
+  SATD Violations
+
+    1. ./src/payment_processor.py:1 - Requirement (Low)
+    2. ./src/payment_processor.py:14 - Defect (High)
+    3. ./web/app.js:1 - Design (Medium)
 ```
+
+Two things in that transcript are worth reading carefully rather than skipping:
+
+- **Dead-code analysis is Rust-only.** On a non-Cargo project it does not
+  silently report zero — it says why it could not run. A metric that reads `0`
+  because it never executed is worse than no metric at all.
+- **Duplicate detection is not included.** `comprehensive` says so on stderr and
+  points you at `pmat analyze duplicates`, which is a separate pass.
 
 ## Complexity Analysis
 
@@ -79,86 +111,132 @@ Measure and track code complexity to maintain readability:
 # Basic complexity analysis
 pmat analyze complexity
 
-# Set complexity threshold
-pmat analyze complexity --threshold 10
+# Set thresholds (there is no --threshold; there are two, one per metric)
+pmat analyze complexity --max-cyclomatic 10
+pmat analyze complexity --max-cognitive 15
 
-# Analyze specific files
-pmat analyze complexity src/services/
+# Analyze a specific directory (path goes through -p/--path, never positionally)
+pmat analyze complexity -p src/
 
-# Output in different formats
+# Analyze one file
+pmat analyze complexity --file src/parser.rs
+
+# Output formats: summary (default), full, json, sarif. There is no csv.
 pmat analyze complexity --format json
-pmat analyze complexity --format csv
 
-# ML-based scoring (GH-97) - Uses aprender LinearRegression
-pmat analyze complexity --ml
-
-# Combined with thresholds and CI/CD mode
-pmat analyze complexity --ml --max-cyclomatic 15 --fail-on-violation
+# CI/CD mode
+pmat analyze complexity --max-cyclomatic 5 --fail-on-violation
 ```
 
-### ML-Based Quality Scoring (GH-97)
+The full option list is `-p/--path`, `--file`, `--files`, `--toolchain`,
+`--format <summary|full|json|sarif>`, `-o/--output`, `--max-cyclomatic`,
+`--max-cognitive`, `--include`, `--watch`, `--top-files`, `--fail-on-violation`,
+`--timeout` and `--ml`. Note the three that earlier editions of this chapter
+used and that do not exist: `--threshold`, `--detailed` and `--cognitive`.
+Cognitive complexity is always computed; it is a column, not a mode.
 
-The `--ml` flag enables machine learning-based quality scoring using the aprender LinearRegression model. This provides evidence-based predictions trained on real codebase quality data:
+### `--ml` is not implemented
+
+The flag parses, and refuses to pretend:
 
 ```bash
-# Enable ML scoring
 pmat analyze complexity --ml
-
-# Combine with traditional metrics
-pmat analyze complexity --ml --max-cyclomatic 20 --format json
 ```
 
-**Benefits:**
-- Evidence-based scoring trained on real quality data
-- Considers feature interactions (LOC × nesting, loops × conditionals)
-- Provides confidence scores for predictions
-- Identifies feature contributions to quality scores
+```
+Error: --ml is not implemented: complexity scores are still computed by the heuristic formulas, so this flag would relabel them without changing them. Re-run `analyze complexity` without --ml (see GH-97).
+```
+
+Exit code 1. Its `--help` entry reads `NOT IMPLEMENTED: ML-based scoring
+(aprender LinearRegression)`. There is no ML scoring in pmat 3.32.0, and the
+"Benefits" list an earlier edition of this chapter attached to it described a
+model that never ran.
 
 ### Understanding Complexity Metrics
 
+Run against a four-file Rust crate whose `src/parser.rs` holds one deliberately
+branchy function:
+
 ```bash
-pmat analyze complexity --detailed
+pmat analyze complexity
 ```
 
-Output (colorized in terminal):
 ```
+⏰ Analysis timeout set to 300 seconds
+🔍 Analyzing rust project complexity (all languages)...
+✅ Successfully analyzed 4 file(s)
+   1 of 5 file(s) were not analyzed
+   no complexity analyzer for: .toml (1)
 Complexity Analysis Summary
 
-  Files analyzed: 3
-  Total functions: 6
+  Files analyzed: 4
+  Total functions: 8
 
 Complexity Metrics
 
-  Median Cyclomatic: 4.0
-  Median Cognitive: 2.0
-  Max Cyclomatic: 42
-  Max Cognitive: 35
-  90th Percentile Cyclomatic: 12
-  90th Percentile Cognitive: 8
+  Median Cyclomatic: 1.5
+  Median Cognitive: 0.5
+  Max Cyclomatic: 9
+  Max Cognitive: 13
+  90th Percentile Cyclomatic: 9
+  90th Percentile Cognitive: 13
 
 Top Files by Complexity
 
-  1. src/services/payment.py - Cyclomatic: 56, Cognitive: 45, Functions: 3
-  2. src/models/user.py - Cyclomatic: 19, Cognitive: 12, Functions: 3
+  1. src/parser.rs - Cyclomatic: 16, Cognitive: 19, Functions: 4
+  2. src/lib.rs - Cyclomatic: 2, Cognitive: 1, Functions: 1
+  3. src/util.rs - Cyclomatic: 2, Cognitive: 0, Functions: 2
+  4. src/main.rs - Cyclomatic: 1, Cognitive: 0, Functions: 1
+```
+
+Two things the header lines earn their place by saying: **4 of 5 files were
+analysed**, and the fifth was `Cargo.toml`, for which there is no analyser. A
+tool that printed "4 files analyzed" alone would leave you unable to tell a
+skipped file from an absent one.
+
+Note also that a file's Cyclomatic (16 for `parser.rs`) is the **sum** over its
+functions, while `Max Cyclomatic: 9` is the largest single function. Do not
+compare the two columns.
+
+### Per-function detail
+
+`--file` expands one file into its functions:
+
+```bash
+pmat analyze complexity --file src/parser.rs
+```
+
+```
+  1. src/parser.rs - Cyclomatic: 16, Cognitive: 19, Functions: 4
 
 Functions in File
 
-  1. process_payment (line 5-50) - Cyclomatic: 42, Cognitive: 35
-  2. authenticate (line 3-25) - Cyclomatic: 12, Cognitive: 8
-  3. validate_card (line 52-70) - Cyclomatic: 8, Cognitive: 5
+  1. depth (line 2-14) - Cyclomatic: 9, Cognitive: 13
+  2. copy_a (line 16-16) - Cyclomatic: 3, Cognitive: 3
+  3. copy_b (line 17-17) - Cyclomatic: 3, Cognitive: 3
+  4. never_called (line 19-19) - Cyclomatic: 1, Cognitive: 0
 ```
+
+Setting a threshold below the maximum turns the run into a gate:
+
+```bash
+pmat analyze complexity --max-cyclomatic 5 --fail-on-violation
+```
+
+```
+Top Complexity Hotspots
+
+  1. depth src/parser.rs:2 - cyclomatic complexity: 9
+
+
+❌ Complexity violations found
+```
+
+Exit code 1.
 
 > **Note**: In the terminal, headers appear bold+underlined, labels are bold,
 > numbers are bold white, and file paths are cyan. Use `--format json` for
 > machine-readable output without colors.
-
-### Cognitive Complexity
-
-Beyond cyclomatic complexity, analyze cognitive load:
-
-```bash
-pmat analyze complexity --cognitive
-```
 
 ## Dead Code Detection
 
@@ -168,47 +246,63 @@ Identify and remove unused code to reduce maintenance burden:
 # Find all dead code
 pmat analyze dead-code
 
-# Check specific directories
-pmat analyze dead-code src/legacy/
+# Check a specific directory
+pmat analyze dead-code -p src/
 
-# Export dead code list
-pmat analyze dead-code --export dead-code-list.txt
+# Write the report to a file (there is no --export)
+pmat analyze dead-code -o dead-code-list.txt
 
-# Show safe-to-remove items only
-pmat analyze dead-code --safe-only
+# Machine-readable
+pmat analyze dead-code -f json
 ```
+
+The option list is `-p/--path`, `-f/--format <summary|json|sarif|markdown>`,
+`-t/--top-files`, `-u/--include-unreachable`, `--min-dead-lines`,
+`--include-tests`, `-o/--output`, `--fail-on-violation` and `--max-percentage`
+(default 15.0). `--export` and `--safe-only` never existed; there is no
+safe-to-remove classification.
 
 ### Dead Code Report
 
+```bash
+pmat analyze dead-code
 ```
-💀 Dead Code Detection
-=======================
 
-## Unused Functions (3)
-1. src/utils/helpers.py:45 `old_formatter()` 
-   - Last modified: 6 months ago
-   - Safe to remove: ✅ Yes
+```
+☠️ Analyzing dead code in project...
+⏰ Analysis timeout set to 900 seconds
+📊 Analysis complete: 4 files analyzed, 1 with dead code
+Dead Code Analysis Summary
 
-2. src/legacy/converter.py:120 `legacy_transform()`
-   - Last modified: 1 year ago
-   - Safe to remove: ⚠️ Check for dynamic calls
+  Files analyzed: 4
+  Files with dead code: 1
+  Total dead lines: 5
+  Dead code percentage: 14.7%
 
-3. src/services/email.py:89 `send_test_email()`
-   - Last modified: 2 weeks ago
-   - Safe to remove: ❌ No (might be test utility)
+  Library target: library — cargo: .../Cargo.toml declares package `analyzedemo`, which has a library target, and rustc's dead-code pass treats its public API as reachable
 
-## Unused Variables (12)
-- src/config.py: OLD_API_KEY, DEPRECATED_URL
-- src/models/product.py: legacy_price, old_sku
+  Compiler scan: full (compiler-lint-ran) — cargo check ran against the existing lockfile; rustc's dead-code lint contributed to these findings
 
-## Unused Imports (8)
-- datetime (src/utils/calc.py:3)
-- json (src/services/api.py:5)
+Dead Code by Type
 
-## Impact Analysis
-- Total dead code: 412 lines
-- Percentage of codebase: 3.3%
-- Estimated cleanup time: 2-3 hours
+  Dead functions: 1
+  Dead classes: 0
+  Dead modules: 0
+  Other (fields, constants, statics): 0
+```
+
+The two prose lines in the middle are the ones to read before acting on this
+report. **`Library target: library`** means every `pub` item is treated as
+reachable, so a crate that exposes a large public API will show almost no dead
+code — `pub fn unused_util` in the fixture above is not counted, while the
+private `fn never_called` is. **`Compiler scan: full (compiler-lint-ran)`**
+means rustc's own lint contributed; if it reads otherwise, the findings are
+heuristic only and weaker.
+
+Gate on a percentage with `--max-percentage`:
+
+```bash
+pmat analyze dead-code --max-percentage 10 --fail-on-violation
 ```
 
 ## SATD Analysis
@@ -222,15 +316,81 @@ pmat analyze satd
 # Extended mode - detect euphemisms (NEW in v2.217.0)
 pmat analyze satd --extended
 
-# Categorize by type
-pmat analyze satd --categorize
+# Filter by severity (there is no --priority)
+pmat analyze satd --severity high
 
-# Filter by priority
-pmat analyze satd --priority high
+# Only the critical items
+pmat analyze satd --critical-only
 
-# Generate SATD report
-pmat analyze satd --report
+# Add the metrics summary (there is no --report)
+pmat analyze satd --metrics
+
+# Write a report to a file
+pmat analyze satd -f markdown -o satd.md
 ```
+
+`--categorize`, `--priority` and `--report` never existed. Categorisation is
+unconditional — every violation is already labelled by type (`Defect`,
+`Requirement`, …) and severity in the default output.
+
+Run against the same four-file crate:
+
+```bash
+pmat analyze satd
+```
+
+```
+🔍 Analyzing Self-Admitted Technical Debt (SATD)...
+SATD Analysis Summary
+
+Found 2 SATD violations in 2 files (analysed 4 of 4 file(s) walked)
+
+Total violations:  2
+Scope:  analysed 4 of 4 file(s) walked
+
+Severity Distribution
+  Critical: 0
+  High: 1
+  Medium: 0
+  Low: 1
+
+Top Violations
+  1. ./src/parser.rs:1 - Defect High
+  2. ./src/lib.rs:4 - Requirement Low
+```
+
+`analysed 4 of 4 file(s) walked` is the line that makes the count trustworthy:
+it distinguishes "no debt" from "nothing was read". Filtering narrows it:
+
+```bash
+pmat analyze satd --severity high
+```
+
+```
+Found 1 SATD violations in 1 files (analysed 4 of 4 file(s) walked)
+```
+
+And `--metrics` appends a breakdown:
+
+```bash
+pmat analyze satd --metrics
+```
+
+```
+📊 SATD Metrics:
+  Total files analyzed: 2
+  Total violations: 2
+  Critical violations: 0
+  High violations: 1
+
+  Top violation types:
+    - Requirement: 1
+    - Defect: 1
+```
+
+Note that `Total files analyzed: 2` in the metrics block counts files **with**
+violations, while the summary above it says 4 files were walked. The two numbers
+mean different things.
 
 ### Extended Mode (Issue #149)
 
@@ -249,7 +409,7 @@ pmat analyze satd --report
 | `skip/bypass` | Missing validation | "skip validation for now" |
 
 ```bash
-# Standard detection only (89 violations in pmat codebase)
+# Standard detection only (89 violations in the `pmat` source tree)
 pmat analyze satd --path src/
 
 # Extended detection (441 violations - catches 352 more hidden debt)
@@ -259,51 +419,20 @@ pmat analyze satd --extended --path src/
 pmat analyze satd --extended --strict --fail-on-violation
 ```
 
-### SATD Categories and Patterns
+### `--evolution` is not implemented
+
+`--evolution` and `--days` parse and then refuse, rather than printing an empty
+trend:
 
 ```
-🏗️ Self-Admitted Technical Debt Report
-========================================
-
-## Summary
-Total SATD Items: 47
-Affected Files: 23
-Estimated Debt: 18-24 hours
-
-## By Category
-TODO (23):
-  - Feature additions: 12
-  - Refactoring needs: 8
-  - Documentation: 3
-
-FIXME (15):
-  - Bug workarounds: 10
-  - Performance issues: 5
-
-HACK (6):
-  - Temporary solutions: 4
-  - Quick fixes: 2
-
-XXX (3):
-  - Major concerns: 3
-
-## By Priority
-🔴 High (Blocking): 5
-  - src/auth/validator.py:45 "FIXME: Security vulnerability"
-  - src/payment/processor.py:120 "XXX: Race condition"
-
-🟡 Medium (Important): 18
-  - src/api/routes.py:78 "TODO: Add rate limiting"
-  - src/models/user.py:234 "HACK: Optimize this query"
-
-🟢 Low (Nice to have): 24
-  - src/utils/helpers.py:12 "TODO: Add type hints"
-
-## Trends
-- SATD increased by 15% in last month
-- Most debt in: payment module (8 items)
-- Oldest SATD: 8 months (src/legacy/adapter.py:45)
+Error: --evolution is not implemented for `analyze satd`: no debt history is computed, and --days selects nothing. Re-run without it.
 ```
+
+Exit code 1. For debt over time, diff two `pmat analyze satd -f json` runs
+yourself.
+
+The `--extended --strict --fail-on-violation` form above exits 1 when it finds
+anything, which is what you want in CI and is not an error in the command.
 
 ## Defects Analysis (Known Defects v2.1)
 
@@ -316,7 +445,7 @@ Identify critical defects that cause production failures:
 pmat analyze defects
 
 # Scan specific directory
-pmat analyze defects src/
+pmat analyze defects -p src/
 
 # Scan single file
 pmat analyze defects --file src/main.rs
@@ -463,169 +592,218 @@ Defects contribute to the "Known Defects" category scoring in `pmat rust-project
 
 ## Code Similarity Detection
 
-Find duplicate and similar code blocks:
+There is no `pmat analyze similarity`. The subcommand is **`duplicates`**, and
+it does clone detection by MinHash plus AST embeddings:
 
 ```bash
-# Basic similarity detection
-pmat analyze similarity
+# Basic duplicate detection
+pmat analyze duplicates
 
-# Set similarity threshold (0.0-1.0)
-pmat analyze similarity --threshold 0.8
+# Similarity threshold for semantic clones (0.0-1.0, default 0.85)
+pmat analyze duplicates --threshold 0.8
 
-# Detect specific clone types
-pmat analyze similarity --types 1,2,3
+# Detect one clone class (there is no --types 1,2,3)
+pmat analyze duplicates --detection-type exact
 
 # Ignore test files
-pmat analyze similarity --exclude tests/
+pmat analyze duplicates --exclude "tests/**"
 ```
 
-### Clone Types Explained
+`--detection-type` takes `exact`, `renamed`, `gapped`, `semantic`, `fuzzy` or
+`all` (default) — the named equivalents of the Type-1/2/3/4 taxonomy. The other
+options are `-p/--path`, `--min-lines` (default 5), `--max-tokens` (default
+128), `-f/--format <summary|detailed|human|json|csv|sarif>`, `--perf`,
+`--include` and `--exclude`.
 
-```
-🔄 Code Duplication Analysis
-==============================
+### The default `--min-lines` will hide short clones
 
-## Type-1 Clones (Exact Duplicates)
-Location A: src/validators/user.py:45-67
-Location B: src/validators/admin.py:23-45
-Similarity: 100%
-Lines: 23
-```python
-def validate_email(email):
-    if not email:
-        raise ValueError("Email required")
-    if "@" not in email:
-        raise ValueError("Invalid email")
-    # ... 18 more lines ...
+This matters more than any flag on the command. The fixture used throughout this
+chapter contains `copy_a` and `copy_b`, which are character-for-character
+identical — and the default run finds nothing:
+
+```bash
+pmat analyze duplicates
 ```
 
-## Type-2 Clones (Renamed Variables)
-Location A: src/utils/calc.py:12-25
-Location B: src/helpers/math.py:34-47
-Similarity: 95%
-Difference: Variable names (total→sum, items→elements)
+```
+Analyzing code similarity...
+✓  Found 0 duplicate blocks
+  Duplication: 0.0% (0 / 34 lines)
 
-## Type-3 Clones (Modified Statements)
-Location A: src/services/notification.py:67-89
-Location B: src/services/email.py:45-70
-Similarity: 78%
-Difference: Added error handling in B
+✓ Analysis Complete
+Duplicate Code Analysis
 
-## Type-4 Clones (Semantic)
-Location A: Bubble sort in sort_utils.py
-Location B: Selection sort in legacy_sort.py
-Note: Different algorithms, same purpose
+Summary
+  Total duplicate blocks: 0
+  Duplicate lines: 0 / 34
+  Duplication percentage: 0.0%
+```
 
-## Impact Analysis
-- Total duplication: 12.5% (1,556 lines)
-- Potential reduction: 8.2% (1,020 lines)
-- Estimated refactoring: 6-8 hours
-- Maintenance cost reduction: 35%
+They are one-liners, and `--min-lines` defaults to 5. Lower it and they appear:
+
+```bash
+pmat analyze duplicates --min-lines 1
+```
+
+```
+Analyzing code similarity...
+✓  Found 2 duplicate blocks
+  Duplication: 17.6% (6 / 34 lines)
+
+✓ Analysis Complete
+Duplicate Code Analysis
+
+Summary
+  Total duplicate blocks: 2
+  Duplicate lines: 6 / 34
+  Duplication percentage: 17.6%
+
+Top Files by Duplication
+
+  1. src/parser.rs - 21.1% duplication (4 / 19 lines)
+  2. src/lib.rs - 16.7% duplication (2 / 12 lines)
+```
+
+0.0% and 17.6% on the same code, from one flag. A zero from this command means
+"no clone at or above `--min-lines`", never "no duplication".
+
+### Finding similarly-named functions
+
+A different question — "what else is called something like this?" — is
+`analyze name-similarity`, which takes the name as a positional:
+
+```bash
+pmat analyze name-similarity depth
+```
+
+```
+🔍 Searching for names similar to 'depth'...
+✅ Found 8 names to analyze
+Name Similarity Analysis
+
+  Query: depth
+
+  Found: 2 matches out of 8 names searched
+
+1. depth (score: 1.00)
+   File: ./src/parser.rs:2
+   Type: function
+   Edit distance: 0
+
+2. dispatch (score: 0.50)
 ```
 
 ## Dependency Analysis
 
-Understand coupling and dependencies:
+There is no `pmat analyze dependencies`. The subcommand is **`dag`**, and it
+renders a Mermaid graph:
 
 ```bash
-# Analyze all dependencies
-pmat analyze dependencies
+# Full dependency graph (the default)
+pmat analyze dag
 
-# Show dependency tree
-pmat analyze dependencies --tree
+# Pick the graph type
+pmat analyze dag --dag-type call-graph
+pmat analyze dag --dag-type import-graph
+pmat analyze dag --dag-type inheritance
 
-# Check for circular dependencies
-pmat analyze dependencies --circular
-
-# Export dependency graph
-pmat analyze dependencies --graph --output deps.svg
+# Write it out
+pmat analyze dag -o deps.mmd
 ```
 
-### Dependency Report
+```bash
+pmat analyze dag
+```
 
 ```
-📦 Dependency Analysis
-========================
-
-## Module Dependencies
-
-src/services/
-├── payment.py
-│   ├── models.user (import User)
-│   ├── models.transaction (import Transaction)
-│   ├── utils.validator (import validate_card)
-│   └── external: stripe, requests
-│
-├── notification.py
-│   ├── models.user (import User)
-│   ├── utils.email (import send_email)
-│   └── external: sendgrid
-│
-└── auth.py
-    ├── models.user (import User, Permission)
-    ├── utils.crypto (import hash_password)
-    └── external: jwt, bcrypt
-
-## Metrics
-- Afferent Coupling (Ca): 12
-- Efferent Coupling (Ce): 18
-- Instability (I): 0.6
-- Abstractness (A): 0.3
-
-## Circular Dependencies
-⚠️ Found 2 circular dependencies:
-1. models.user → services.auth → models.user
-2. services.payment → utils.validator → services.payment
-
-## External Dependencies
-Production (15):
-- fastapi==0.68.0
-- sqlalchemy==1.4.23
-- pydantic==1.8.2
-- stripe==2.60.0
-- ... 11 more
-
-Development (8):
-- pytest==6.2.4
-- black==21.7b0
-- mypy==0.910
-- ... 5 more
-
-## Vulnerability Check
-🔴 2 dependencies with known vulnerabilities:
-- requests==2.25.1 (CVE-2021-12345: High)
-- pyyaml==5.3.1 (CVE-2020-14343: Medium)
+🔄 Generating dependency analysis graph...
+📁 Analyzed 4 files
+📊 full-dependency: rendered 14 nodes and 2 edges
+graph TD
+    src_lib[lib]
+    src_lib_dispatch[dispatch]
+    src_lib_parser[parser]
+    src_lib_util[util]
+    src_main[main]
+    src_main_main[main]
+    src_parser[parser]
+    src_parser_copy_a[copy_a]
+    src_parser_copy_b[copy_b]
+    src_parser_depth[depth]
+    src_parser_never_called[never_called]
+    src_util[util]
+    src_util_scale[scale]
+    src_util_unused_util[unused_util]
 ```
+
+The output is Mermaid text on stdout, not an image — there is no `--graph` flag
+and no SVG renderer. Pipe it into a Mermaid renderer, or paste it into any
+Markdown viewer that supports Mermaid.
+
+`--dag-type` accepts `call-graph`, `import-graph`, `inheritance` and
+`full-dependency` (default). Other options: `-p/--path`, `-o/--output`,
+`--max-depth`, `--target-nodes` (applies graph reduction above that count),
+`--filter-external`, `--show-complexity`, `--include-duplicates`,
+`--include-dead-code`, `--enhanced`.
+
+**There is no circular-dependency detector** and no dependency-vulnerability
+check in `pmat analyze`. For cycle and centrality analysis over the same graph,
+see `pmat analyze graph-metrics` and
+[Chapter 26](ch26-00-graph-statistics.md). For dependency CVEs, use
+`cargo audit` / `cargo deny`, or `pmat deps-audit` for the Sovereign-AI-stack
+migration report.
 
 ## Architecture Analysis
 
-Analyze architectural patterns and structure:
+**`pmat analyze architecture` does not exist and never has.** It is not in
+`pmat analyze --help`, and every invocation exits 2 with "unrecognized
+subcommand". There is no pattern detector for MVC/repository/service, and no
+`--rules architecture.yaml` rules engine anywhere in pmat 3.32.0.
 
-```bash
-# Full architecture analysis
-pmat analyze architecture
+The closest real capability is structural, not pattern-based:
 
-# Check specific patterns
-pmat analyze architecture --patterns mvc,repository,service
-
-# Validate against rules
-pmat analyze architecture --rules architecture.yaml
-```
+| You wanted | Use |
+|------------|-----|
+| Module structure and coupling | `pmat analyze dag`, `pmat analyze graph-metrics` |
+| Which files are architecturally central | `pmat analyze graph-metrics --metrics page-rank` |
+| Where a file should be split | `pmat split <FILE>` |
+| Whole-project quality posture | `pmat analyze comprehensive`, `pmat tdg` |
 
 ## Security Analysis
 
-Basic security scanning (detailed security requires specialized tools):
+**`pmat analyze security` does not exist either.** The real security check lives
+on the quality gate:
 
 ```bash
-# Security scan
-pmat analyze security
-
-# Check for secrets
-pmat analyze security --secrets
-
-# Common vulnerabilities
-pmat analyze security --vulnerabilities
+pmat quality-gate --checks security
 ```
+
+```
+🔍 Running quality gate checks...
+
+📋 Checks to run:
+  ✓ Security vulnerabilities
+
+  ⚠️  No .pmat/context.db found — violations not persisted to SQL
+Quality Gate: PASSED
+Total violations: 1
+Blocking violations: 0
+
+## scope (1 violations)
+  - . - the security scan read 0 source file(s) directly under . and did NOT descend into subdirectories, so anything under src/ was not examined — a zero here is the scope's, not the tree's
+
+
+✅ Quality gate PASSED (1 advisory finding(s), not blocking)
+```
+
+Read that scope violation before trusting the result: **the scan did not descend
+into `src/`**, and `pmat` reports that as a finding rather than letting a
+zero-findings result look like a clean bill of health. Point `--path` at the
+directory you mean.
+
+There is no secrets scanner (`--secrets`) and no CVE database
+(`--vulnerabilities`) in pmat. Use `gitleaks`/`trufflehog` and
+`cargo audit`/`cargo deny` respectively.
 
 ## Combined Analysis
 
@@ -633,87 +811,121 @@ Run multiple analyzers together:
 
 ```bash
 # Run all analyzers
-pmat analyze all
+pmat analyze comprehensive -p .
 
-# Run specific combination
-pmat analyze complexity,dead-code,satd
+# Run a specific combination — each analyser is opted in by name
+pmat analyze comprehensive -p . --include-complexity --include-dead-code --include-tdg
 
-# Custom analysis profile
-pmat analyze --profile quality-check
+# Executive summary only, for a build log
+pmat analyze comprehensive -p . --executive-summary
 ```
 
+> **Not available in pmat 3.32.0.** There is no `pmat analyze all`, no
+> comma-separated `pmat analyze complexity,dead-code,satd`, and no
+> `--profile`. `comprehensive` is the subcommand that runs the suite, and its
+> `--include-*` flags are how you pick a subset. Note that duplicate detection
+> is *not* one of them: run `pmat analyze duplicates` separately.
+
 ## Output Formats
+
+`pmat analyze comprehensive` accepts five: `summary` (the default),
+`detailed`, `json`, `markdown` and `sarif`. There is no `csv` and no `html`
+— `--format html` exits 2 with a clap error listing the five that exist.
 
 ### JSON Format
 
 ```bash
-pmat analyze . --format json > analysis.json
+pmat analyze comprehensive -p . --format json > analysis.json
 ```
+
+Real output from the same four-file project as above, trimmed only where noted:
 
 ```json
 {
-  "timestamp": "2025-09-09T10:30:00Z",
-  "repository": "/path/to/repo",
-  "summary": {
-    "files": 156,
-    "lines": 12450,
-    "languages": {
-      "Python": 9337,
-      "JavaScript": 2490,
-      "YAML": 623
-    }
-  },
-  "metrics": {
-    "complexity": {
-      "average": 6.8,
-      "median": 4,
-      "max": 42,
-      "over_threshold": 5
-    },
-    "duplication": {
-      "percentage": 12.5,
-      "lines": 1556,
-      "blocks": 23
-    },
-    "satd": {
-      "total": 47,
-      "by_type": {
-        "TODO": 23,
-        "FIXME": 15,
-        "HACK": 6,
-        "XXX": 3
+  "complexity": {
+    "total_files": 4,
+    "violations": [
+      {
+        "file_path": "./src/payment_processor.py",
+        "function_name": "process",
+        "line_number": 4,
+        "complexity": 39,
+        "complexity_type": "cognitive-complexity"
       }
-    },
-    "dead_code": {
-      "functions": 3,
-      "lines": 127
+    ],
+    "average_complexity": 4.333333333333333,
+    "max_complexity": 39,
+    "summary": "Analyzed 4 file(s) in . with 1 violation(s)"
+  },
+  "dead_code": null,
+  "satd": {
+    "total_files": 2,
+    "violations": [
+      {
+        "file_path": "./src/payment_processor.py",
+        "line_number": 1,
+        "violation_type": "Requirement",
+        "message": "TODO: extract the fee table into config",
+        "severity": "Low"
+      },
+      {
+        "file_path": "./src/payment_processor.py",
+        "line_number": 14,
+        "violation_type": "Defect",
+        "message": "FIXME: unsupported currency silently falls through",
+        "severity": "High"
+      },
+      {
+        "file_path": "./web/app.js",
+        "line_number": 1,
+        "violation_type": "Design",
+        "message": "HACK: hardcoded until the config service lands",
+        "severity": "Medium"
+      }
+    ],
+    "summary": "Found 3 SATD violations in 2 files (analysed 4 of 4 file(s) walked)",
+    "census": {
+      "discovered": 4,
+      "analyzed": 4,
+      "not_read": {
+        "tests": 0,
+        "out_of_scope": 0,
+        "minified_or_vendor": 0,
+        "too_large": 0,
+        "unreadable": 0
+      },
+      "oversized": []
     }
   },
-  "grade": "B+",
-  "recommendations": [
-    "Refactor high complexity functions",
-    "Remove code duplication",
-    "Address high-priority SATD items"
-  ]
+  "summary": {
+    "total_files": 4,
+    "total_issues": 4,
+    "critical_issues": 4,
+    "quality_score": 90.0,
+    "recommendations": [
+      "Consider refactoring high-complexity functions",
+      "Address technical debt items (TODO/FIXME comments)"
+    ]
+  },
+  "duration_ms": 55
 }
 ```
 
-### CSV Format
+`"dead_code": null` is the JSON spelling of "this analyser did not run" —
+distinct from a zero. The `satd.census` block reports what the walk saw versus
+what it read, so a shrinking violation count cannot be mistaken for progress
+when it was really a shrinking denominator.
+
+### SARIF (for IDEs and code scanning)
 
 ```bash
-pmat analyze . --format csv > analysis.csv
-```
-
-### HTML Report
-
-```bash
-pmat analyze . --format html --output report.html
+pmat analyze comprehensive -p . --format sarif > analysis.sarif
 ```
 
 ### Markdown Report
 
 ```bash
-pmat analyze . --format markdown > ANALYSIS.md
+pmat analyze comprehensive -p . --format markdown > ANALYSIS.md
 ```
 
 ## CI/CD Integration
@@ -736,14 +948,14 @@ jobs:
         
       - name: Run Analysis
         run: |
-          pmat analyze . --format json > analysis.json
-          pmat analyze complexity --threshold 10
-          pmat analyze dead-code
-          pmat analyze satd --priority high
+          pmat analyze comprehensive -p . --format json > analysis.json
+          pmat analyze complexity -p . --max-cyclomatic 10
+          pmat analyze dead-code -p .
+          pmat analyze satd -p . --severity high
           
       - name: Check Quality Gates
         run: |
-          complexity=$(jq '.metrics.complexity.max' analysis.json)
+          complexity=$(jq '.complexity.max_complexity' analysis.json)
           if [ "$complexity" -gt 20 ]; then
             echo "❌ Complexity too high: $complexity"
             exit 1
@@ -768,22 +980,17 @@ staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py|js|ts)
 if [ -n "$staged" ]; then
     echo "Running PMAT analysis..."
     
-    # Check complexity
-    pmat analyze complexity $staged --threshold 10
-    if [ $? -ne 0 ]; then
+    # Check complexity. --files takes a comma-separated list, so turn the
+    # newline-separated staged list into one.
+    if ! pmat analyze complexity --files "$(echo "$staged" | paste -sd,)" \
+            --max-cyclomatic 10 --fail-on-violation; then
         echo "❌ Complexity check failed"
         exit 1
     fi
-    
-    # Check for new SATD
-    satd_before=$(pmat analyze satd --count)
-    git stash -q --keep-index
-    satd_after=$(pmat analyze satd --count)
-    git stash pop -q
-    
-    if [ "$satd_after" -gt "$satd_before" ]; then
-        echo "⚠️ Warning: New technical debt added"
-    fi
+
+    # Count SATD. There is no --count flag; read the JSON.
+    satd=$(pmat analyze satd -f json | jq '.total_violations')
+    echo "SATD items: $satd"
 fi
 ```
 
@@ -841,35 +1048,51 @@ include_recommendations = true
 ### Analysis Takes Too Long
 
 ```bash
-# Use parallel processing
-pmat analyze . --parallel
+# Raise the walk budget (default 300s, reported on stderr)
+pmat analyze complexity -p . --timeout 900
 
-# Analyze incrementally
-pmat analyze . --incremental
+# Narrow the walk to the code you care about
+pmat analyze comprehensive -p . --include "src/**"
 
 # Exclude large directories
-pmat analyze . --exclude "node_modules/,venv/,build/"
+pmat analyze comprehensive -p . --exclude "node_modules/**"
 ```
+
+Longer term, put the directories you never want walked into `.pmatignore` — see
+[Chapter 30](ch30-00-file-exclusions.md). That applies to every analyser at once
+rather than to a single invocation.
 
 ### Missing Language Support
 
 ```bash
-# Check supported languages
-pmat analyze --languages
+# List the analyzers, and the languages each one names
+pmat analyze --help
 
-# Use generic analysis for unsupported languages
-pmat analyze . --generic
+# Restrict a pass to one detected toolchain
+pmat analyze complexity -p . --toolchain rust
 ```
+
+`pmat analyze complexity` reports what it *could not* read as well as what it
+did — `no complexity analyzer for: .yaml (1)` — so an unsupported language shows
+up as an explicit skip line rather than as a quietly smaller file count. If a
+whole run produces no metrics, it exits non-zero and says so.
 
 ### Memory Issues
 
-```bash
-# Limit memory usage
-pmat analyze . --max-memory 2G
+There is no memory cap or chunking flag. The lever that actually exists is
+scoping the walk: analyse one subtree at a time.
 
-# Process in chunks
-pmat analyze . --chunk-size 100
+```bash
+pmat analyze complexity -p src/
+pmat analyze complexity --files src/parser.rs,src/util.rs
 ```
+
+`--files` takes a comma-separated list and analyses exactly those files.
+
+> **Not available in pmat 3.32.0.** Earlier printings of this section showed
+> `--parallel`, `--incremental`, `--generic`, `--max-memory` and `--chunk-size`
+> on `pmat analyze`, plus a bare `pmat analyze --languages`. None of those flags
+> exist, and `pmat analyze` needs a subcommand before any flag is even parsed.
 
 ## Summary
 

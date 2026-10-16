@@ -6,7 +6,21 @@ set -e
 
 echo "=== Testing Chapter 5: pmat analyze Command Suite ==="
 
-# Check if pmat is available
+# Check if pmat is available.
+#
+# MOCK_MODE IS INITIALISED HERE, AND THAT IS THE WHOLE POINT. This block used to
+# leave it UNSET on the success path: `MOCK_MODE=true` was assigned only in the
+# not-found branch, and `MOCK_MODE=false` only inside
+# `if [ "$PMAT_BIN" != "pmat" ] && ...`, which is false precisely when pmat WAS
+# found on PATH. Every guard below reads `[ "$MOCK_MODE" = false ]`, and with the
+# variable unset that test is FALSE — so a working, installed pmat selected the
+# MOCK branch in all eight tests and the script never invoked pmat once.
+#
+# Measured against pmat 3.33.0 on PATH before this fix: 8 "Mock ..." passes,
+# 0 real invocations, and a final "All tests passed!". That is what
+# paiml/pmat#1084's falsification control caught -- the chapter passed against a
+# deliberately BROKEN pmat, because it was never calling pmat either way.
+MOCK_MODE=false
 PMAT_BIN=""
 if command -v pmat &> /dev/null; then
     PMAT_BIN="pmat"
@@ -23,8 +37,7 @@ else
     PMAT_BIN="pmat"
 fi
 
-if [ "$PMAT_BIN" != "pmat" ] && [ -x "$PMAT_BIN" ]; then
-    MOCK_MODE=false
+if [ "$MOCK_MODE" = false ]; then
     echo "Using PMAT binary: $PMAT_BIN"
 fi
 
@@ -105,7 +118,10 @@ echo ""
 echo "Test 2: Basic analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze . > analysis_output.txt 2>&1; then
+    # `pmat analyze` has no bare form -- it requires a subcommand. `deep-context`
+    # is the closest thing to "analyse this project": it is the one that reports
+    # files, lines and complexity together.
+    if $PMAT_BIN analyze deep-context --project-path . > analysis_output.txt 2>&1; then
         test_pass "Basic analysis completed"
         
         if grep -q "Analysis\|Files\|Lines\|Complexity" analysis_output.txt; then
@@ -141,7 +157,7 @@ echo ""
 echo "Test 3: Complexity analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze complexity . > complexity.txt 2>&1; then
+    if $PMAT_BIN analyze complexity --path . > complexity.txt 2>&1; then
         test_pass "Complexity analysis completed"
     else
         test_fail "Complexity analysis failed"
@@ -172,7 +188,7 @@ echo ""
 echo "Test 4: Dead code analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze dead-code . > deadcode.txt 2>&1; then
+    if $PMAT_BIN analyze dead-code --path . > deadcode.txt 2>&1; then
         test_pass "Dead code analysis completed"
     else
         test_fail "Dead code analysis failed"
@@ -195,7 +211,7 @@ echo ""
 echo "Test 5: SATD analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze satd . > satd.txt 2>&1; then
+    if $PMAT_BIN analyze satd --path . > satd.txt 2>&1; then
         test_pass "SATD analysis completed"
     else
         test_fail "SATD analysis failed"
@@ -227,7 +243,10 @@ echo ""
 echo "Test 6: Code similarity analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze similarity . > similarity.txt 2>&1; then
+    # `analyze similarity` does not exist. Duplicate/clone detection is
+    # `analyze duplicates`; `analyze name-similarity` is a different thing
+    # (identifier names), and this test is about duplicated CODE.
+    if $PMAT_BIN analyze duplicates --path . > similarity.txt 2>&1; then
         test_pass "Similarity analysis completed"
     else
         test_fail "Similarity analysis failed"
@@ -254,7 +273,11 @@ echo "Test 7: Analysis output formats"
 
 if [ "$MOCK_MODE" = false ]; then
     # JSON output
-    if $PMAT_BIN analyze . --format json > analysis.json 2>&1; then
+    # NOT `2>&1`. pmat writes JSON to stdout and progress to stderr, on purpose
+    # (its own json-stdout-purity tests pin this). Merging the two put
+    # "Analyzing project complexity..." at byte 0 and made `jq empty` fail on
+    # output that was correct.
+    if $PMAT_BIN analyze complexity --path . --format json > analysis.json 2>/dev/null; then
         test_pass "JSON analysis completed"
         if jq empty analysis.json 2>/dev/null; then
             test_pass "JSON output is valid"
@@ -292,7 +315,8 @@ echo ""
 echo "Test 8: Dependency analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN analyze dependencies . > dependencies.txt 2>&1; then
+    # `analyze dependencies` does not exist; the dependency graph is `analyze dag`.
+    if $PMAT_BIN analyze dag --project-path . > dependencies.txt 2>&1; then
         test_pass "Dependency analysis completed"
     else
         test_fail "Dependency analysis failed"

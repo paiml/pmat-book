@@ -1,175 +1,279 @@
 # Chapter 2: Getting Started with PMAT
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (8/8 examples)
+**Chapter Status**: ✅ Verified against pmat 3.32.0
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 8 | All context features tested |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | 18 | Executed against pmat 3.32.0; output pasted verbatim |
+| ⚠️ Not Implemented | 0 | — |
+| ❌ Broken | 0 | — |
+| 📋 Planned | 0 | — |
 
-*Last updated: 2025-09-09*  
-*PMAT version: pmat 2.213.1*  
-*Test-Driven: All examples validated in `tests/ch02/test_context.sh`*
+*Last updated: 2026-08-25*
+*PMAT version: pmat 3.32.0*
 <!-- DOC_STATUS_END -->
+
+> **What changed in this rewrite.** `pmat context` has eight options. The 2025
+> edition of this chapter documented twenty-six, and eighteen of them have never
+> existed: `--include`, `--exclude`, `--exclude-large`, `--max-file-size`,
+> `--with-analysis`, `--max-tokens`, `--max-files`, `--sort-by`,
+> `--smart-truncate`, `--max-lines-per-file`, `--cache`, `--refresh`,
+> `--clear-cache`, `--ttl`, `--ai-format`, `--prepend`, `--template`,
+> `--repos-file`, `--monorepo`, `--incremental`, `--since`, `--timeout`,
+> `--parallel`, `--stream`, `--max-memory`, `--skip-errors`. Whole sections
+> ("Size Management", "Caching for Performance", "Custom Templates", "Multiple
+> Repositories", "Incremental Context") were built on flags the parser rejects
+> with exit 2, so they are gone rather than rewritten around a substitute that
+> does not exist either.
+>
+> Two further corrections:
+>
+> - **`pmat context` takes no positional path.** `pmat context /path/to/project`
+>   exits 2. The path goes in `-p` / `--project-path`.
+> - **There is no `--include` / `--exclude` filtering.** The real way to narrow
+>   a context is `--language` / `--languages`, or pointing `-p` at a
+>   subdirectory. Both are demonstrated below.
 
 ## Your First PMAT Analysis
 
-After installing PMAT (Chapter 1), you're ready to start analyzing code. This chapter covers the essential commands you'll use daily with PMAT.
+After installing PMAT (Chapter 1), `pmat context` is the command you will reach
+for first. It walks a project, parses every source file it recognises, and
+prints a structured summary — file inventory, per-function complexity, and a
+quality scorecard — in a form an LLM or a tool can consume.
 
-## The Context Command: Your Gateway to AI-Powered Analysis
+## The Worked Example
 
-The `pmat context` command is the foundation of PMAT's AI integration capabilities. It generates comprehensive repository context that can be consumed by AI agents, LLMs, and other analysis tools.
+Everything below runs against this four-file polyglot project, which exercises
+pmat's multi-language support:
 
-### Basic Context Generation
+```
+Cargo.toml
+src/lib.rs      // TODO: harden the parser  + two Rust fns
+src/main.rs     one Rust fn
+py/app.py       two Python fns
+web/index.ts    two TypeScript fns + one arrow
+```
 
-The simplest way to generate context is to run PMAT in your project directory:
+## Basic Context Generation
 
 ```bash
-# Generate context for current directory
 pmat context
+```
 
-# Generate context for specific directory
-pmat context /path/to/project
+```
+⏳ Analyzing project...
+Analyses complete
+Analysis complete!
+# Project Context
 
-# Save context to file
+**Language**: rust
+**Project Path**: .
+
+## Project Structure
+
+- **Total Files**: 4
+- **Total Functions**: 8
+- **Median Cyclomatic**: 2.00
+- **Median Cognitive**: 2.00
+
+## Quality Scorecard
+
+- **Overall Health**: 100.0%
+- **Maintainability Index**: not measured
+- **Complexity Score**: 100.0
+- **Test Coverage**: N/A
+
+## Files
+
+### ./py/app.py
+
+**File Complexity**: 3 | **Functions**: 2
+
+- **Function**: `parse` [complexity: 3] [cognitive: 3] [big-o: O(1)] [satd: 0] [churn: low(1)]
+- **Function**: `double` [complexity: 3] [cognitive: 3] [big-o: O(1)] [satd: 0] [churn: low(1)]
+
+### ./src/lib.rs
+
+**File Complexity**: 1 | **Functions**: 2
+
+- **Function**: `parse` [complexity: 1] [cognitive: 0] [big-o: O(1)] [satd: 1 items] [churn: low(1)]
+- **Function**: `double` [complexity: 1] [cognitive: 0] [big-o: O(1)] [satd: 1 items] [churn: low(1)]
+
+### ./src/main.rs
+
+**File Complexity**: 1 | **Functions**: 1
+
+- **Function**: `main` [complexity: 1] [cognitive: 0] [big-o: O(1)] [satd: 0] [churn: low(1)]
+
+### ./web/index.ts
+
+**File Complexity**: 2 | **Functions**: 3
+
+- **Function**: `parse` [complexity: 2] [cognitive: 2] [big-o: O(1)] [satd: 0] [churn: low(1)]
+- **Function**: `anonymous` [satd: 0] [churn: low(1)]
+- **Function**: `double` [complexity: 2] [cognitive: 2] [big-o: O(1)] [satd: 0] [churn: low(1)]
+```
+
+Note what each function line carries: cyclomatic complexity, cognitive
+complexity, an inferred Big-O class, an SATD count, and a git churn bucket. The
+`TODO` in `src/lib.rs` shows up as `[satd: 1 items]` on both functions in that
+file — SATD is attributed per file, not per function.
+
+`**Language**: rust` is the *detected primary* language. It does not mean the
+Python and TypeScript were skipped; all four files are in the inventory.
+
+Redirect, or use `-o`:
+
+```bash
 pmat context > project_context.txt
+pmat context -o ctx.md
 ```
 
-### Example Output
-
-When you run `pmat context` on a Python project, you'll see:
-
 ```
-📁 Repository Context
-=====================
-
-Project: my-application
-Files: 156
-Total Lines: 8,432
-Languages: Python (85%), JavaScript (10%), YAML (5%)
-
-## Structure
-```
-.
-├── README.md (127 lines)
-├── src/
-│   ├── main.py (245 lines)
-│   ├── models/
-│   │   ├── user.py (189 lines)
-│   │   ├── product.py (234 lines)
-│   │   └── order.py (301 lines)
-│   ├── services/
-│   │   ├── auth.py (156 lines)
-│   │   ├── payment.py (423 lines)
-│   │   └── notification.py (178 lines)
-│   └── utils/
-│       ├── config.py (89 lines)
-│       └── helpers.py (112 lines)
-├── tests/ (2,145 lines total)
-└── docs/ (1,234 lines total)
+Analysis complete!
+✅ Context written to: ctx.md
 ```
 
-## Key Files
-
-### src/main.py
-Main application entry point with FastAPI setup, route definitions, and middleware configuration.
-
-### src/services/payment.py
-Payment processing service handling Stripe integration, refund logic, and transaction logging.
-
-### src/models/user.py
-User model with SQLAlchemy ORM, authentication methods, and role-based permissions.
-```
-
-## Filtering Context
-
-Not all files are relevant for every analysis. PMAT provides powerful filtering options:
-
-### Include Specific Files
+Scope to a subdirectory with `-p`:
 
 ```bash
-# Include only Python files
-pmat context --include="*.py"
-
-# Include multiple patterns
-pmat context --include="*.py,*.js,*.ts"
-
-# Include by directory
-pmat context --include="src/**/*.py"
+pmat context -p ./py
 ```
 
-### Exclude Patterns
+```
+# Project Context
+
+**Language**: python
+**Project Path**: ./py
+
+## Project Structure
+
+- **Total Files**: 1
+- **Total Functions**: 2
+- **Median Cyclomatic**: 3.00
+- **Median Cognitive**: 3.00
+```
+
+Detection re-runs against the narrowed path — the primary language is now
+`python`.
+
+## Narrowing by Language
+
+This is the real replacement for the `--include` / `--exclude` globs the old
+chapter documented. `--language` restricts the analysis to a single language:
 
 ```bash
-# Exclude test files
-pmat context --exclude="tests/*,*_test.py"
-
-# Exclude dependencies and build artifacts
-pmat context --exclude="node_modules/,venv/,build/,dist/"
-
-# Exclude by size (files over 1MB)
-pmat context --exclude-large
+pmat context --language python
 ```
 
-### Combined Filtering
+```
+# Project Context
+
+**Language**: python
+**Project Path**: .
+
+## Project Structure
+
+- **Total Files**: 1
+- **Total Functions**: 2
+- **Median Cyclomatic**: 2.00
+- **Median Cognitive**: 2.00
+```
+
+One file, not four. `--languages` takes a comma-separated list:
 
 ```bash
-# Python source files only, no tests or vendors
-pmat context \
-    --include="*.py" \
-    --exclude="tests/,vendor/,*_test.py" \
-    --max-file-size=500kb
+pmat context --languages rust,typescript
 ```
+
+```
+# Project Context
+
+**Language**: rust
+**Project Path**: .
+
+## Project Structure
+
+- **Total Files**: 3
+- **Total Functions**: 6
+- **Median Cyclomatic**: 2.00
+- **Median Cognitive**: 2.00
+```
+
+Three files — the Python is excluded. An unsupported name is rejected loudly,
+and the error doubles as the list of what `pmat` can parse:
+
+```bash
+pmat context --language klingon
+```
+
+```
+Error: Language 'klingon' is not supported. Supported languages: rust, python, javascript, typescript, go, cpp, c, java, kotlin, swift, ruby, php, bash, sh, shell, wasm, wat, lean
+```
+
+Exit code 1.
+
+`-t` / `--toolchain` also exists and is auto-detected when omitted. Unlike
+`--language`, an unrecognised toolchain is **not** rejected — `pmat context -t
+nonsense` exits 0 and analyses the project as if the flag were absent. Prefer
+`--language`, which validates.
 
 ## Output Formats
 
-PMAT supports multiple output formats for different use cases:
+`--format` takes `markdown` (default), `json`, `sarif` and `llm-optimized`.
 
-### JSON Format
-
-Perfect for programmatic consumption — structured project overview with per-function complexity:
+### JSON
 
 ```bash
 pmat context --format json > context.json
 ```
 
-Output structure:
 ```json
 {
   "version": "1.0",
   "project": {
     "language": "rust",
-    "path": "/home/user/projects/my-app",
-    "total_files": 45,
-    "total_functions": 312,
-    "overall_health": 85.0,
-    "maintainability_index": 70.0
+    "path": ".",
+    "total_files": 4,
+    "total_functions": 8,
+    "overall_health": 100.0,
+    "maintainability_index": null
   },
   "files": [
     {
-      "path": "src/main.rs",
+      "path": "./py/app.py",
       "items": [
         {
-          "name": "main",
+          "name": "parse",
           "type": "function",
-          "line": 15,
+          "line": 1,
           "complexity": 3,
+          "cognitive_complexity": 3
+        },
+        {
+          "name": "double",
+          "type": "function",
+          "line": 8,
+          "complexity": 3,
+          "cognitive_complexity": 3
+        }
+      ]
+    },
+    {
+      "path": "./web/index.ts",
+      "items": [
+        {
+          "name": "parse",
+          "type": "function",
+          "line": 1,
+          "complexity": 2,
           "cognitive_complexity": 2
         },
         {
-          "name": "Config",
-          "type": "struct",
-          "line": 5,
-          "fields_count": 4
-        },
-        {
-          "name": "AppError",
-          "type": "enum",
-          "line": 22,
-          "variants_count": 3
+          "name": "anonymous",
+          "type": "function",
+          "line": 1
         }
       ]
     }
@@ -177,281 +281,190 @@ Output structure:
 }
 ```
 
-Each item includes `name`, `type` (function/struct/enum/trait/impl), and `line`. Functions are enriched with `complexity` and `cognitive_complexity` from the analysis. Structs include `fields_count`, enums include `variants_count`.
+(Abridged to two files; the real output lists all four.) Note that the JSON
+carries **less** than the Markdown: no Big-O, no SATD count, no churn bucket,
+and `maintainability_index` is `null`. Items `pmat` could not measure — the
+TypeScript arrow function, listed as `anonymous` — simply omit the `complexity`
+keys rather than reporting zero.
 
-### SARIF Format
-
-For CI/CD static analysis integration (SARIF v2.1):
+### SARIF
 
 ```bash
 pmat context --format sarif > context.sarif
 ```
 
-### Markdown Format
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "pmat",
+          "informationUri": "https://github.com/paiml/pmat",
+          "semanticVersion": "3.32.0"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolConfigurationNotifications": []
+        }
+      ],
+      "properties": {
+        "language": "rust",
+        "projectPath": "."
+      },
+      "results": []
+    }
+  ]
+}
+```
 
-Ideal for documentation and reports:
+**`results` is empty**, on a project that has an SATD marker and four files of
+measurable complexity. `pmat context --format sarif` emits a well-formed but
+finding-free SARIF document. Do not wire it into a code-scanning upload
+expecting annotations; use `pmat analyze satd` or `pmat report` and convert, or
+check whether a later `pmat` has populated it.
+
+### Markdown and llm-optimized
 
 ```bash
 pmat context --format markdown > PROJECT_CONTEXT.md
-```
-
-### LLM-Optimized Format
-
-Specifically designed for AI assistant consumption:
-
-```bash
 pmat context --format llm-optimized
 ```
 
-This format includes:
-- Structured tags for easy parsing
-- Token-efficient representation
-- Relevance scoring for files
-- Semantic grouping of related code
-
-## Context with Analysis
-
-Combine context generation with code analysis for richer insights:
+On this project `llm-optimized` is **byte-identical** to `markdown`:
 
 ```bash
-# Include quality metrics
-pmat context --with-analysis
+diff <(pmat context --format markdown) <(pmat context --format llm-optimized)
 ```
 
-Enhanced output includes:
-```
-## Code Quality Analysis
-- **Complexity**: Average 6.2, Max 15 (payment.py:process_transaction)
-- **Duplication**: 3.2% (18 similar blocks detected)
-- **Test Coverage**: 82.5% (2,145 test lines)
-- **Technical Debt**: Grade B+ (Score: 1.8/5.0)
+produces no output. Treat `llm-optimized` as an alias until proven otherwise on
+your own tree.
 
-## Security Insights
-- No hard-coded secrets detected
-- 2 dependencies with known vulnerabilities (minor)
-- Authentication properly implemented
+## The Remaining Two Flags
 
-## Architecture Patterns
-- MVC-like structure detected
-- Service layer pattern in use
-- Repository pattern for data access
-- Dependency injection configured
-
-## Recommendations
-1. Reduce complexity in payment.py:process_transaction (cyclomatic: 15)
-2. Update vulnerable dependencies: requests==2.25.1, pyyaml==5.3.1
-3. Add missing tests for error handling paths
-4. Consider extracting business logic from models
-```
-
-## Size Management
-
-For large repositories, manage context size effectively:
-
-### Token Limits
-
-For AI/LLM consumption, limit by tokens:
+`--include-large-files` pulls in files over 500 KB, which are skipped by
+default. `--skip-expensive-metrics` skips TDG and complexity analysis for speed:
 
 ```bash
-# Limit to 4000 tokens (GPT-3.5 context window)
-pmat context --max-tokens 4000
-
-# Limit to 8000 tokens (GPT-4 context window)
-pmat context --max-tokens 8000
-
-# Limit to 32000 tokens (Claude context window)
-pmat context --max-tokens 32000
+pmat context --include-large-files
+pmat context --skip-expensive-metrics
 ```
 
-### File Limits
+On a four-file project `--skip-expensive-metrics` produces output identical to
+the default run — there is nothing expensive to skip. Its value is on large
+trees; measure it on yours before assuming a speedup.
 
-Control the number of files included:
+That is the complete option set:
 
-```bash
-# Include only top 10 most relevant files
-pmat context --max-files 10
-
-# Prioritize by complexity
-pmat context --max-files 20 --sort-by complexity
-
-# Prioritize by recent changes
-pmat context --max-files 20 --sort-by recency
-```
-
-### Smart Truncation
-
-PMAT intelligently truncates large files:
-
-```bash
-# Smart truncation (keeps important parts)
-pmat context --smart-truncate
-
-# Truncate at specific line count
-pmat context --max-lines-per-file 500
-```
-
-## Caching for Performance
-
-For large repositories, use caching to speed up repeated context generation:
-
-```bash
-# Enable caching
-pmat context --cache
-
-# Force cache refresh
-pmat context --cache --refresh
-
-# Clear cache
-pmat context --clear-cache
-
-# Set cache TTL (time to live)
-pmat context --cache --ttl 3600  # 1 hour
-```
+| Flag | Meaning |
+|------|---------|
+| `-p, --project-path <PATH>` | Project path (default `.`) |
+| `-o, --output <PATH>` | Write to a file instead of stdout |
+| `--format <FORMAT>` | `markdown` (default), `json`, `sarif`, `llm-optimized` |
+| `-t, --toolchain <TOOLCHAIN>` | Target toolchain; auto-detected if omitted, not validated |
+| `--language <LANGUAGE>` | Single-language override; validated |
+| `--languages <LANGUAGES>` | Comma-separated language list |
+| `--include-large-files` | Include files over 500 KB |
+| `--skip-expensive-metrics` | Skip TDG and complexity for speed |
 
 ## Integration Examples
 
-### With Claude or ChatGPT
+### Feeding an LLM
+
+There is no `--ai-format` and no `--prepend`. Compose with the shell:
 
 ```bash
-# Generate and copy to clipboard (macOS)
-pmat context --ai-format | pbcopy
-
-# Generate and copy to clipboard (Linux)
-pmat context --ai-format | xclip -selection clipboard
-
-# Generate with specific instructions
-pmat context --ai-format --prepend "Analyze this codebase for security vulnerabilities:"
+pmat context --format llm-optimized -o ctx.md
+{ echo "Analyze this codebase for security vulnerabilities:"; cat ctx.md; } | your-llm-cli
 ```
 
-### With VS Code
-
-```bash
-# Generate context for current workspace
-pmat context --format json > .vscode/pmat-context.json
-```
-
-### In CI/CD Pipelines
+### In CI
 
 ```yaml
-# GitHub Actions example
-- name: Generate PMAT Context
+- name: Generate project context
   run: |
-    pmat context --format json > context.json
-    pmat context --format markdown > context.md
-    
-- name: Upload Context Artifacts
-  uses: actions/upload-artifact@v3
+    pmat context --format json -o context.json
+    pmat context --format markdown -o PROJECT_CONTEXT.md
+- uses: actions/upload-artifact@v3
   with:
     name: pmat-context
     path: |
       context.json
-      context.md
+      PROJECT_CONTEXT.md
 ```
 
-## Advanced Options
-
-### Custom Templates
-
-Use custom templates for context output:
+### For an editor workspace
 
 ```bash
-# Use custom template
-pmat context --template templates/context.hbs
-
-# Built-in templates
-pmat context --template minimal
-pmat context --template detailed
-pmat context --template security-focused
+mkdir -p .vscode && pmat context --format json -o .vscode/pmat-context.json
 ```
 
-### Multiple Repositories
+The `mkdir -p` matters: `pmat context -o` does not create parent directories,
+and shell redirection into a missing directory fails before `pmat` even starts.
 
-Analyze multiple repositories in one context:
+## Managing Size
 
-```bash
-# Multiple paths
-pmat context repo1/ repo2/ repo3/
+There is no `--max-tokens`, `--max-files` or `--smart-truncate`. The levers that
+exist are:
 
-# From file list
-pmat context --repos-file projects.txt
-
-# Monorepo with specific packages
-pmat context --monorepo --packages="api,web,shared"
-```
-
-### Incremental Context
-
-For continuous analysis:
-
-```bash
-# Generate incremental context (changes since last run)
-pmat context --incremental
-
-# Changes since specific commit
-pmat context --since HEAD~10
-
-# Changes in last 24 hours
-pmat context --since "24 hours ago"
-```
+1. **Narrow the path**: `pmat context -p ./src`
+2. **Narrow the language**: `pmat context --language rust`
+3. **Pick a leaner format**: JSON omits the Big-O, SATD and churn annotations
+   and is smaller than the Markdown for the same project.
+4. **Post-process**: the Markdown is one `### ./path` section per file, so
+   `awk`/`csplit` can slice it however your context window needs.
 
 ## Troubleshooting
 
-### Common Issues
+### `error: unexpected argument found`
 
-#### Large Repository Timeout
-```bash
-# Increase timeout
-pmat context --timeout 300
+You passed a positional path or one of the eighteen flags listed in the banner
+at the top of this chapter. `pmat context --help` is the authority; it fits on
+one screen.
 
-# Use parallel processing
-pmat context --parallel
+### `Error: Language 'X' is not supported`
 
-# Exclude large directories
-pmat context --exclude="data/,logs/,artifacts/"
-```
+Exit 1, and the message lists every accepted value. Note that `--toolchain`
+does not validate this way — a typo there is silently ignored.
 
-#### Memory Issues
-```bash
-# Use streaming mode for large repos
-pmat context --stream
+### The SARIF file has no results
 
-# Limit memory usage
-pmat context --max-memory 2G
-```
+That is current behaviour, not a configuration problem. See the SARIF section.
 
-#### Permission Errors
-```bash
-# Skip files with permission errors
-pmat context --skip-errors
+### `.vscode/pmat-context.json: No such file or directory`
 
-# Run with specific permissions
-sudo pmat context --user $(whoami)
-```
+Shell redirection into a directory that does not exist. `mkdir -p` first.
 
 ## Best Practices
 
-1. **Start Small**: Begin with filtered context before analyzing entire repositories
-2. **Use Caching**: Enable caching for large repositories to improve performance
-3. **Filter Noise**: Exclude test files, dependencies, and generated code for cleaner context
-4. **Choose Right Format**: Use JSON for tools, Markdown for humans, AI-format for LLMs
-5. **Size Appropriately**: Match context size to your consumption method's limits
-6. **Regular Updates**: Refresh context regularly for evolving codebases
-7. **Security First**: Never include sensitive files (.env, secrets, keys) in context
+1. **Use `-p`, never a positional path.**
+2. **Filter with `--language`/`--languages`**, not with globs — globs do not
+   exist here.
+3. **Choose the format for the consumer**: Markdown for humans and LLMs, JSON
+   for tools. SARIF currently carries no findings.
+4. **Check the primary language line.** `**Language**: rust` on a polyglot repo
+   means "detected primary", not "only language analysed".
+5. **Never point `pmat` at a tree containing secrets.** There is no exclude flag
+   to rescue you; scope with `-p` instead.
 
 ## Summary
 
-The `pmat context` command is your starting point for AI-powered code analysis. It provides:
+`pmat context` generates a structured, multi-language snapshot of a project for
+humans, tools and LLMs. It has eight options, all documented above, and every
+example in this chapter was executed against pmat 3.32.0.
 
-- **Flexible Generation**: Multiple formats and filtering options
-- **Smart Analysis**: Optional quality metrics and insights
-- **Performance**: Caching and incremental updates
-- **Integration Ready**: Works with any AI tool or LLM
-- **Size Management**: Token and file limits for optimal consumption
-
-Master this command, and you'll unlock the full potential of AI-assisted development with PMAT.
+Key takeaways:
+- Path via `-p`; there is no positional argument.
+- Filtering is by language or by path, not by glob.
+- Markdown carries the richest annotations; JSON is leaner; SARIF is currently
+  empty of results.
+- `llm-optimized` was byte-identical to `markdown` in this test.
 
 ## Next Steps
 
 - [Chapter 3: MCP Protocol](ch03-00-mcp-protocol.md) - Integrate PMAT with AI agents
 - [Chapter 4: Technical Debt Grading](ch04-01-tdg.md) - Analyze code quality
-- [Appendix B: Command Reference](appendix-b-commands.md) - Complete CLI reference

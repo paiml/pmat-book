@@ -33,10 +33,11 @@ File exclusions improve analysis performance and focus quality metrics on code y
 ## Example 1: Basic .pmatignore File (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 64
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Excludes 3 directories correctly
-- ✅ Finds only 3 source files (src/main.rs, lib/utils.rs, docs/README.md)
+- ✅ Analyzes only 2 source files (src/main.rs, lib/utils.rs); `docs/README.md`
+  is skipped for a different reason — Markdown has no complexity analyzer
 - ✅ Verifies excluded files don't appear in output
 
 ### Project Structure
@@ -77,32 +78,50 @@ tmp/**
 ### Running Analysis
 
 ```bash
-pmat analyze . --format json
+pmat analyze complexity --path . --format json
 ```
 
 ### Verified Output
 
+Progress lines go to stderr; the JSON document goes to stdout, so `| jq` works
+without any filtering. The stderr banner names the exclusion rule by name:
+
+```
+✅ Successfully analyzed 2 file(s)
+   4 of 6 file(s) were not analyzed
+   no complexity analyzer for: .md (1)
+   excluded by ignore rules (.pmatignore/.paimlignore, vendored, generated): .rs (3)
+```
+
+And the document on stdout (trimmed here to the fields that matter — the real
+one carries per-function metrics as well):
+
 ```json
 {
-  "repository": {
-    "total_files": 3,
-    "analyzed_files": 3
+  "summary": {
+    "total_files": 2,
+    "total_functions": 2,
+    "median_cyclomatic": 1.5,
+    "median_cognitive": 0.5,
+    "max_cyclomatic": 2,
+    "max_cognitive": 1,
+    "p90_cyclomatic": 2,
+    "p90_cognitive": 1,
+    "technical_debt_hours": 0
   },
-  "languages": {
-    "Rust": {
-      "files": [
-        {"path": "src/main.rs"},
-        {"path": "lib/utils.rs"}
-      ]
-    },
-    "Markdown": {
-      "files": [
-        {"path": "docs/README.md"}
-      ]
-    }
-  }
+  "violations": [],
+  "hotspots": [],
+  "files": [
+    { "path": "./lib/utils.rs", "functions": [ { "name": "helper" } ] },
+    { "path": "./src/main.rs",  "functions": [ { "name": "main"   } ] }
+  ]
 }
 ```
+
+Note that `docs/README.md` is *not* excluded — it is simply not a complexity
+target, which the stderr banner reports separately (`no complexity analyzer
+for: .md`). Only the three `.rs` files under `tests_disabled/`, `target/` and
+`tmp/` were dropped by `.pmatignore`.
 
 **Result**: Only 3 files analyzed, excluded directories correctly ignored.
 
@@ -111,7 +130,7 @@ pmat analyze . --format json
 ## Example 2: Legacy .paimlignore Support (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 113
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Recognizes legacy `.paimlignore` filename
 - ✅ Applies exclusion patterns correctly
@@ -128,7 +147,7 @@ target/
 ### Running Analysis
 
 ```bash
-pmat analyze . --format json
+pmat analyze complexity --path . --format json
 ```
 
 **Result**: PMAT respects legacy `.paimlignore` files for backward compatibility with older projects that used the "paiml" naming.
@@ -138,7 +157,7 @@ pmat analyze . --format json
 ## Example 3: .pmatignore Precedence (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 132
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ `.pmatignore` takes precedence over `.paimlignore`
 - ✅ Only `.pmatignore` patterns applied
@@ -175,7 +194,7 @@ tmp/
 ## Example 4: Wildcard Patterns (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 151
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ `cache/**` excludes all cache subdirectories
 - ✅ Wildcard patterns work correctly
@@ -204,7 +223,7 @@ cache/**
 ### Running Analysis
 
 ```bash
-pmat analyze . --format json
+pmat analyze complexity --path . --format json
 ```
 
 **Result**: All files under `cache/` are excluded, regardless of nesting depth.
@@ -214,7 +233,7 @@ pmat analyze . --format json
 ## Example 5: Comment Syntax (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 168
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Comments starting with `#` are ignored
 - ✅ Inline comments work correctly
@@ -237,7 +256,7 @@ target/
 ## Example 6: .gitignore Integration (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 186
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ `.gitignore` patterns automatically respected
 - ✅ Build artifacts excluded via `.gitignore`
@@ -265,7 +284,7 @@ build/
 ### Running Analysis
 
 ```bash
-pmat analyze . --format json
+pmat analyze complexity --path . --format json
 ```
 
 **Result**: Files matching `.gitignore` patterns are automatically excluded.
@@ -275,7 +294,7 @@ pmat analyze . --format json
 ## Example 7: Complex Real-World Scenario (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 202
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Finds exactly 2 source files
 - ✅ Excludes all test directories (unit, integration, e2e)
@@ -316,24 +335,38 @@ target/**
 ### Running Analysis
 
 ```bash
-pmat analyze . --format json
+pmat analyze complexity --path . --format json
 ```
 
 ### Verified Output
 
+On stderr, the count of what was dropped and why:
+
+```
+✅ Successfully analyzed 2 file(s)
+   5 of 7 file(s) were not analyzed
+   excluded by ignore rules (.pmatignore/.paimlignore, vendored, generated): .rs (5)
+```
+
+On stdout (trimmed to the fields that matter):
+
 ```json
 {
-  "repository": {
-    "total_files": 2
+  "summary": {
+    "total_files": 2,
+    "total_functions": 2,
+    "median_cyclomatic": 1.5,
+    "median_cognitive": 0.5,
+    "max_cyclomatic": 2,
+    "max_cognitive": 1,
+    "technical_debt_hours": 0
   },
-  "languages": {
-    "Rust": {
-      "files": [
-        {"path": "src/core/main.rs"},
-        {"path": "src/utils/helpers.rs"}
-      ]
-    }
-  }
+  "violations": [],
+  "hotspots": [],
+  "files": [
+    { "path": "./src/utils/helpers.rs", "functions": [ { "name": "helpers" } ] },
+    { "path": "./src/core/main.rs",     "functions": [ { "name": "main"    } ] }
+  ]
 }
 ```
 
@@ -344,7 +377,7 @@ pmat analyze . --format json
 ## Example 8: Empty .pmatignore File (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 264
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Empty `.pmatignore` doesn't exclude files
 - ✅ Only `.gitignore` exclusions apply
@@ -362,7 +395,7 @@ pmat analyze . --format json
 ## Example 9: Case Sensitivity (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 281
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Pattern matching is case-sensitive
 - ✅ Lowercase `tests/` doesn't match `Tests/` or `TESTS/`
@@ -393,7 +426,7 @@ tests/
 ## Example 10: Performance With Large Exclusion List (TDD Verified)
 
 **Test Location**: `tests/ch30/test_01_pmatignore.sh` line 304
-**Command Tested**: `pmat analyze . --format json`
+**Command Tested**: `pmat analyze complexity --path . --format json`
 **Test Validation**:
 - ✅ Analysis completes in < 5 seconds
 - ✅ Finds all 50 source files correctly
@@ -435,7 +468,7 @@ logs/
 ### Running Analysis
 
 ```bash
-time pmat analyze . --format json
+time pmat analyze complexity --path . --format json
 ```
 
 **Result**: Analysis completes in ~2-3 seconds despite large exclusion list. PMAT uses efficient ripgrep-style filtering.
@@ -493,10 +526,10 @@ Verify your exclusion patterns work:
 
 ```bash
 # Check file count
-pmat analyze . --format json | jq '.repository.total_files'
+pmat analyze complexity --path . --format json | jq '.summary.total_files'
 
 # List analyzed files
-pmat analyze . --format json | jq '.languages[].files[].path'
+pmat analyze complexity --path . --format json | jq -r '.files[].path'
 ```
 
 ---
