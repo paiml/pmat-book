@@ -1,5 +1,18 @@
 # Chapter 65: The HTTP Server — Current State is a Stub
 
+> **⚠️ Historical: defect D13 is closed. Read
+> [Chapter 3.4](ch03-04-mcp-transports.md) instead.**
+>
+> As of **pmat 3.32.0** (2026-08-25) `pmat serve --transport http` binds a real
+> socket and serves MCP over streamable HTTP, from the default feature set. What
+> it serves is **not** the REST API this chapter anticipated: it is MCP JSON-RPC
+> at the **root path**, bearer-authenticated via `PMAT_MCP_HTTP_TOKEN`, with no
+> `/health` and no `/api/v1`. The banner no longer lies — and the transports
+> that are still unimplemented (`web-socket`, `http-sse`, `both`, `all`) now
+> exit 2 with a message instead of printing "Server ready!" and binding nothing.
+>
+> Everything below describes `pmat 3.14.0` and is kept for the record.
+
 *`pmat serve --transport http` announces a URL, prints "Server ready", and does not bind the port. This chapter documents the v3.14.0 reality, the planned REST surface, and the tracking issue.*
 
 `pmat serve` has appeared in `pmat --help` since the 2.x series. As of `pmat 3.14.0` the subcommand exists, it parses its flags, and it prints a welcome banner — but its most-advertised transport, `--transport http`, is a stub that does not open a socket. This chapter documents that gap honestly: what `pmat serve --help` says vs what the binary actually does, how to reproduce the defect, what the source tree shows about the planned REST surface, and which issue tracks the fix.

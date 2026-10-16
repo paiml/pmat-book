@@ -1,297 +1,193 @@
 #!/bin/bash
-# TDD Test: Chapter 10 - Auto-clippy Integration
-# Tests all auto-clippy examples documented in the book
+# TDD Test: Chapter 10 (src/ch10-00-auto-clippy.md) - Auto-clippy Integration
+#
+# WHAT THIS REPLACES
+#
+# The previous version of this file wrote a pmat.toml with a [clippy] section,
+# a .pmat/clippy-rules.yaml and a .pmat/clippy-ignore.yaml, and then asserted
+# that the files it had just written existed. It never invoked pmat. The
+# commands the chapter documented (`pmat clippy enable|run|fix|cache`) do not
+# exist; the real command is `pmat analyze clippy`.
+#
+# NOTE ON WIRING: `make test-ch10` runs tests/ch10/test_precommit.sh, not this
+# file — the book's chapter numbering and its Makefile targets disagree. Run
+# this one directly:  bash tests/ch10/test_auto_clippy.sh
+#
+# This test needs a cargo toolchain with clippy, because the command under test
+# shells out to `cargo clippy`.
 
-set -e
+set -u
 
 echo "=== Testing Chapter 10: Auto-clippy Integration ==="
 
+PMAT_BIN=""
+if command -v pmat &> /dev/null; then
+    PMAT_BIN="pmat"
+elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
+    PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
+elif [ -x "../paiml-mcp-agent-toolkit/target/debug/pmat" ]; then
+    PMAT_BIN="../paiml-mcp-agent-toolkit/target/debug/pmat"
+fi
+
+if [ -z "$PMAT_BIN" ]; then
+    echo "⚠️  SKIPPED: pmat not found on PATH — this run verified NOTHING"
+    exit 0
+fi
+if ! cargo clippy --version >/dev/null 2>&1; then
+    echo "⚠️  SKIPPED: cargo clippy is not installed — this run verified NOTHING"
+    exit 0
+fi
+
+PMAT_BIN=$(command -v "$PMAT_BIN" || echo "$PMAT_BIN")
+echo "Using PMAT binary: $PMAT_BIN"
+"$PMAT_BIN" --version | head -1
+
+PASS_COUNT=0
+FAIL_COUNT=0
+test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
+test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+
 TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
+cleanup() { rm -rf "$TEST_DIR"; }
+trap cleanup EXIT
 
-# Initialize git repo
-git init --initial-branch=main
-
-# Test 1: Basic auto-clippy configuration
-echo "Test 1: Auto-clippy configuration"
-cat > pmat.toml << 'EOF'
-[clippy]
-enabled = true
-level = "all"
-languages = ["python", "javascript", "typescript"]
-auto_fix = false
-parallel = true
-
-[clippy.rules]
-performance = true
-security = true
-maintainability = true
-style = true
-
-[clippy.thresholds]
-max_complexity = 10
-max_function_length = 50
-
-[clippy.exclusions]
-paths = ["tests/", "node_modules/"]
-file_patterns = ["*.test.js", "*_test.py"]
+# ---------------------------------------------------------------------------
+# Fixture: the crate printed in the chapter. Two clippy findings —
+# clippy::needless_return (High confidence) and clippy::len_zero (below High).
+# ---------------------------------------------------------------------------
+mkdir -p "$TEST_DIR/demo2/src"
+cd "$TEST_DIR/demo2" || exit 1
+cat > Cargo.toml << 'EOF'
+[package]
+name = "demo2"
+version = "0.1.0"
+edition = "2021"
 EOF
-
-if [ -f pmat.toml ]; then
-    echo "✅ PMAT auto-clippy config created"
-else
-    echo "❌ Failed to create PMAT config"
-    exit 1
-fi
-
-# Test 2: Custom clippy rules
-echo "Test 2: Custom clippy rules"
-mkdir -p .pmat
-cat > .pmat/clippy-rules.yaml << 'EOF'
-rules:
-  - name: "avoid-nested-loops"
-    pattern: "for.*in.*:\n.*for.*in.*:"
-    message: "Nested loops detected"
-    severity: "warning"
-    language: "python"
-    
-  - name: "async-without-await"
-    pattern: "async def \\w+\\([^)]*\\):\\s*(?!.*await)"
-    message: "Async function without await"
-    severity: "info"
-    language: "python"
-
-team_rules:
-  - name: "max-class-methods"
-    threshold: 15
-    message: "Class has too many methods"
-EOF
-
-if [ -f .pmat/clippy-rules.yaml ]; then
-    echo "✅ Custom clippy rules created"
-else
-    echo "❌ Failed to create custom rules"
-    exit 1
-fi
-
-# Test 3: Python code examples
-echo "Test 3: Python code examples"
-mkdir -p src
-cat > src/example.py << 'EOF'
-# Example Python code for auto-clippy analysis
-
-def process_data(items):
-    """Process data items."""
-    result = []
-    for item in items:
-        if item.is_valid():
-            result.append(transform(item))
-    return result
-
-def create_user(name, email, phone, address, city, state):
-    """Create user with many parameters."""
-    return {
-        "name": name,
-        "email": email,
-        "phone": phone,
-        "address": address,
-        "city": city,
-        "state": state
-    }
-
-TAX_RATE = 0.08
-PROCESSING_FEE = 1.1
-
-def calculate_total(amount):
-    """Calculate total with tax and fees."""
-    return amount * PROCESSING_FEE + amount * TAX_RATE
-EOF
-
-if [ -f src/example.py ]; then
-    echo "✅ Python example created"
-else
-    echo "❌ Failed to create Python example"
-    exit 1
-fi
-
-# Test 4: JavaScript code examples
-echo "Test 4: JavaScript code examples"
-cat > src/example.js << 'EOF'
-// Example JavaScript code for auto-clippy analysis
-
-function analyzeData(users) {
-    const results = [];
-    
-    users.forEach(function(user) {
-        if (user != null && user.active == true) {
-            const score = calculateScore(user);
-            if (score > 50) {
-                results.push({
-                    id: user.id,
-                    score: score,
-                    category: score > 80 ? 'high' : 'medium'
-                });
-            }
-        }
-    });
-    
-    return results.sort(function(a, b) {
-        return b.score - a.score;
-    });
+cat > src/main.rs << 'EOF'
+fn double(x: i32) -> i32 {
+    return x * 2;
 }
 
-function calculateScore(user) {
-    var total = 0;
-    for (var i = 0; i < user.activities.length; i++) {
-        total += user.activities[i].points;
+fn main() {
+    let s = "hello".to_string();
+    if s.len() > 0 {
+        println!("{}", double(3));
     }
-    return total / user.activities.length;
 }
 EOF
+cp src/main.rs "$TEST_DIR/main.rs.orig"
 
-if [ -f src/example.js ]; then
-    echo "✅ JavaScript example created"
+json_field() { echo "$1" | sed -nE "s/.*\"$2\": ([0-9]+).*/\1/p" | head -1; }
+
+# ---------------------------------------------------------------------------
+# Test 1: the default confidence filters, and says how much it hid
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 1: analyze clippy --dry-run at the default confidence"
+HIGH_OUT=$("$PMAT_BIN" analyze clippy --dry-run 2>&1)
+FOUND=$(json_field "$HIGH_OUT" diagnostics_found)
+ELIG=$(json_field "$HIGH_OUT" diagnostics_eligible)
+FILT=$(json_field "$HIGH_OUT" diagnostics_filtered_out)
+
+if [ "${FOUND:-0}" -ge 2 ]; then
+    test_pass "cargo clippy reported $FOUND diagnostics on the fixture"
 else
-    echo "❌ Failed to create JavaScript example"
-    exit 1
+    test_fail "expected at least 2 diagnostics, got '${FOUND:-none}': $HIGH_OUT"
 fi
-
-# Test 5: Clippy ignore configuration
-echo "Test 5: Clippy ignore configuration"
-cat > .pmat/clippy-ignore.yaml << 'EOF'
-ignore_rules:
-  - rule: "unused-variable"
-    files: ["*_test.py", "test_*.py"]
-    reason: "Test fixtures may have unused variables"
-    
-  - rule: "magic-numbers"
-    lines: ["src/constants.py:10-50"]
-    reason: "Mathematical constants are acceptable"
-    
-  - rule: "long-parameter-list"
-    functions: ["legacy_api_handler"]
-    reason: "Legacy API compatibility required"
-EOF
-
-if [ -f .pmat/clippy-ignore.yaml ]; then
-    echo "✅ Clippy ignore config created"
+if [ "${FILT:-0}" -ge 1 ]; then
+    test_pass "the default confidence hid $FILT diagnostic(s) and reported the count"
 else
-    echo "❌ Failed to create ignore config"
-    exit 1
+    test_fail "diagnostics_filtered_out was not reported: $HIGH_OUT"
 fi
-
-# Test 6: GitHub Actions workflow
-echo "Test 6: GitHub Actions workflow"
-mkdir -p .github/workflows
-cat > .github/workflows/auto-clippy.yml << 'EOF'
-name: Auto-clippy Analysis
-
-on:
-  pull_request:
-    types: [opened, synchronize]
-  push:
-    branches: [main, develop]
-
-jobs:
-  clippy-analysis:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-          
-      - name: Install PMAT
-        run: cargo install pmat
-          
-      - name: Run auto-clippy analysis
-        run: |
-          pmat clippy run --format json > clippy-results.json || echo "Analysis completed"
-          
-      - name: Check for critical issues
-        run: |
-          echo "Checking for critical issues..."
-          # Mock check - would normally parse JSON results
-          echo "No critical issues found"
-EOF
-
-if [ -f .github/workflows/auto-clippy.yml ]; then
-    echo "✅ GitHub Actions workflow created"
+if echo "$HIGH_OUT" | grep -q '"code": "clippy::needless_return"'; then
+    test_pass "needless_return survives the High confidence filter"
 else
-    echo "❌ Failed to create workflow"
-    exit 1
+    test_fail "needless_return is no longer High confidence: $HIGH_OUT"
 fi
 
-# Test 7: Pre-commit hook
-echo "Test 7: Pre-commit hook integration"
-mkdir -p .git/hooks
-cat > .git/hooks/pre-commit << 'EOF'
-#!/bin/bash
-# Auto-clippy pre-commit hook
-
-echo "🚀 Running auto-clippy analysis..."
-
-# Mock clippy run - would normally run: pmat clippy run
-echo "Auto-clippy analysis completed"
-
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo "")
-
-if [ -n "$STAGED_FILES" ]; then
-    echo "Analyzed files: $STAGED_FILES"
-fi
-
-echo "✅ Auto-clippy analysis passed"
-exit 0
-EOF
-
-chmod +x .git/hooks/pre-commit
-
-if [ -x .git/hooks/pre-commit ]; then
-    echo "✅ Pre-commit hook installed"
+# ---------------------------------------------------------------------------
+# Test 2: --confidence low shows everything
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 2: --confidence low"
+LOW_OUT=$("$PMAT_BIN" analyze clippy --dry-run --confidence low 2>&1)
+LOW_ELIG=$(json_field "$LOW_OUT" diagnostics_eligible)
+if [ "${LOW_ELIG:-0}" -gt "${ELIG:-0}" ]; then
+    test_pass "lowering the threshold surfaces more diagnostics ($ELIG -> $LOW_ELIG)"
 else
-    echo "❌ Failed to install pre-commit hook"
-    exit 1
+    test_fail "--confidence low did not surface more than the default: $LOW_OUT"
 fi
 
-# Test 8: Performance configuration
-echo "Test 8: Performance configuration"
-cat >> pmat.toml << 'EOF'
-
-[clippy.performance]
-parallel_analysis = true
-max_threads = 4
-cache_enabled = true
-cache_duration = 3600
-
-[clippy.optimization]
-skip_node_modules = true
-skip_vendor = true
-skip_generated = true
-max_file_size_mb = 10
-EOF
-
-# Validate TOML structure
-if grep -q "parallel_analysis" pmat.toml; then
-    echo "✅ Performance config added"
+if "$PMAT_BIN" analyze clippy --dry-run --confidence bogus >/dev/null 2>&1; then
+    test_fail "an invalid confidence level was accepted"
 else
-    echo "❌ Failed to add performance config"
-    exit 1
+    test_pass "an invalid confidence level is rejected, not silently defaulted"
 fi
 
-# Cleanup
-cd /
-rm -rf "$TEST_DIR"
+# ---------------------------------------------------------------------------
+# Test 3: -o writes the same JSON to a file
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 3: -o"
+"$PMAT_BIN" analyze clippy --dry-run --confidence low -o report.json >/dev/null 2>&1
+if [ -s report.json ] && grep -q '"diagnostics_found"' report.json; then
+    test_pass "-o wrote the JSON report to a file"
+else
+    test_fail "-o did not write a usable report"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 4: the chapter's central warning — "applied" writes no bytes.
+#
+# This assertion is deliberately inverted: it PASSES while the defect exists.
+# The day pmat starts writing fixes, this goes red and the chapter's warning
+# must be removed. That is the point — a documented defect needs a test too.
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 4: non-dry-run reports success without modifying the file"
+APPLY_OUT=$("$PMAT_BIN" analyze clippy --confidence low 2>&1)
+if echo "$APPLY_OUT" | grep -q '"action": "applied"' && \
+   echo "$APPLY_OUT" | grep -q '"successful_fixes": [1-9]'; then
+    test_pass "the command claims it applied fixes"
+else
+    test_fail "output shape changed; re-check the chapter: $APPLY_OUT"
+fi
+
+if diff -q "$TEST_DIR/main.rs.orig" src/main.rs >/dev/null 2>&1; then
+    test_pass "src/main.rs is unchanged — the chapter's warning is still correct"
+else
+    test_fail "pmat now writes fixes to disk — DELETE the warning from ch10-00-auto-clippy.md"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 5: cargo's own fixer, by contrast, does modify the file
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 5: cargo clippy --fix (the chapter's recommended alternative)"
+git init -q .
+git -c user.email=book@example.com -c user.name=book add -A
+git -c user.email=book@example.com -c user.name=book commit -qm init --no-verify
+if cargo clippy --fix --allow-dirty --allow-staged >/dev/null 2>&1; then
+    if ! diff -q "$TEST_DIR/main.rs.orig" src/main.rs >/dev/null 2>&1; then
+        test_pass "cargo clippy --fix really rewrote the source"
+    else
+        test_fail "cargo clippy --fix left the file unchanged"
+    fi
+else
+    test_fail "cargo clippy --fix failed to run"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 6: the command the OLD chapter documented must stay gone
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 6: the top-level clippy subcommand remains nonexistent"
+if "$PMAT_BIN" clippy --help >/dev/null 2>&1; then
+    test_fail "a top-level 'clippy' subcommand now exists — the chapter is stale"
+else
+    test_pass "no top-level 'clippy' subcommand; the real one is 'analyze clippy'"
+fi
 
 echo ""
-echo "=== Chapter 10 Test Summary ==="
-echo "✅ All 8 auto-clippy tests passed!"
-echo ""
-echo "Auto-clippy configurations validated:"
-echo "- Basic auto-clippy configuration"
-echo "- Custom clippy rules"
-echo "- Python code examples"
-echo "- JavaScript code examples" 
-echo "- Clippy ignore configuration"
-echo "- GitHub Actions workflow"
-echo "- Pre-commit hook integration"
-echo "- Performance configuration"
-
-exit 0
+echo "=== Chapter 10 (auto-clippy): $PASS_COUNT passed, $FAIL_COUNT failed ==="
+[ "$FAIL_COUNT" -eq 0 ] || exit 1

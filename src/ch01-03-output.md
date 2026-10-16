@@ -87,112 +87,117 @@ CLICOLOR_FORCE=1 pmat diagnose | less -R
 
 ### Machine-Readable Output
 
-When using `--format json`, `--format yaml`, or `--format sarif`, PMAT outputs clean machine-readable data with no ANSI codes. Use these formats for CI/CD pipelines, scripting, and tool integration.
+When using `--format json` or `--format sarif`, PMAT outputs clean machine-readable data with no ANSI codes. (There is no `yaml` format.) Use these formats for CI/CD pipelines, scripting, and tool integration.
 
 ## Output Formats
 
 PMAT supports multiple output formats to integrate with your workflow:
 
-### JSON Format (Default)
+`pmat analyze` is a parent command — every example below names a subcommand.
+`comprehensive` is the one that runs the whole suite; `--path` defaults to `.`,
+so it is written out only where the path matters. Progress lines go to stderr
+and the document to stdout, so `| jq` needs no pre-filtering.
+
+`analyze comprehensive` accepts five formats: `summary` (the default),
+`detailed`, `json`, `markdown` and `sarif`.
+
+### JSON Format
 
 Structured data for programmatic use:
 
 ```bash
-pmat analyze . --format json
+pmat analyze comprehensive --path . --format json
 ```
 
 ```json
 {
-  "timestamp": "2025-10-26T10:30:00Z",
-  "version": "2.173.0",
-  "repository": {
-    "path": "/workspace/project",
-    "vcs": "git",
-    "branch": "main"
+  "complexity": {
+    "total_files": 4,
+    "violations": [
+      {
+        "file_path": "./src/payment_processor.py",
+        "function_name": "process",
+        "line_number": 4,
+        "complexity": 39,
+        "complexity_type": "cognitive-complexity"
+      }
+    ],
+    "average_complexity": 4.333333333333333,
+    "max_complexity": 39,
+    "summary": "Analyzed 4 file(s) in . with 1 violation(s)"
+  },
+  "dead_code": null,
+  "satd": {
+    "total_files": 2,
+    "summary": "Found 3 SATD violations in 2 files (analysed 4 of 4 file(s) walked)",
+    "census": {
+      "discovered": 4,
+      "analyzed": 4,
+      "not_read": { "tests": 0, "out_of_scope": 0, "minified_or_vendor": 0, "too_large": 0, "unreadable": 0 }
+    }
   },
   "summary": {
-    "total_files": 156,
-    "total_lines": 12847,
-    "total_functions": 342,
-    "total_classes": 48
+    "total_files": 4,
+    "total_issues": 4,
+    "critical_issues": 4,
+    "quality_score": 90.0,
+    "recommendations": [
+      "Consider refactoring high-complexity functions",
+      "Address technical debt items (TODO/FIXME comments)"
+    ]
   },
-  "languages": {
-    "Python": {
-      "files": 89,
-      "lines": 8234,
-      "percentage": 64.1
-    }
-  },
-  "metrics": {
-    "complexity": {
-      "cyclomatic": {
-        "average": 3.4,
-        "median": 2.0,
-        "p95": 12.0,
-        "max": 28.0
-      }
-    }
-  }
+  "duration_ms": 55
 }
 ```
+
+Two fields repay attention. `"dead_code": null` means that analyser did not run
+(it is Rust-only) — distinct from a measured zero. `satd.census` reports the
+population the walk actually read, so a falling violation count cannot be
+mistaken for progress when the denominator moved instead.
 
 ### Markdown Format
 
 Human-readable reports:
 
 ```bash
-pmat analyze . --format markdown
+pmat analyze comprehensive --path . --format markdown
 ```
 
 ```markdown
-# Repository Analysis Report
+# Comprehensive Code Analysis Report
 
-**Date**: 2025-10-26
-**Repository**: /workspace/project
-**PMAT Version**: 2.173.0
+## Complexity Analysis
 
-## Summary
-- **Total Files**: 156
-- **Total Lines**: 12,847
-- **Primary Language**: Python (64.1%)
+- **Files Analyzed**: 4
+- **Average Complexity**: 4.3
+- **Max Complexity**: 39
+- **Violations**: 1
 
-## Quality Grade: B+
-Overall Score: 82.5/100
+### Top Complexity Violations
 
-### Breakdown
-| Metric | Score | Grade |
-|--------|-------|-------|
-| Complexity | 85 | B+ |
-| Duplication | 90 | A- |
-| Documentation | 75 | C+ |
+1. ./src/payment_processor.py - process (complexity: 39)
+
+## Technical Debt (SATD) Analysis
+
+- **Files Analyzed**: 2
+- **Violations**: 3
+
+### SATD Violations
+
+1. ./src/payment_processor.py:1 - Requirement (Low)
+2. ./src/payment_processor.py:14 - Defect (High)
+3. ./web/app.js:1 - Design (Medium)
 ```
 
-### HTML Format
+For a letter grade rather than raw counts, use `pmat analyze tdg --path .`
+(or `pmat tdg .`), which is where A+–F grading lives.
 
-Interactive web reports:
+### Detailed Format
+
+The default `summary` format with every section expanded:
 
 ```bash
-pmat analyze . --format html > report.html
-```
-
-Features:
-- Interactive charts
-- Drill-down capabilities
-- Exportable visualizations
-- Team sharing ready
-
-### CSV Format
-
-For spreadsheet analysis:
-
-```bash
-pmat analyze . --format csv
-```
-
-```csv
-file_path,language,lines,complexity,duplication,documentation
-src/main.py,Python,234,3.2,0.02,0.85
-src/utils.py,Python,156,2.1,0.00,0.92
+pmat analyze comprehensive --path . --format detailed
 ```
 
 ### SARIF Format
@@ -200,7 +205,40 @@ src/utils.py,Python,156,2.1,0.00,0.92
 For IDE and CI/CD integration:
 
 ```bash
-pmat analyze . --format sarif
+pmat analyze comprehensive --path . --format sarif > analysis.sarif
+```
+
+```json
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "pmat-comprehensive",
+          "version": "3.32.0",
+          "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "high-complexity",
+          "level": "error",
+          "message": { "text": "Function process has complexity 39" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "./src/payment_processor.py" },
+                "region": { "startLine": 4 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
 ```
 
 Compatible with:
@@ -208,6 +246,12 @@ Compatible with:
 - Visual Studio Code
 - Azure DevOps
 - GitLab
+
+> **Not available in pmat 3.32.0.** Earlier printings of this chapter documented
+> `--format html` and `--format csv` here, with sample reports. Neither exists:
+> `--format html` exits 2 with a clap error naming the five formats that do.
+> `pmat quality-gate` additionally offers `human` and `junit`, and
+> `pmat context` offers `llm-optimized` — but no command emits HTML or CSV.
 
 ## Key Metrics Explained
 
@@ -339,36 +383,45 @@ PMAT provides actionable recommendations:
 
 ### Focus on Specific Metrics
 
+Each analyser is its own subcommand, so "only complexity" means running only
+that subcommand. `analyze comprehensive` opts analysers in by name:
+
 ```bash
-# Only show complexity issues
-pmat analyze . --metrics complexity
+# Only complexity
+pmat analyze complexity --path .
 
-# Only show duplication
-pmat analyze . --metrics duplication
+# Only duplication (comprehensive deliberately excludes it — it says so on stderr)
+pmat analyze duplicates --path .
 
-# Multiple metrics
-pmat analyze . --metrics "complexity,documentation"
+# Two analysers in one comprehensive pass
+pmat analyze comprehensive --path . --include-complexity --include-tdg
 ```
 
 ### Filter by Severity
 
 ```bash
-# Only high-priority issues
-pmat analyze . --severity high
+# Only high-severity self-admitted debt
+pmat analyze satd --path . --severity high
 
-# High and medium
-pmat analyze . --severity "high,medium"
+# Critical only
+pmat analyze satd --path . --critical-only
 ```
+
+`--severity` takes exactly one of `low`, `medium`, `high`, `critical` — not a
+comma-separated list.
 
 ### Language-Specific Analysis
 
 ```bash
-# Only analyze Python files
-pmat analyze . --languages python
+# Only the Python files
+pmat analyze complexity --path . --toolchain python-uv
 
-# Multiple languages
-pmat analyze . --languages "python,javascript"
+# Only the Rust files
+pmat analyze complexity --path . --toolchain rust
 ```
+
+`--toolchain` takes one value (`rust`, `deno` or `python-uv`), not a list. To
+scope by file instead, use `--include "**/*.py"`.
 
 ## Integration Examples
 
@@ -382,7 +435,7 @@ pmat analyze . --languages "python,javascript"
     {
       "label": "PMAT Analysis",
       "type": "shell",
-      "command": "pmat analyze . --format sarif > pmat.sarif",
+      "command": "pmat analyze comprehensive --path . --format sarif > pmat.sarif",
       "problemMatcher": "$pmat"
     }
   ]
@@ -394,7 +447,7 @@ pmat analyze . --languages "python,javascript"
 ```bash
 #!/bin/bash
 # .git/hooks/pre-push
-GRADE=$(pmat analyze . --format json | jq -r '.grade')
+GRADE=$(pmat analyze tdg --path . --format json | jq -r '.average_grade')
 if [[ "$GRADE" < "B" ]]; then
   echo "Warning: Code quality grade $GRADE is below B"
   read -p "Continue push? (y/n) " -n 1 -r

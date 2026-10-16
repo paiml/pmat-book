@@ -274,10 +274,10 @@ pmat mcp-server --list-tools
 
 ```bash
 # Analysis Commands
-pmat analyze complexity .          # Cyclomatic complexity
-pmat analyze satd .                # Self-Admitted Technical Debt
-pmat analyze dead-code .           # Unused code detection
-pmat analyze churn .               # Git churn analysis
+pmat analyze complexity -p .       # Cyclomatic complexity
+pmat analyze satd -p .             # Self-Admitted Technical Debt
+pmat analyze dead-code -p .        # Unused code detection
+pmat analyze churn -p .            # Git churn analysis
 
 # Scoring Commands
 pmat tdg .                         # Technical Debt Gradient

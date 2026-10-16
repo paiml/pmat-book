@@ -10,7 +10,17 @@ on:
     - cron: '0 6 * * *'
 
 env:
-  PMAT_VERSION: "2.69.0"
+  # 3.32.0, not 2.69.0. The old pin no longer BUILDS — its transitive
+  # `swc_common` fails on `unresolved import serde::__private`, a private path
+  # removed from newer serde — so this workflow could not have produced a real
+  # result for some time. A version pin that has stopped compiling is a gate
+  # that cannot pass, and it was failing for that reason rather than for
+  # anything about this book.
+  #
+  # Pinned rather than floating on purpose: a dogfood run should say WHICH pmat
+  # produced its numbers. Bump it deliberately when the book is checked against
+  # a new release.
+  PMAT_VERSION: "3.32.0"
 
 jobs:
   pmat-analysis:

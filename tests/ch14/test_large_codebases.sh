@@ -5,6 +5,18 @@ set -e
 
 echo "=== Testing Chapter 14: Large Codebase Optimization ==="
 
+PMAT_BIN="pmat"
+if ! command -v pmat > /dev/null 2>&1; then
+    if [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
+        PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
+    fi
+fi
+# Resolve to an absolute path before the `cd` below, or a relative PMAT_BIN
+# silently stops resolving inside the temp dir.
+if [ "$PMAT_BIN" != "pmat" ]; then
+    PMAT_BIN="$(cd "$(dirname "$PMAT_BIN")" && pwd)/$(basename "$PMAT_BIN")"
+fi
+
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
 
@@ -129,9 +141,54 @@ else
     exit 1
 fi
 
+# Test 7: pmat actually analyses a multi-file tree
+#
+# TESTS 1-6 ABOVE INVOKE PMAT ZERO TIMES. Each writes a config file with a
+# heredoc and then asserts the file exists, so all six pass whatever pmat does --
+# including when pmat is absent, broken, or replaced by a shim that refuses every
+# command. They test `cat`. paiml/pmat#1084's falsification control reports this
+# script as one that cannot fail, which is how the gap was found.
+#
+# This test is the one that needs pmat to work: it builds a small multi-file tree
+# and requires pmat to report every file it walked. A large-codebase chapter that
+# never runs an analysis is not validating the thing it documents.
+mkdir -p bigtree/src
+for i in 1 2 3 4 5; do
+    cat > "bigtree/src/mod_${i}.py" << EOF
+def handler_${i}(data, config):
+    if data is None:
+        return None
+    if config.get("double"):
+        return [x * 2 for x in data]
+    return list(data)
+EOF
+done
+
+if ! command -v "$PMAT_BIN" > /dev/null 2>&1 && [ ! -x "$PMAT_BIN" ]; then
+    echo "❌ pmat not available, so this test verified NOTHING about large-codebase analysis"
+    exit 1
+fi
+
+if ! "$PMAT_BIN" analyze complexity --path bigtree > complexity_large.txt 2>&1; then
+    echo "❌ pmat analyze complexity failed on the generated tree"
+    cat complexity_large.txt
+    exit 1
+fi
+
+# Assert on the MEASUREMENT, not on the exit code. A command that ran but walked
+# nothing exits 0 too, and "analysed 0 files" is the failure this chapter is
+# about.
+if grep -qE "5 file|5 files" complexity_large.txt; then
+    echo "✅ pmat analysed all 5 generated files"
+else
+    echo "❌ pmat did not report analysing the 5 generated files:"
+    cat complexity_large.txt
+    exit 1
+fi
+
 cd /
 rm -rf "$TEST_DIR"
 
 echo ""
-echo "✅ All 6 large codebase tests passed!"
+echo "✅ All 7 large codebase tests passed!"
 exit 0
