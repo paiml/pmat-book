@@ -1,5 +1,23 @@
 # Chapter 64: MCP Mode — pmat as an MCP Server for Claude Code
 
+> **⚠️ Historical, as of pmat 3.32.0 (2026-08-25). Read
+> [Chapter 3.4](ch03-04-mcp-transports.md) instead.**
+>
+> This chapter describes `pmat 3.14.0`, and three of its central claims are now
+> the opposite of the truth:
+>
+> - **MCP mode is not auto-detected.** Piping JSON-RPC into a bare `pmat` prints
+>   the help text and exits 2. Use `pmat --mode mcp` or `MCP_VERSION=1 pmat`.
+> - **`pmat --mode mcp` works.** It is the documented invocation, and the one
+>   `pmat init --target claude` writes into `.mcp.json`. A registration with
+>   `"args": []`, as printed below, no longer starts a server.
+> - **`inputSchema` is populated.** The empty-`properties` defect (D14, issue
+>   #333) is fixed; every tool now discloses its arguments, descriptions and
+>   `required` list, and `pmat_query_code` / `pmat_get_function` /
+>   `pmat_find_similar` / `pmat_index_stats` are exposed (D15 closed).
+>
+> It is kept for the record of what 3.14.0 did.
+
 *How the `pmat` binary doubles as a Model Context Protocol server over stdio, what its 16 tools actually do, where the schema disclosure is broken, and how to wire it into Claude Code in practice.*
 
 The `pmat` binary is two tools bolted into the same entrypoint. When launched with a subcommand (`pmat analyze complexity`, `pmat comply check`, etc.) it behaves as a regular CLI. When launched with no subcommand *and a JSON-RPC 2.0 message on stdin*, it enters MCP mode and speaks the Model Context Protocol v2024-11-05 over stdout. There is no flag to flip. The mode is auto-detected from the shape of stdin.

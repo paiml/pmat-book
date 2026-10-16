@@ -10,7 +10,17 @@ on:
     - cron: '0 6 * * *'
 
 env:
-  PMAT_VERSION: "2.69.0"
+  # 3.32.0, not 2.69.0. The old pin no longer BUILDS — its transitive
+  # `swc_common` fails on `unresolved import serde::__private`, a private path
+  # removed from newer serde — so this workflow could not have produced a real
+  # result for some time. A version pin that has stopped compiling is a gate
+  # that cannot pass, and it was failing for that reason rather than for
+  # anything about this book.
+  #
+  # Pinned rather than floating on purpose: a dogfood run should say WHICH pmat
+  # produced its numbers. Bump it deliberately when the book is checked against
+  # a new release.
+  PMAT_VERSION: "3.32.0"
 
 jobs:
   pmat-analysis:
@@ -19,7 +29,7 @@ jobs:
     
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Full history for trend analysis
     
@@ -171,7 +181,7 @@ jobs:
         cp complexity-report.json ./pmat-cache/previous-complexity.json
     
     - name: Upload Analysis Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: pmat-analysis-results
@@ -232,7 +242,7 @@ jobs:
     
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Setup Rust
       uses: actions-rs/toolchain@v1
@@ -303,7 +313,7 @@ jobs:
         fi
     
     - name: Upload Roadmap Status
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: roadmap-status
         path: roadmap-status.md
@@ -316,10 +326,10 @@ jobs:
     
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Download Analysis Results
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: pmat-analysis-results
     

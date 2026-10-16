@@ -6,8 +6,78 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    # Weekly, for the one gate that has to RUN the commands rather than parse
+    # them. It is too slow and too side-effecting for the PR path, but a gate
+    # that never runs is not a gate.
+    - cron: '17 5 * * 1'
 
 jobs:
+  documented-commands:
+    # POKA-YOKE, not a test: every `pmat` invocation the book PRINTS must resolve
+    # against the pmat it documents. One platform, because command existence is
+    # not platform-specific. Every PR, because a chapter added without a test is
+    # exactly how this book reached 171 unresolvable paths while its own suite
+    # was green.
+    #
+    # A RATCHET — the count may only go down — so it does not block work on a
+    # book that is already drifted, and does not let it drift further.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install PMAT
+      run: |
+        cargo install pmat
+        pmat --version
+    - name: Gate scripts must be shellcheck-clean
+      # Every hazard these gates guard against is a shell hazard. Linting them
+      # is not housekeeping, it is the gate on the gates.
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+        make lint-shell
+
+    - name: The flag gate must be able to FAIL
+      # Runs BEFORE the gate it validates. A green gate whose ability to go red
+      # was never demonstrated is exactly the MOCK_MODE defect this book already
+      # shipped once: 88 assertions, green, measuring nothing. If this step
+      # fails, the result of the next two proves nothing.
+      run: make test-flags-selftest
+
+    - name: Every documented command must exist
+      run: bash scripts/verify-documented-commands.sh
+
+    - name: Every documented command must PARSE
+      # POKA-YOKE II. The step above proves `pmat analyze tdg` is a real
+      # subcommand; this one proves `pmat analyze tdg .` is not a real way to
+      # call it. Hermetic — it appends `--help`, so nothing is executed — and
+      # it finishes in seconds, which is why it can sit on the PR path.
+      run: make test-flags
+
+  documented-flags-deep:
+    # The same corpus, RUN rather than parsed, in a throwaway directory.
+    #
+    # It is here and not in `documented-commands` because of a measurement, not
+    # a hunch. Against a frozen snapshot of the book, over the 1,120 commands
+    # both modes probe, `--execute` found 412 parse failures and `--help`
+    # probing found 401. The 11-command difference is entirely
+    # missing-required-argument and missing-subcommand — the one class clap
+    # short-circuits past when it sees `--help`. In the other direction the
+    # difference is zero: parse mode misses nothing else.
+    #
+    # 11 extra findings do not justify putting 285 real analysis runs, 4
+    # timeouts and a denylist of servers and daemons on every pull request. They
+    # do justify a weekly sweep.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install PMAT
+      run: |
+        cargo install pmat
+        pmat --version
+    - name: Run every documented command for real
+      run: bash scripts/verify-documented-flags.sh --execute --jobs 4 --budget 2700
+
   test-examples:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -16,7 +86,7 @@ jobs:
         chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install PMAT
       run: |
@@ -28,10 +98,13 @@ jobs:
         make test-${{ matrix.chapter }}
     
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results-${{ matrix.chapter }}
+        # v4 requires artifact names unique across the WHOLE run. This job is
+        # a 3-OS x 8-chapter matrix, so the chapter alone collides three ways
+        # and every upload after the first would fail.
+        name: test-results-${{ matrix.os }}-${{ matrix.chapter }}
         path: test-results/
   
   dogfood-pmat:
@@ -39,7 +112,7 @@ jobs:
     needs: test-examples
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install PMAT
       run: |
@@ -80,7 +153,7 @@ jobs:
         jq -r '"- Duplicates Found: \(.summary.total_duplicates)\n- Similarity Ratio: \(.summary.similarity_ratio)"' pmat-similarity.json >> quality-report.md
     
     - name: Upload PMAT reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pmat-reports
         path: |
@@ -107,7 +180,7 @@ jobs:
     needs: [test-examples, dogfood-pmat]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install mdBook
       run: |
@@ -118,7 +191,7 @@ jobs:
       run: make build
     
     - name: Upload book artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: book
         path: book/

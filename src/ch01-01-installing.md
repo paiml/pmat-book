@@ -53,9 +53,9 @@ pmat --version
 # Show help
 pmat --help
 
-# Quick test
+# Quick test — note --file for a single file, not a positional path
 echo "print('Hello PMAT')" > test.py
-pmat analyze test.py
+pmat analyze complexity --file test.py
 ```
 
 ## Upgrading

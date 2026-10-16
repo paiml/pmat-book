@@ -36,7 +36,9 @@ cargo install pmat
 pmat --version
 
 # Analyze current directory
-pmat analyze .
+# (`analyze` is a parent command — `comprehensive` is the subcommand that
+#  runs the whole suite; `pmat analyze .` does not work)
+pmat analyze comprehensive
 ```
 
 That's it! PMAT is now analyzing your code.
