@@ -662,3 +662,25 @@ roadmap:
   - kind:code
   acceptance_criteria:
   - '#61 closed by a merged PR, and the test.yml + pmat-dogfood.yml runs on that merge commit are green'
+- id: PMAT-065
+  github_issue: 65
+  item_type: task
+  title: Add the 'gate' fan-in job the main ruleset requires, so a PR can merge
+  status: inprogress
+  priority: critical
+  assigned_to: null
+  created: 2026-10-14T20:47:11Z
+  updated: 2026-10-14T20:47:11Z
+  spec: null
+  acceptance_criteria:
+  - The main ruleset requires a status check named gate, and no workflow on main has a job by that name, so no PR can merge.
+  - .github/workflows/gate.yml has a job named gate that runs on pull_request, with if always() and needs book-build.
+  - book-build runs mdbook build with mdbook v0.4.40, the version pages.yml deploys with, and fails when book/index.html is missing.
+  - gate fails when its needs set is empty, and when any needed job's result is not success. A skipped, cancelled or failed job fails the gate.
+  - Out of scope. The link check (#58), mdbook test and the test.yml chapter matrix (#53, #56) have never had a green run, so the gate does not need them. No ruleset is changed.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null

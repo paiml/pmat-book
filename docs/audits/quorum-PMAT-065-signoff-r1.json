@@ -1,0 +1,371 @@
+{
+  "ticket": "PMAT-065",
+  "base": "origin/main",
+  "base_resolved": "origin/main",
+  "base_note": "no origin/origin/main exists; judged against the local ref",
+  "head": "b61e5cb44cc8f1480a9c1a97ace85792dedacb64",
+  "diff_sha256": "c75a334aba78fc026fd8742b124dcd174e5f168cbf8e0043d15db786f2341d5c",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 12364,
+  "prompt_sha256": "01f1c15bb4e18b5ca1d78c55bc581cf6fd195cde7f5a6e8311fe18c147f47595",
+  "author": {
+    "model": "claude-opus-5-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": false,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "PASS. The diff cleanly implements PMAT-065 (#65) and matches all acceptance criteria and receipt claims without touching out-of-scope files or weakening any gate.\n\nScope question answer: Yes, gating on `book-build` alone is right. `book-build` (using mdBook v0.4.40, matching `pages.yml`) is the only check that is proven green on `main`. Wiring checks that have never passed on `main` (link check #58, `mdbook test`, `test.yml` chapter matrix #53/#56, `pmat-dogfood.yml`) into the required `gate` fan-in would leave every PR permanently unmergeable, defeating the ticket's goal. Requiring three green nights on `main` plus explicit owner sign-off before graduating additional jobs into `gate.needs` is the right discipline.",
+      "findings": [
+        {
+          "claim": ".github/workflows/gate.yml defines the required `gate` fan-in job triggered on pull_request, push, merge_group, and workflow_dispatch, with `if: always()` and `needs: [book-build]`, failing when `needs` is empty (`total -eq 0`) or any needed job result is not `success` (`bad -ne 0`).",
+          "file": ".github/workflows/gate.yml",
+          "grounding": "cited",
+          "line": 71
+        },
+        {
+          "claim": "`book-build` pins mdBook to `v0.4.40` (matching `.github/workflows/pages.yml` line 32), runs `mdbook build`, and fails if `book/index.html` is missing/empty or if 1 or fewer HTML pages are generated.",
+          "file": ".github/workflows/gate.yml",
+          "grounding": "measured",
+          "line": 39
+        },
+        {
+          "claim": "The implementation receipt accurately documents the workflow triggers, jobs, planted GitHub Actions control runs (green, red, vacuous), and quorum rounds.",
+          "file": "docs/audits/impl-PMAT-065-receipt.md",
+          "grounding": "cited",
+          "line": 1
+        }
+      ],
+      "raw_bytes": 4556,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "role": "independent",
+      "model": "gemini-4-argon-medium",
+      "model_measured": "gemini-4-argon-medium",
+      "model_source": "measured",
+      "family": "gemini",
+      "executor": "agy",
+      "brief_sha256": "01f1c15bb4e18b5ca1d78c55bc581cf6fd195cde7f5a6e8311fe18c147f47595",
+      "trace": {
+        "input_sha256": "23a3d56dd2df310621e9a6421a625c772cf044bc046515e6fe417c5810ef9f01",
+        "output_sha256": "2712b0b42dfb532d306bb4ffc90507ce298d9040ee479b436ea8eba39d98f08b",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "gemini-4-argon-medium",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "gemini-4-argon-medium",
+            "family": "gemini",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "FAIL",
+      "summary": "gate.yml itself matches the ticket's acceptance criteria. The receipt cites three quorum artifacts under docs/audits/ that are not in the diff or the worktree, so those claims are unbacked. On the scope question, gating on book-build alone is right: the other checks have never been green on main.",
+      "findings": [
+        {
+          "file": "docs/audits/impl-PMAT-065-receipt.md",
+          "line": 50,
+          "claim": "The receipt cites `docs/audits/quorum-PMAT-065-A-control.json` and `docs/audits/quorum-PMAT-065-B.json` as artifacts of rounds A and B, claiming FAIL/FAIL/FAIL and PASS/PASS/PASS lane verdicts. The diff adds only 3 files (gate.yml, the receipt, roadmap.yaml), and a glob of docs/audits/quorum-PMAT-065* in the worktree returns nothing. The round verdicts are therefore not backed by anything a reviewer can read. The sign-off artifact is also absent, though that one is promised for a later commit.",
+          "grounding": "measured",
+          "fix": "Commit the round A and B JSON artifacts, or drop the verdict claims and the artifact paths from the receipt."
+        },
+        {
+          "file": "docs/audits/impl-PMAT-065-receipt.md",
+          "line": 19,
+          "claim": "The planted-control run ids (38635295391, 38635300918, 38635306647) and their results exist only as receipt prose. The planted branches are not in the diff, and I could not read those runs read-only here, so I cannot verify them.",
+          "grounding": "asserted",
+          "fix": "Link the run URLs, or attach the `gh run view` output as an artifact."
+        }
+      ],
+      "raw_bytes": 3760,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-sonnet-5-5",
+      "model_measured": "claude-sonnet-5-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "01f1c15bb4e18b5ca1d78c55bc581cf6fd195cde7f5a6e8311fe18c147f47595",
+      "trace": {
+        "input_sha256": "535d40fd2b25afaef48b1a902916b2e35914389832eac7f4437b55c811265b25",
+        "output_sha256": "2d83031c2f4f50bbcbd85557b69d14ef924c4fc5910535a17454196f1aece483",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-sonnet-5-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-sonnet-5-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Lane 3: PASS. The diff correctly implements PMAT-065. Workflow `gate` runs on pull_request with `if: always()` and `needs: [book-build]` as required. Job `book-build` pins mdbook to v0.4.40, runs mdbook build, and fails when book/index.html is missing or page count ≤ 1. Gate fails on empty needs (line 86-88) and when any job result ≠ success (line 91-94). Only book-build included per scope; no ruleset changed. Three planted controls (green, red, vacuous) verify the behavior. Receipt is accurate. All acceptance criteria met.",
+      "findings": [],
+      "raw_bytes": 1999,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-haiku-4-5",
+      "model_measured": "claude-haiku-4-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "01f1c15bb4e18b5ca1d78c55bc581cf6fd195cde7f5a6e8311fe18c147f47595",
+      "trace": {
+        "input_sha256": "e1f97357c1542d89c1b2aeb4ccc2caecfb0d7e30af9056d7e7f9a8442f78d834",
+        "output_sha256": "a1a806c56b39b548128e7707ceba51fd46dcb42b0a335b047f0c1132c6fff050",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-haiku-4-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-haiku-4-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    }
+  ],
+  "dissent": [
+    {
+      "lane": 2,
+      "verdict": "FAIL",
+      "summary": "gate.yml itself matches the ticket's acceptance criteria. The receipt cites three quorum artifacts under docs/audits/ that are not in the diff or the worktree, so those claims are unbacked. On the scope question, gating on book-build alone is right: the other checks have never been green on main.",
+      "findings": [
+        {
+          "file": "docs/audits/impl-PMAT-065-receipt.md",
+          "line": 50,
+          "claim": "The receipt cites `docs/audits/quorum-PMAT-065-A-control.json` and `docs/audits/quorum-PMAT-065-B.json` as artifacts of rounds A and B, claiming FAIL/FAIL/FAIL and PASS/PASS/PASS lane verdicts. The diff adds only 3 files (gate.yml, the receipt, roadmap.yaml), and a glob of docs/audits/quorum-PMAT-065* in the worktree returns nothing. The round verdicts are therefore not backed by anything a reviewer can read. The sign-off artifact is also absent, though that one is promised for a later commit.",
+          "grounding": "measured",
+          "fix": "Commit the round A and B JSON artifacts, or drop the verdict claims and the artifact paths from the receipt."
+        },
+        {
+          "file": "docs/audits/impl-PMAT-065-receipt.md",
+          "line": 19,
+          "claim": "The planted-control run ids (38635295391, 38635300918, 38635306647) and their results exist only as receipt prose. The planted branches are not in the diff, and I could not read those runs read-only here, so I cannot verify them.",
+          "grounding": "asserted",
+          "fix": "Link the run URLs, or attach the `gh run view` output as an artifact."
+        }
+      ]
+    }
+  ],
+  "dedup": [
+    {
+      "file": ".github/workflows/gate.yml",
+      "line": 39,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "`book-build` pins mdBook to `v0.4.40` (matching `.github/workflows/pages.yml` line 32), runs `mdbook build`, and fails if `book/index.html` is missing/empty or if 1 or fewer HTML pages are generated."
+      ]
+    },
+    {
+      "file": ".github/workflows/gate.yml",
+      "line": 71,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        ".github/workflows/gate.yml defines the required `gate` fan-in job triggered on pull_request, push, merge_group, and workflow_dispatch, with `if: always()` and `needs: [book-build]`, failing when `needs` is empty (`total -eq 0`) or any needed job result is not `success` (`bad -ne 0`)."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-PMAT-065-receipt.md",
+      "line": 1,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The implementation receipt accurately documents the workflow triggers, jobs, planted GitHub Actions control runs (green, red, vacuous), and quorum rounds."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-PMAT-065-receipt.md",
+      "line": 19,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The planted-control run ids (38635295391, 38635300918, 38635306647) and their results exist only as receipt prose. The planted branches are not in the diff, and I could not read those runs read-only here, so I cannot verify them."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-PMAT-065-receipt.md",
+      "line": 50,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The receipt cites `docs/audits/quorum-PMAT-065-A-control.json` and `docs/audits/quorum-PMAT-065-B.json` as artifacts of rounds A and B, claiming FAIL/FAIL/FAIL and PASS/PASS/PASS lane verdicts. The diff adds only 3 files (gate.yml, the receipt, roadmap.yaml), and a glob of docs/audits/quorum-PMAT-065* in the worktree returns nothing. The round verdicts are therefore not backed by anything a reviewer can read. The sign-off artifact is also absent, though that one is promised for a later commit."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "fallback": {
+    "same_family_width": 2,
+    "chain": [
+      {
+        "model": "gemini-4-argon-medium",
+        "family": "gemini",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-sonnet-5-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-haiku-4-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-opus-5-5",
+        "family": "claude",
+        "disposition": "excluded-self-review",
+        "why": "the author's own model id (claude-opus-5-5) — a model never reviews its own diff, at any width (R-15a identity bar)"
+      },
+      {
+        "model": "qwen3.5",
+        "family": "qwen",
+        "disposition": "not-run",
+        "why": "no quorum.local_lane in the config — the aprender lane has no model to load"
+      }
+    ],
+    "precheck": [
+      {
+        "family": "gemini",
+        "model": "gemini-4-argon-medium",
+        "probe": 1,
+        "outcome": "live"
+      }
+    ],
+    "degraded": null,
+    "prah": {
+      "source": "none",
+      "path": null,
+      "why": "no --prah, none on PATH, and no install receipt at /mnt/nvme-raid0/tmp/i38-pmat065/install-receipt.json"
+    },
+    "bucket": {
+      "ledger": "/home/noah/.local/state/paiml-implement/agy-bucket.jsonl",
+      "window_s": 18000,
+      "pace": "off",
+      "buckets": {
+        "gemini": {
+          "bucket": "gemini",
+          "state": "unmeasured",
+          "reason": "agy-bucket.sh could not read the ledger; the bucket is not consulted this round"
+        }
+      },
+      "closed": []
+    }
+  },
+  "auto_merge": {
+    "checked": false,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "no --pr given: nothing to disarm"
+  },
+  "cheap_seat": "claude-haiku-4-5",
+  "canary": {
+    "shape": "canary",
+    "max_brief_bytes": 24576,
+    "brief_bytes": 12364
+  },
+  "advisory_lane": {
+    "state": "unavailable",
+    "counts": false,
+    "row": {
+      "NotRun": "Busy"
+    },
+    "verdict": "unavailable",
+    "why": "no host answered inside the budget",
+    "served_by": null,
+    "gpu_proof": null,
+    "apr": null,
+    "apr_binary_sha256": null,
+    "apr_tag": null,
+    "apr_commit": null,
+    "apr_build_why": null,
+    "model": null,
+    "model_sha256": null,
+    "rc": 2,
+    "wall_s": 0,
+    "collected_s": 93,
+    "budget_s": 196,
+    "budget_basis": "ledger: 2 x p95 98 s over 126 gx10-cuda Verdict rows",
+    "brief": {
+      "bytes": 12364,
+      "sent_bytes": 12533,
+      "max_bytes": 196608
+    },
+    "trace": {
+      "input_sha256": "8ddeaaf8f5c73943526e52e4b3d680aaebd59b3f6b225c76307cb83f07d33c27",
+      "raw": "advisory.json"
+    },
+    "attempts": [
+      {
+        "host": "gx10",
+        "ok": false,
+        "wall_s": 0,
+        "error": "busy: executor yielded (unit inactive; last yield: 2026-10-03T00:47:22Z host=gx10-a5b5 event=stopped gpu-priority lock=/tmp/apr-gpu.priority)",
+        "ts": "2026-10-14T21:00:31.418Z",
+        "wall_ms": 379,
+        "request_id": "01a13c37-7b36-7fd4-8d77-0d924cd74e2f",
+        "load1": 4.46,
+        "cold": null
+      }
+    ],
+    "ledger": "/home/noah/.local/state/paiml-implement/advisory-ledger.jsonl",
+    "raw": "advisory.json",
+    "agrees_with_counted": null,
+    "counted": "NOT-AGREED"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5-5/claude same_family=2/2"
+  }
+}
