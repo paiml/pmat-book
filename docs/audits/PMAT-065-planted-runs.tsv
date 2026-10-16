@@ -1,0 +1,7 @@
+run_id	head_branch	head_sha	job	conclusion	html_url
+38635295391	planted/PMAT-065-green	9c6cf4b5562ed63b61d75fb6e4c635af452744a9	book-build	success	https://github.com/paiml/pmat-book/actions/runs/38635295391/job/116096775644
+38635295391	planted/PMAT-065-green	9c6cf4b5562ed63b61d75fb6e4c635af452744a9	gate	success	https://github.com/paiml/pmat-book/actions/runs/38635295391/job/116096836762
+38635300918	planted/PMAT-065-red	c2c5b9ecd7128594625c28656c0c91516523ac63	book-build	failure	https://github.com/paiml/pmat-book/actions/runs/38635300918/job/116096793429
+38635300918	planted/PMAT-065-red	c2c5b9ecd7128594625c28656c0c91516523ac63	gate	failure	https://github.com/paiml/pmat-book/actions/runs/38635300918/job/116096854873
+38635306647	planted/PMAT-065-vacuous	e651e9ebcc3436ec4a2aad1dc1bcbea3dd188389	book-build	success	https://github.com/paiml/pmat-book/actions/runs/38635306647/job/116096812490
+38635306647	planted/PMAT-065-vacuous	e651e9ebcc3436ec4a2aad1dc1bcbea3dd188389	gate	failure	https://github.com/paiml/pmat-book/actions/runs/38635306647/job/116096812863
