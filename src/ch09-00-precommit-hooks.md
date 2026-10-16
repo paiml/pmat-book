@@ -19,6 +19,32 @@
 
 Pre-commit hooks are your first line of defense against technical debt. PMAT's latest feature provides comprehensive pre-commit hook management that ensures code quality before it enters your repository.
 
+## Pre-Flight Verification with `pmat verify`
+
+For Rust projects — and especially **autonomous agents** that commit without a
+human in the loop — `pmat verify` (added in v3.18.0) runs the gate set CI
+*actually* enforces, fail-fast, before you commit:
+
+```bash
+pmat verify --format json
+```
+
+Stages, cheapest first: **format → complexity → satd → clippy → tests**. The key
+property is **CI fidelity**: a pre-commit hook (or `pmat quality-gate`) can pass
+while CI still fails, because both skip `clippy` and `tests`. `pmat verify` does
+not — *green here ⇒ green in CI*.
+
+```bash
+pmat verify --fix                  # auto-apply cargo fmt / clippy --fix first
+pmat verify --skip clippy,tests    # fast inner loop (format + complexity + satd)
+pmat verify --stage clippy         # iterate on one failing gate
+```
+
+With `--format json`, each stage reports `ok`, and the `clippy` stage lists
+`violations[]` as `file:line:rule` — so an agent can self-correct without parsing
+human text. The canonical loop is
+`edit → pmat verify --format json → fix on red → commit on green`.
+
 ## Why PMAT Pre-commit Hooks?
 
 Traditional pre-commit hooks run simple checks. PMAT hooks provide:

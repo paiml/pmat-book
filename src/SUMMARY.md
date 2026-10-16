@@ -111,6 +111,9 @@
 - [Chapter 69: R8 Performance Matrix and the HTTP Stub Defect](ch69-00-r8-performance-and-http-stub.md)
 - [Chapter 70: R9 — Execve Coupling and the FileCache Pattern](ch70-00-r9-execve-coupling-and-filecache.md)
 - [Chapter 71: Contract Enforcement via `pv`, not Bash (MUDA)](ch71-00-contract-enforcement-pv-vs-bash.md)
+- [Chapter 72: Wave 39 — 80% Coverage Milestone and 4 Real Bugs (v3.16.0)](ch72-00-wave39-coverage-milestone.md)
+- [Chapter 73: v3.18.1 — Concurrency & Determinism Fixes from an Adversarial Audit](ch73-00-v3181-concurrency-determinism.md)
+- [Chapter 74: Dependency Modernization & Contract-Backed Dogfood Fixes (v3.18.3–v3.19.2)](ch74-00-dependency-modernization-and-contract-fixes.md)
 
 ## Conclusion
 

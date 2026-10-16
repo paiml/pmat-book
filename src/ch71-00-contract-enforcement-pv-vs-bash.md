@@ -110,7 +110,7 @@ In each case, the `After` form is strictly shorter, strictly better-provenanced,
 
 The policy is not "delete all shell scripts". Four classes survive:
 
-1. **Installers and setup** — `scripts/install.sh`, `scripts/install-git-hooks.sh`. Bootstrapping a toolchain is exactly where bash is strongest; `pv` cannot install itself.
+1. **Installers and setup** — `scripts/install-git-hooks.sh`. Bootstrapping a toolchain is exactly where bash is strongest; `pv` cannot install itself.
 2. **Pure measurement with no gate** — `scripts/benchmark_build.sh`, `scripts/profile_context.sh`. These emit data; downstream tools decide.
 3. **Tool wrappers that delegate** — a three-line wrapper that just forwards arguments to `pv lint` with a repo-specific default is a reasonable ergonomic shim.
 4. **One-off archaeology** — grep-for-a-string during a debugging session, deleted before commit.
@@ -140,7 +140,7 @@ Distinct exit codes (0 = pass, 1 = violation, 2 = pv missing, 3 = spawn failure)
 pmat itself has 32 shell scripts under `scripts/`. R11 agent #1's audit will publish the specific deletion candidates; the categories already visible from filenames are:
 
 * **Measurement survivors** — `benchmark_build.sh`, `profile_context.sh`, `property_test_metrics.sh`, `complexity-distribution.sh`. These emit data, no `exit 1` on predicates. Keep.
-* **Installer survivors** — `install.sh`, `install-git-hooks.sh`, `configure-swap.sh`. Bootstrap flows, no gate semantics. Keep.
+* **Installer survivors** — `install-git-hooks.sh`, `configure-swap.sh`. Bootstrap flows, no gate semantics. Keep.
 * **Enforcement migration targets** — `check_dependency_duplicates.sh`, `dead-code-calibration.sh`, `pre-commit-property-tests.sh`, `compute-metric-hash.sh`. These embed thresholds and `exit 1` on predicate. Each maps to a `pv audit` rule or a `pv lint` gate with a `.pv.toml` threshold. Migrate.
 * **One-off archaeology to delete outright** — `final_property_test_fix.sh`, `fix_property_test_syntax.sh`, the `.ts` variants. Names alone betray fix-in-flight scripts that outlived their patch.
 

@@ -25,7 +25,6 @@ mathjax-support = false
 additional-css = ["theme/pmat.css"]
 additional-js = []
 git-repository-url = "https://github.com/paiml/pmat-book"
-git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/paiml/pmat-book/edit/main/{path}"
 site-url = "https://paiml.github.io/pmat-book/"
 

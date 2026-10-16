@@ -1,0 +1,96 @@
+# The `main` ruleset requires a status check named `gate`. Before this file no
+# workflow had a job by that name, so the required check never reported and no
+# PR could merge (#65).
+#
+# `gate` is a fan-in. It passes only when it needs at least one job and every
+# job it needs ended in `success`. A skipped, cancelled or failed job fails it,
+# and so does an empty `needs:` list, because a gate over zero checks is a
+# green over nothing.
+#
+# Which checks it needs: only the ones that have passed on main. On 83b1217
+# (2026-10-14):
+#   book-build    mdbook build. Green on 8 of 8 recent main pushes (pages.yml).
+#   link check    19 broken links. Never green. #58.
+#   mdbook test   fails. Never wired.
+#   test.yml      140 of 140 runs failed. #53, #56.
+# The gate leaves out a check that has never passed. Such a check needs three
+# green nights on main before it can join. To add one: put its job in this
+# file and add its id to `gate.needs`.
+name: gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep this equal to the mdBook version pages.yml deploys with. Then the
+  # book a PR is gated on is the same book that main publishes.
+  MDBOOK_VERSION: v0.4.40
+
+jobs:
+  book-build:
+    name: book-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook (pinned, same as pages.yml)
+        run: |
+          set -eu
+          dir="$RUNNER_TEMP/mdbook"
+          mkdir -p "$dir"
+          curl -fsSL -o "$dir/mdbook.tar.gz" \
+            "https://github.com/rust-lang/mdBook/releases/download/${MDBOOK_VERSION}/mdbook-${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          tar -xzf "$dir/mdbook.tar.gz" -C "$dir"
+          echo "$dir" >> "$GITHUB_PATH"
+          "$dir/mdbook" --version
+
+      - name: Build the book
+        # book.toml sets create-missing = false, so a SUMMARY.md entry whose
+        # file does not exist fails the build here.
+        run: |
+          set -eu
+          mdbook build
+          test -s book/index.html || { echo "::error::mdbook build wrote no book/index.html"; exit 1; }
+          pages=$(find book -name '*.html' | wc -l)
+          echo "book-build: ${pages} HTML page(s)"
+          [ "$pages" -gt 1 ] || { echo "::error::mdbook build wrote ${pages} HTML page(s); expected the whole book"; exit 1; }
+
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # always(): the gate must report when a needed job fails or is cancelled.
+    # Without it the gate is skipped, and the required check is left unset.
+    if: always()
+    needs: [book-build]
+    steps:
+      - name: Every needed job succeeded, and there is at least one
+        env:
+          NEEDS: ${{ toJson(needs) }}
+        run: |
+          set -eu
+          total=$(printf '%s' "$NEEDS" | jq 'length')
+          if [ "$total" -eq 0 ]; then
+            echo "::error::gate needs no jobs. A gate over zero checks is a green over nothing."
+            exit 1
+          fi
+          printf '%s' "$NEEDS" | jq -r 'to_entries[] | "  \(.key): \(.value.result)"'
+          bad=$(printf '%s' "$NEEDS" | jq '[to_entries[] | select(.value.result != "success")] | length')
+          if [ "$bad" -ne 0 ]; then
+            echo "::error::${bad} of ${total} needed job(s) did not succeed. A skipped or cancelled job counts as not succeeded."
+            exit 1
+          fi
+          echo "gate: ${total} of ${total} needed job(s) succeeded"

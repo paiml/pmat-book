@@ -69,15 +69,17 @@ EOF
 
 # Run PMAT analysis
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
+echo "DEBUG OUTPUT:"
+echo "$OUTPUT"
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -ge 1 ]; then
         # Verify it found Python file
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path' | grep -i "python" || echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path' | grep -i "python" || echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"calculator.py"* ]]; then
             # Verify functions were detected
-            FUNC_COUNT=$(echo "$OUTPUT" | jq '.summary.files[0].functions | length')
+            FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
                 test_pass "Python analysis: Found $FUNC_COUNT functions in calculator.py"
             else
@@ -157,12 +159,12 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -ge 1 ]; then
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"main.rs"* ]]; then
-            FUNC_COUNT=$(echo "$OUTPUT" | jq '.summary.files[0].functions | length')
+            FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 4 ]; then
                 test_pass "Rust analysis: Found $FUNC_COUNT functions in main.rs"
             else
@@ -230,12 +232,12 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -ge 1 ]; then
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"calculator.ts"* ]]; then
-            FUNC_COUNT=$(echo "$OUTPUT" | jq '.summary.files[0].functions | length')
+            FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
                 test_pass "TypeScript analysis: Found $FUNC_COUNT functions in calculator.ts"
             else
@@ -291,12 +293,12 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -ge 1 ]; then
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"index.js"* ]]; then
-            FUNC_COUNT=$(echo "$OUTPUT" | jq '.summary.files[0].functions | length')
+            FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
                 test_pass "JavaScript analysis: Found $FUNC_COUNT functions in index.js"
             else
@@ -361,12 +363,12 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -ge 1 ]; then
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"calculator.c"* ]]; then
-            FUNC_COUNT=$(echo "$OUTPUT" | jq '.summary.files[0].functions | length')
+            FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
                 test_pass "C analysis: Found $FUNC_COUNT functions in calculator.c"
             else
@@ -435,12 +437,12 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -ge 1 ]; then
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"calculator.cpp"* ]]; then
-            FUNC_COUNT=$(echo "$OUTPUT" | jq '.summary.files[0].functions | length')
+            FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
                 test_pass "C++ analysis: Found $FUNC_COUNT functions in calculator.cpp"
             else
