@@ -36,7 +36,7 @@ cargo install pmat
 pmat --version
 
 # Analyze current directory
-pmat analyze .
+pmat analyze comprehensive -p .
 ```
 
 That's it! PMAT is now analyzing your code.

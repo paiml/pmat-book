@@ -55,7 +55,7 @@ pmat --help
 
 # Quick test
 echo "print('Hello PMAT')" > test.py
-pmat analyze test.py
+pmat analyze comprehensive --file test.py
 ```
 
 ## Upgrading

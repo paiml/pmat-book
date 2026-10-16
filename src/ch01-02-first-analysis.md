@@ -23,7 +23,7 @@ Let's start by analyzing a simple project to understand what PMAT can do.
 The simplest way to use PMAT:
 
 ```bash
-pmat analyze .
+pmat analyze comprehensive -p .
 ```
 
 **Output:**
@@ -69,7 +69,7 @@ pmat analyze .
 Target a specific directory:
 
 ```bash
-pmat analyze /path/to/project
+pmat analyze comprehensive -p /path/to/project
 ```
 
 ### Example 3: Analyzing with Technical Debt Grading
@@ -77,7 +77,7 @@ pmat analyze /path/to/project
 Get comprehensive quality metrics:
 
 ```bash
-pmat analyze tdg .
+pmat analyze tdg -p .
 ```
 
 **Output:**
@@ -126,7 +126,7 @@ pmat analyze tdg .
 For a quick overview without details:
 
 ```bash
-pmat analyze . --summary
+pmat analyze comprehensive -p . --format summary
 ```
 
 **Output:**
@@ -144,7 +144,7 @@ Analyze any public GitHub repository:
 ```bash
 # Clone and analyze
 git clone https://github.com/user/repo.git /tmp/repo
-pmat analyze /tmp/repo
+pmat analyze comprehensive -p /tmp/repo
 
 # Or use the web demo
 curl -X POST https://pmat-demo.paiml.com/api/analyze \
@@ -180,7 +180,7 @@ Add to your git hooks:
 ```bash
 #!/bin/bash
 # .git/hooks/pre-commit
-pmat analyze . --threshold B
+pmat analyze tdg -p . --threshold 2.0
 if [ $? -ne 0 ]; then
   echo "Code quality below threshold. Please improve before committing."
   exit 1
@@ -195,7 +195,7 @@ Add to your GitHub Actions:
 - name: Run PMAT Analysis
   run: |
     cargo install pmat
-    pmat analyze . --format json > pmat-report.json
+    pmat analyze comprehensive -p . --format json > pmat-report.json
     
 - name: Upload PMAT Report
   uses: actions/upload-artifact@v2
@@ -206,11 +206,11 @@ Add to your GitHub Actions:
 
 ### Scenario 3: Team Dashboard
 
-Generate HTML reports:
+Generate Markdown reports:
 
 ```bash
-pmat analyze . --format html > report.html
-open report.html  # Opens in browser
+pmat analyze comprehensive -p . --format markdown --output report.md
+open report.md  # Opens in your default viewer
 ```
 
 ## Tips for Effective Analysis
@@ -225,23 +225,23 @@ open report.html  # Opens in browser
 
 ### Large Repository Taking Too Long
 
-Use sampling for quick overview:
+Analyze a single directory for a quick overview:
 ```bash
-pmat analyze . --sample 1000  # Analyze first 1000 files
+pmat analyze comprehensive -p src/  # Analyze one directory first
 ```
 
 ### Binary Files Causing Issues
 
 Exclude binary files:
 ```bash
-pmat analyze . --exclude "*.bin,*.exe,*.jpg"
+pmat analyze comprehensive -p . --exclude "**/*.{bin,exe,jpg}"
 ```
 
 ### Need More Detail
 
 Increase verbosity:
 ```bash
-pmat analyze . --verbose
+pmat analyze comprehensive -p . --verbose
 ```
 
 ## Next Steps

@@ -61,8 +61,8 @@ pmat rules create --name "no-print-statements" --language python
 # Test the rule
 pmat rules test no-print-statements
 
-# Apply to your project
-pmat analyze . --rules custom
+# Then analyze your project
+pmat analyze comprehensive -p .
 ```
 
 ## Rule Definition Language
@@ -455,8 +455,8 @@ EOF
 # Copy custom rules
 cp -r ~/.pmat/rules .pmat/rules
 
-# Run PMAT with custom rules
-pmat analyze . --rules=custom --format=json > results.json
+# Run PMAT analysis
+pmat analyze comprehensive -p . --format=json > results.json
 
 # Verify violations were detected
 VIOLATIONS=$(jq '.violations | length' results.json)

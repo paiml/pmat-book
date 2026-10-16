@@ -25,16 +25,16 @@ Start with a comprehensive analysis of your entire repository:
 
 ```bash
 # Analyze current directory
-pmat analyze .
+pmat analyze comprehensive -p .
 
 # Analyze specific directory
-pmat analyze src/
+pmat analyze comprehensive -p src/
 
 # Analyze with detailed output
-pmat analyze . --detailed
+pmat analyze comprehensive -p . --format detailed
 
 # Save analysis to file
-pmat analyze . --output analysis-report.txt
+pmat analyze comprehensive -p . --output analysis-report.txt
 ```
 
 ### Example Output
@@ -83,7 +83,7 @@ pmat analyze complexity
 pmat analyze complexity --threshold 10
 
 # Analyze specific files
-pmat analyze complexity src/services/
+pmat analyze complexity -p src/services/
 
 # Output in different formats
 pmat analyze complexity --format json
@@ -169,7 +169,7 @@ Identify and remove unused code to reduce maintenance burden:
 pmat analyze dead-code
 
 # Check specific directories
-pmat analyze dead-code src/legacy/
+pmat analyze dead-code -p src/legacy/
 
 # Export dead code list
 pmat analyze dead-code --export dead-code-list.txt
@@ -316,7 +316,7 @@ Identify critical defects that cause production failures:
 pmat analyze defects
 
 # Scan specific directory
-pmat analyze defects src/
+pmat analyze defects -p src/
 
 # Scan single file
 pmat analyze defects --file src/main.rs
@@ -633,13 +633,13 @@ Run multiple analyzers together:
 
 ```bash
 # Run all analyzers
-pmat analyze all
+pmat analyze comprehensive -p .
 
 # Run specific combination
-pmat analyze complexity,dead-code,satd
+pmat analyze complexity -p . && pmat analyze dead-code -p . && pmat analyze satd -p .
 
-# Custom analysis profile
-pmat analyze --profile quality-check
+# Gate on a chosen set of checks
+pmat quality-gate --checks complexity,dead-code,satd
 ```
 
 ## Output Formats
@@ -647,7 +647,7 @@ pmat analyze --profile quality-check
 ### JSON Format
 
 ```bash
-pmat analyze . --format json > analysis.json
+pmat analyze comprehensive -p . --format json > analysis.json
 ```
 
 ```json
@@ -701,19 +701,20 @@ pmat analyze . --format json > analysis.json
 ### CSV Format
 
 ```bash
-pmat analyze . --format csv > analysis.csv
+# `analyze defects` has no CSV format; defect-prediction does
+pmat analyze defect-prediction -p . --format csv > analysis.csv
 ```
 
-### HTML Report
+### Detailed Report File
 
 ```bash
-pmat analyze . --format html --output report.html
+pmat analyze comprehensive -p . --format detailed --output report.txt
 ```
 
 ### Markdown Report
 
 ```bash
-pmat analyze . --format markdown > ANALYSIS.md
+pmat analyze comprehensive -p . --format markdown > ANALYSIS.md
 ```
 
 ## CI/CD Integration
@@ -736,7 +737,7 @@ jobs:
         
       - name: Run Analysis
         run: |
-          pmat analyze . --format json > analysis.json
+          pmat analyze comprehensive -p . --format json > analysis.json
           pmat analyze complexity --threshold 10
           pmat analyze dead-code
           pmat analyze satd --priority high
@@ -841,34 +842,35 @@ include_recommendations = true
 ### Analysis Takes Too Long
 
 ```bash
-# Use parallel processing
-pmat analyze . --parallel
+# Analyze one directory at a time
+pmat analyze comprehensive -p src/
 
-# Analyze incrementally
-pmat analyze . --incremental
+# Analyze one specific file
+pmat analyze comprehensive --file src/main.rs
 
 # Exclude large directories
-pmat analyze . --exclude "node_modules/,venv/,build/"
+pmat analyze comprehensive -p . --exclude "**/{node_modules,venv,build}/**"
 ```
 
 ### Missing Language Support
 
 ```bash
-# Check supported languages
-pmat analyze --languages
+# List the analyses PMAT provides
+pmat analyze --help
 
-# Use generic analysis for unsupported languages
-pmat analyze . --generic
+# Analyze the files PMAT does support
+pmat analyze comprehensive -p .
 ```
 
 ### Memory Issues
 
 ```bash
-# Limit memory usage
-pmat analyze . --max-memory 2G
+# Analyze one directory at a time
+pmat analyze comprehensive -p src/
 
-# Process in chunks
-pmat analyze . --chunk-size 100
+# Analyze specific files, one at a time
+pmat analyze comprehensive --file src/main.rs
+pmat analyze comprehensive --file src/lib.rs
 ```
 
 ## Summary

@@ -809,13 +809,13 @@ Based on Sprint 56's optimizations, follow these best practices:
 
 ```bash
 # Before optimization
-time pmat analyze . --format json > before.json
+time pmat analyze comprehensive -p . --format json > before.json
 
 # After running clippy fixes
 cargo clippy --fix -W clippy::perf
 
 # After optimization
-time pmat analyze . --format json > after.json
+time pmat analyze comprehensive -p . --format json > after.json
 
 # Compare results
 echo "Performance improvement:"
