@@ -1,0 +1,9 @@
+# Epics for pmat-book. One row per GitHub issue labelled `epic`.
+# The book is released in step with pmat (paiml/paiml-mcp-agent-toolkit):
+# a book tag mirrors the pmat tag it documents and is cut only after that
+# pmat tag exists. The release version is the GitHub milestone of the same name.
+# Core = children on the open train's milestone. Look-ahead = children of the
+# next train's epic; its kit is docs/lookahead/<train>.yaml.
+epics:
+  - {id: E1, issue: 57, name: "pmat-book CI green", train: "v3.43.0", budget: 5, successor: E2, absorbs: []}
+  - {id: E2, issue: 63, name: "Every printed pmat command runs", train: "v3.44.0", budget: 50, successor: null, absorbs: []}
