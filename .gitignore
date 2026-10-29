@@ -42,3 +42,4 @@ coverage/
 
 # PMAT reports
 pmat-reports/
+__pycache__/

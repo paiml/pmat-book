@@ -200,11 +200,10 @@ Three facts are packed into that banner, and each is load-bearing:
 
 1. **The URL ends in `/`.** MCP is served at the **root path**. There is no
    `/mcp`, no `/health`, no `/api/v1`; those are 404s (see *Failure Modes*).
-2. **A bearer token is mandatory.** `pmat serve` refuses to start without
-   `PMAT_MCP_HTTP_TOKEN`, and refuses tokens shorter than 16 characters. The
-   underlying `pmcp` transport serves every request when no auth provider is
-   wired, so "no token" has to mean "no server" — there is no unauthenticated
-   mode to fall into by accident.
+2. **A bearer token is always in force.** `pmat serve` refuses tokens shorter
+   than 16 characters. With `PMAT_MCP_HTTP_TOKEN` unset it mints a token for that
+   process and prints it in the banner, so there is no unauthenticated mode to
+   fall into by accident; pin a stable one with `export PMAT_MCP_HTTP_TOKEN=$(pmat mcp token)`.
 3. **The tool count is a property of your build**, not of this book. Read it
    from the banner, or count it yourself (below).
 
@@ -479,19 +478,22 @@ Error: PMAT_MCP_HTTP_TOKEN must be at least 16 characters; got 13
 
 Exit code **1**. No socket is bound. The minimum is 16 characters.
 
-### No token at all — also refuses to start
+### No token at all — the server mints one
 
 ```bash
 env -u PMAT_MCP_HTTP_TOKEN pmat serve --transport http --port 8823
 ```
 
 ```
-Error: PMAT_MCP_HTTP_TOKEN is not set. `pmat serve` will not start an unauthenticated MCP endpoint: pmcp serves every request when no auth provider is configured, so starting without a token would publish the full tool surface to anyone who can reach the port.
+PMAT_MCP_HTTP_TOKEN was unset, so … generated a token for this process:
 ```
 
-Exit code **4**. This is deliberate: an unauthenticated MCP endpoint would hand
-anyone who can reach the port the ability to read your source tree, so the
-failure is loud and at startup rather than silent and at request time.
+The server **starts** and keeps running; the banner prints the generated token
+and a copy-paste `claude mcp add` line. It dies with the process, so a restart
+mints a new token and a client registered with the old one gets 401. An
+unauthenticated request is still a 401. (Earlier releases exited **4** here; this
+book's test run against pmat 3.42.0 and the `cargo install pmat` build CI uses
+shows they no longer do.)
 
 ### Missing `Accept` header — 406
 
@@ -689,7 +691,7 @@ the entire security model.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Server exits immediately, `must be at least 16 characters` | token too short | use ≥16 characters |
-| Server exits immediately, `PMAT_MCP_HTTP_TOKEN is not set` | no token | set one; there is no unauthenticated mode |
+| Client gets 401 after a restart | no `PMAT_MCP_HTTP_TOKEN` set, so each run minted a new one | pin one: `export PMAT_MCP_HTTP_TOKEN=$(pmat mcp token)` |
 | `Address already in use (os error 98)` | port taken, often by your own earlier run | `--port` something else, or stop the other server |
 | HTTP 406 | missing `Accept: application/json, text/event-stream` | add the header |
 | HTTP 401, `missing Authorization header` | no credentials | add `Authorization: Bearer $PMAT_MCP_HTTP_TOKEN` |

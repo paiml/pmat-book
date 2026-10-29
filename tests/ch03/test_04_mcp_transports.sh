@@ -21,6 +21,26 @@ elif [ -x "../paiml-mcp-agent-toolkit/target/debug/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/debug/pmat"
 fi
 
+# bounded SECONDS CMD...: run CMD, SIGKILL it after SECONDS. `timeout(1)` is not
+# on the macOS runners. A hung server (e.g. `pmat serve` that starts instead of
+# refusing) used to hold the whole job for the runner's 6 h limit; now it is a
+# failed assertion (rc 137) in at most SECONDS.
+bounded() {
+    local secs=$1; shift
+    "$@" <&0 &
+    local pid=$!
+    # The watchdog must not hold the caller's pipe open (its sleep would delay
+    # EOF for the whole `| sed | jq` chain), so it gets its own fds.
+    ( sleep "$secs"; kill -9 "$pid" 2>/dev/null ) >/dev/null 2>&1 &
+    local watchdog=$!
+    local rc=0
+    wait "$pid" || rc=$?
+    pkill -P "$watchdog" 2>/dev/null || true
+    kill "$watchdog" 2>/dev/null || true
+    wait "$watchdog" 2>/dev/null || true
+    return "$rc"
+}
+
 for tool in curl jq; do
     command -v "$tool" &> /dev/null || {
         echo "⚠️  SKIPPED: $tool is not installed — this run verified NOTHING"
@@ -36,7 +56,7 @@ fi
 
 PMAT_BIN=$(command -v "$PMAT_BIN" || echo "$PMAT_BIN")
 echo "Using PMAT binary: $PMAT_BIN"
-"$PMAT_BIN" --version | head -1
+bounded 30 "$PMAT_BIN" --version | head -1
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -94,7 +114,7 @@ CALL_SATD="{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\
 echo ""
 echo "--- Surface 1: CLI ---"
 
-if "$PMAT_BIN" analyze satd --path "$FIXTURE" > "$TEST_DIR/cli-satd.txt" 2>&1 &&
+if bounded 60 "$PMAT_BIN" analyze satd --path "$FIXTURE" > "$TEST_DIR/cli-satd.txt" 2>&1 &&
    grep -q "Found 1 SATD violations" "$TEST_DIR/cli-satd.txt"; then
     test_pass "CLI: pmat analyze satd finds the fixture's single TODO"
 else
@@ -108,7 +128,7 @@ fi
 echo ""
 echo "--- Surface 2: MCP over stdio ---"
 
-printf '%s\n%s\n' "$INIT" "$LIST" | "$PMAT_BIN" --mode mcp 2>/dev/null > "$TEST_DIR/stdio.jsonl" || true
+printf '%s\n%s\n' "$INIT" "$LIST" | bounded 30 "$PMAT_BIN" --mode mcp 2>/dev/null > "$TEST_DIR/stdio.jsonl" || true
 
 if [ "$(sed -n 1p "$TEST_DIR/stdio.jsonl" | jq -r '.result.serverInfo.name')" = "paiml-mcp-agent-toolkit" ]; then
     test_pass "stdio: pmat --mode mcp answers initialize as paiml-mcp-agent-toolkit"
@@ -126,7 +146,7 @@ else
 fi
 
 # The env-var entry point must start the same server as --mode mcp.
-printf '%s\n%s\n' "$INIT" "$LIST" | MCP_VERSION=1 "$PMAT_BIN" 2>/dev/null \
+printf '%s\n%s\n' "$INIT" "$LIST" | MCP_VERSION=1 bounded 30 "$PMAT_BIN" 2>/dev/null \
     | sed -n 2p | jq -S '.result.tools | sort_by(.name)' > "$TEST_DIR/tools-envvar.json" || true
 
 ENVVAR_TOOL_COUNT=$(jq length "$TEST_DIR/tools-envvar.json" 2>/dev/null || echo 0)
@@ -137,7 +157,7 @@ else
     test_fail "stdio: MCP_VERSION=1 pmat differs from pmat --mode mcp (or served nothing)"
 fi
 
-printf '%s\n%s\n' "$INIT" "$CALL_SATD" | "$PMAT_BIN" --mode mcp 2>/dev/null \
+printf '%s\n%s\n' "$INIT" "$CALL_SATD" | bounded 30 "$PMAT_BIN" --mode mcp 2>/dev/null \
     | sed -n 2p | jq -r '.result.content[0].text' > "$TEST_DIR/satd-stdio.json" || true
 
 if [ "$(jq -r '.results.total_satd' "$TEST_DIR/satd-stdio.json")" = "1" ]; then
@@ -152,18 +172,31 @@ fi
 echo ""
 echo "--- Surface 3: MCP over HTTP (startup refusals) ---"
 
-RC=0
-env -u PMAT_MCP_HTTP_TOKEN "$PMAT_BIN" serve --transport http --port 18899 \
-    > "$TEST_DIR/no-token.txt" 2>&1 || RC=$?
-if [ "$RC" -eq 4 ] && grep -q "PMAT_MCP_HTTP_TOKEN is not set" "$TEST_DIR/no-token.txt"; then
-    test_pass "HTTP: no token refuses to start (exit 4)"
+# No token is NOT a refusal in pmat >= 3.4x: the server mints a per-process token
+# and stays authenticated. It never exits, so it runs in the background, is probed
+# once, and is killed — a foreground run here is what hung every ch03 job.
+( unset PMAT_MCP_HTTP_TOKEN; exec "$PMAT_BIN" serve --transport http --port 18899 \
+    </dev/null > "$TEST_DIR/no-token.txt" 2>&1 ) &
+NT_PID=$!
+for _ in $(seq 1 20); do
+    grep -q "was unset, so .* generated a token" "$TEST_DIR/no-token.txt" 2>/dev/null && break
+    kill -0 "$NT_PID" 2>/dev/null || break
+    sleep 0.5
+done
+NT_CODE=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18899/ \
+    -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+    -d "$INIT" || true)
+kill "$NT_PID" 2>/dev/null || true
+wait "$NT_PID" 2>/dev/null || true
+if grep -q "was unset, so .* generated a token" "$TEST_DIR/no-token.txt" && [ "$NT_CODE" = "401" ]; then
+    test_pass "HTTP: no token starts with a generated token; an unauthenticated request gets 401"
 else
-    test_fail "HTTP: no token did not refuse with exit 4 (got $RC)"
+    test_fail "HTTP: no token did not yield a generated-token server answering 401 (got $NT_CODE)"
     cat "$TEST_DIR/no-token.txt"
 fi
 
 RC=0
-PMAT_MCP_HTTP_TOKEN='too-short-123' "$PMAT_BIN" serve --transport http --port 18899 \
+PMAT_MCP_HTTP_TOKEN='too-short-123' bounded 20 "$PMAT_BIN" serve --transport http --port 18899 \
     > "$TEST_DIR/short-token.txt" 2>&1 || RC=$?
 if [ "$RC" -eq 1 ] && grep -q "must be at least 16 characters; got 13" "$TEST_DIR/short-token.txt"; then
     test_pass "HTTP: a 13-character token refuses to start (exit 1)"
@@ -174,7 +207,7 @@ fi
 
 for t in web-socket http-sse both all stdio; do
     RC=0
-    PMAT_MCP_HTTP_TOKEN="$TOKEN" "$PMAT_BIN" serve --transport "$t" --port 18899 \
+    PMAT_MCP_HTTP_TOKEN="$TOKEN" bounded 20 "$PMAT_BIN" serve --transport "$t" --port 18899 \
         > "$TEST_DIR/transport-$t.txt" 2>&1 || RC=$?
     if [ "$RC" -eq 2 ]; then
         test_pass "HTTP: --transport $t exits 2 (not implemented / not a value)"
@@ -223,7 +256,7 @@ else
 
     # No handshake is required: the FIRST request this server ever sees is a
     # tools/call, with no initialize and no session id.
-    curl -s -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$CALL_SATD" \
+    curl -s -m 20 -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$CALL_SATD" \
         | jq -r '.result.content[0].text' > "$TEST_DIR/satd-nohandshake.json"
     if [ "$(jq -r '.results.total_satd' "$TEST_DIR/satd-nohandshake.json")" = "1" ]; then
         test_pass "HTTP: tools/call works as the first request, with no initialize"
@@ -233,7 +266,7 @@ else
     fi
 
     # initialize at the ROOT path
-    curl -s -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$INIT" > "$TEST_DIR/http-init.json"
+    curl -s -m 20 -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$INIT" > "$TEST_DIR/http-init.json"
     if [ "$(jq -r '.result.protocolVersion' "$TEST_DIR/http-init.json")" = "2024-11-05" ]; then
         test_pass "HTTP: initialize at / returns protocolVersion 2024-11-05"
     else
@@ -242,7 +275,7 @@ else
     fi
 
     # initialize issues no session id — clients do not need to carry one
-    curl -s -D "$TEST_DIR/init-headers.txt" -o /dev/null -X POST "$URL" \
+    curl -s -m 20 -D "$TEST_DIR/init-headers.txt" -o /dev/null -X POST "$URL" \
         "${AUTH[@]}" "${HDRS[@]}" -d "$INIT"
     if grep -qi '^HTTP/1.1 200' "$TEST_DIR/init-headers.txt" &&
        ! grep -qi '^mcp-session-id:' "$TEST_DIR/init-headers.txt"; then
@@ -253,7 +286,7 @@ else
     fi
 
     # tools/call works without a session id and without a prior initialize
-    curl -s -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$CALL_SATD" \
+    curl -s -m 20 -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$CALL_SATD" \
         | jq -r '.result.content[0].text' > "$TEST_DIR/satd-http.json"
     if [ "$(jq -r '.results.total_satd' "$TEST_DIR/satd-http.json")" = "1" ]; then
         test_pass "HTTP: tools/call analyze_satd finds 1 debt item"
@@ -271,7 +304,7 @@ else
     fi
 
     # The tool surfaces are the same set, schemas included.
-    curl -s -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$LIST" \
+    curl -s -m 20 -X POST "$URL" "${AUTH[@]}" "${HDRS[@]}" -d "$LIST" \
         | jq -S '.result.tools | sort_by(.name)' > "$TEST_DIR/tools-http.json"
     if diff -q "$TEST_DIR/tools-stdio.json" "$TEST_DIR/tools-http.json" > /dev/null 2>&1; then
         test_pass "HTTP == stdio: tools/list is identical ($STDIO_TOOL_COUNT tools, schemas included)"
@@ -289,7 +322,7 @@ else
     fi
 
     # Failure mode: no Accept header -> 406
-    CODE=$(curl -s -o "$TEST_DIR/no-accept.json" -w '%{http_code}' -X POST "$URL" \
+    CODE=$(curl -s -m 20 -o "$TEST_DIR/no-accept.json" -w '%{http_code}' -X POST "$URL" \
         "${AUTH[@]}" -H "Content-Type: application/json" -d "$INIT")
     if [ "$CODE" = "406" ] && grep -q "Accept header must include application/json or text/event-stream" "$TEST_DIR/no-accept.json"; then
         test_pass "HTTP: a request without Accept is rejected 406 with a named reason"
@@ -299,7 +332,7 @@ else
     fi
 
     # Failure mode: no Authorization header -> 401
-    CODE=$(curl -s -o "$TEST_DIR/no-auth.json" -w '%{http_code}' -X POST "$URL" "${HDRS[@]}" -d "$INIT")
+    CODE=$(curl -s -m 20 -o "$TEST_DIR/no-auth.json" -w '%{http_code}' -X POST "$URL" "${HDRS[@]}" -d "$INIT")
     if [ "$CODE" = "401" ] && grep -q "missing Authorization header" "$TEST_DIR/no-auth.json"; then
         test_pass "HTTP: an unauthenticated request gets 401"
     else
@@ -308,7 +341,7 @@ else
     fi
 
     # Failure mode: wrong token -> 401
-    CODE=$(curl -s -o "$TEST_DIR/bad-auth.json" -w '%{http_code}' -X POST "$URL" \
+    CODE=$(curl -s -m 20 -o "$TEST_DIR/bad-auth.json" -w '%{http_code}' -X POST "$URL" \
         -H "Authorization: Bearer wrong-token-but-long-enough-xxxx" "${HDRS[@]}" -d "$INIT")
     if [ "$CODE" = "401" ] && grep -q "invalid bearer token" "$TEST_DIR/bad-auth.json"; then
         test_pass "HTTP: a wrong bearer token gets 401"
@@ -319,7 +352,7 @@ else
 
     # Failure mode: MCP is at the ROOT, so the habitual paths are 404
     for path in mcp health api/v1; do
-        CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$PORT/$path" \
+        CODE=$(curl -s -m 20 -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$PORT/$path" \
             "${AUTH[@]}" "${HDRS[@]}" -d "$INIT")
         if [ "$CODE" = "404" ]; then
             test_pass "HTTP: POST /$path is 404 (MCP lives at the root path)"
@@ -330,7 +363,7 @@ else
 
     # Failure mode: the port is already taken
     RC=0
-    PMAT_MCP_HTTP_TOKEN="$TOKEN" "$PMAT_BIN" serve --transport http --port "$PORT" \
+    PMAT_MCP_HTTP_TOKEN="$TOKEN" bounded 20 "$PMAT_BIN" serve --transport http --port "$PORT" \
         > "$TEST_DIR/in-use.txt" 2>&1 || RC=$?
     if [ "$RC" -eq 1 ] && grep -q "Address already in use" "$TEST_DIR/in-use.txt"; then
         test_pass "HTTP: a second server on the same port fails with 'Address already in use'"
@@ -347,7 +380,7 @@ echo ""
 echo "--- Registration ---"
 
 mkdir -p "$TEST_DIR/workspace"
-"$PMAT_BIN" init --target claude --path "$TEST_DIR/workspace" > "$TEST_DIR/init.log" 2>&1 || true
+bounded 60 "$PMAT_BIN" init --target claude --path "$TEST_DIR/workspace" > "$TEST_DIR/init.log" 2>&1 || true
 if [ -f "$TEST_DIR/workspace/.mcp.json" ] &&
    [ "$(jq -r '.mcpServers.pmat.args | join(" ")' "$TEST_DIR/workspace/.mcp.json")" = "--mode mcp" ]; then
     test_pass "pmat init --target claude registers 'pmat --mode mcp' in .mcp.json"
