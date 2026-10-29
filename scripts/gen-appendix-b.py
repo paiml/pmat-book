@@ -49,59 +49,80 @@ def help_text(path):
     return (r.stdout or "") + (r.stderr or ""), r.returncode
 
 
+def _next_entry_line(lines, i):
+    """Index of the first non-blank line at/after i, if it is still indented."""
+    j = i
+    while j < len(lines) and lines[j].strip() == "":
+        j += 1
+    if j >= len(lines) or not lines[j].startswith("  "):
+        return None
+    return j
+
+
+def _command_entry(m):
+    """[name, aliases, description] from an `^  name  description` match."""
+    name, desc = m.group(1), m.group(2).strip()
+    aliases = []
+    am = re.search(r"\[alias(?:es)?: ([^\]]+)\]\s*$", desc)
+    if am:
+        aliases = [a.strip() for a in am.group(1).split(",")]
+        desc = desc[: am.start()].strip()
+    return [name, aliases, desc]
+
+
+def _absorb(out, ln):
+    """Fold one `Commands:` line into `out`; False when the block has ended."""
+    m = re.match(r"^  (\S+)\s\s+(.*)$", ln)
+    if m:
+        out.append(_command_entry(m))
+    elif out and ln.startswith("     "):
+        out[-1][2] = (out[-1][2] + " " + ln.strip()).strip()
+    return bool(m) or ln.startswith("  ")
+
+
+def _advance(lines, i, out):
+    """Consume lines[i] into `out`; the next index, or None at block end."""
+    if lines[i].strip() == "":
+        return _next_entry_line(lines, i)
+    return i + 1 if _absorb(out, lines[i]) else None
+
+
 def parse_commands(text):
     """Return [(name, [aliases], description)] from a clap `Commands:` block."""
     out = []
     lines = text.splitlines()
-    try:
-        i = lines.index("Commands:")
-    except ValueError:
+    if "Commands:" not in lines:
         return []
-    i += 1
-    while i < len(lines):
-        ln = lines[i]
-        if ln.strip() == "":
-            j = i
-            while j < len(lines) and lines[j].strip() == "":
-                j += 1
-            if j >= len(lines) or not lines[j].startswith("  "):
-                break
-            i = j
-            continue
-        m = re.match(r"^  (\S+)\s\s+(.*)$", ln)
-        if m:
-            name, desc = m.group(1), m.group(2).strip()
-            aliases = []
-            am = re.search(r"\[alias(?:es)?: ([^\]]+)\]\s*$", desc)
-            if am:
-                aliases = [a.strip() for a in am.group(1).split(",")]
-                desc = desc[: am.start()].strip()
-            out.append([name, aliases, desc])
-        elif out and ln.startswith("     "):
-            out[-1][2] = (out[-1][2] + " " + ln.strip()).strip()
-        elif not ln.startswith("  "):
-            break
-        i += 1
+    i = lines.index("Commands:") + 1
+    while i is not None and i < len(lines):
+        i = _advance(lines, i, out)
     return [tuple(x) for x in out]
+
+
+def _positional_of(ln):
+    """(placeholder or None, stop) for one line of an `Arguments:` block."""
+    if not ln.startswith("  "):
+        return None, True
+    m = re.match(r"^  ([\[<]\S+[\]>])\s*$", ln)
+    if m:
+        return m.group(1), False
+    stop = bool(re.match(r"^  \S", ln)) and not re.match(r"^  [\[<]", ln)
+    return None, stop
 
 
 def parse_positionals(text):
     """Return positional placeholders, e.g. ['[PATH]', '<QUERY>']."""
     out = []
     lines = text.splitlines()
-    try:
-        i = lines.index("Arguments:")
-    except ValueError:
+    if "Arguments:" not in lines:
         return out
-    for ln in lines[i + 1 :]:
+    for ln in lines[lines.index("Arguments:") + 1 :]:
         if ln.strip() == "":
             continue
-        if not ln.startswith("  "):
-            break
-        m = re.match(r"^  ([\[<]\S+[\]>])\s*$", ln)
-        if m:
-            out.append(m.group(1))
-        elif re.match(r"^  \S", ln) and not re.match(r"^  [\[<]", ln):
+        found, stop = _positional_of(ln)
+        if found:
+            out.append(found)
+        if stop:
             break
     return out
 
@@ -118,49 +139,48 @@ def parse_long_flags(text):
     return sorted(flags)
 
 
-def build_tree():
-    top, rc = help_text([])
+def _probe(path):
+    """`pmat <path> --help` text; exit the whole run if it does not resolve."""
+    text, rc = help_text(path)
     if rc != 0:
-        sys.exit(f"FAIL: `{PMAT} --help` exited {rc}")
+        sys.exit(f"FAIL: `{PMAT} {' '.join(path)} --help` exited {rc}")
+    return text
+
+
+def _node(name, aliases, desc, text):
+    return {
+        "name": name,
+        "aliases": aliases,
+        "desc": desc,
+        "args": parse_positionals(text),
+        "flags": parse_long_flags(text),
+    }
+
+
+def _command_node(name, aliases, desc, top):
+    text = _probe([name])
+    subs = [
+        _node(sn, sa, sd, _probe([name, sn]))
+        for sn, sa, sd in parse_commands(text)
+        if sn != "help"
+    ]
+    node = _node(name, aliases, desc, text)
+    node.update({"subs": subs, "options": top})
+    return node
+
+
+def build_tree():
+    top = _probe([])
     version = subprocess.run(
         [PMAT, "--version"], capture_output=True, text=True
     ).stdout.splitlines()[0].strip()
-
-    tree = []
-    for name, aliases, desc in parse_commands(top):
-        if name == "help":
-            continue
-        text, rc = help_text([name])
-        if rc != 0:
-            sys.exit(f"FAIL: `{PMAT} {name} --help` exited {rc}")
-        subs = []
-        for sn, sa, sd in parse_commands(text):
-            if sn == "help":
-                continue
-            stext, src = help_text([name, sn])
-            if src != 0:
-                sys.exit(f"FAIL: `{PMAT} {name} {sn} --help` exited {src}")
-            subs.append(
-                {
-                    "name": sn,
-                    "aliases": sa,
-                    "desc": sd,
-                    "args": parse_positionals(stext),
-                    "flags": parse_long_flags(stext),
-                }
-            )
-        tree.append(
-            {
-                "name": name,
-                "aliases": aliases,
-                "desc": desc,
-                "subs": subs,
-                "args": parse_positionals(text),
-                "flags": parse_long_flags(text),
-                "options": top,
-            }
-        )
+    tree = [
+        _command_node(name, aliases, desc, top)
+        for name, aliases, desc in parse_commands(top)
+        if name != "help"
+    ]
     return version, tree, top
+
 
 
 # ----------------------------------------------------------------------- rendering
@@ -445,40 +465,28 @@ code is clean" — check the flag list for the command you are running.
 """
 
 
-def main():
-    if not shutil.which(PMAT):
-        sys.exit(f"FAIL: '{PMAT}' is not on PATH. Set PMAT=/path/to/pmat.")
-    version, tree, top = build_tree()
-    date = datetime.date.today().isoformat()
-    n_top = len(tree)
-    n_sub = sum(len(c["subs"]) for c in tree)
-
-    o = []
-    o.append(PREAMBLE.format(version=version, date=date, n_top=n_top, n_sub=n_sub))
-
-    o.append("## Top-level commands\n")
+def _top_level_table(tree):
+    o = ["## Top-level commands\n"]
     o.append("| Command | Aliases | Subcommands | What it does |")
     o.append("|---------|---------|-------------|--------------|")
     for c in tree:
         al = ", ".join(f"`{a}`" for a in c["aliases"]) or "—"
-        if c["subs"]:
-            n = f"[{len(c['subs'])}](#{anchor(c['name'])})"
-        else:
-            n = "—"
+        n = f"[{len(c['subs'])}](#{anchor(c['name'])})" if c["subs"] else "—"
         mark = "⚠ " if unavailable(c["desc"]) else ""
         o.append(f"| `pmat {c['name']}` | {al} | {n} | {mark}{cell(c['desc'])} |")
     o.append("")
+    return o
 
-    o.append("## Commands that take no subcommand\n")
+
+def _no_subcommand_table(tree):
+    o = ["## Commands that take no subcommand\n"]
     o.append(
         "These run directly. The Path column is the form this command accepts a "
         "target path in — using the wrong one exits 2.\n"
     )
     o.append("| Command | Path | Other positional arguments |")
     o.append("|---------|------|----------------------------|")
-    for c in tree:
-        if c["subs"]:
-            continue
+    for c in (c for c in tree if not c["subs"]):
         others = [
             a
             for a in c["args"]
@@ -493,29 +501,48 @@ def main():
         "as the *value* of `--list` (`pmat extract --list src/main.rs`), and `pmat generate`\n"
         "takes a template category and name (`pmat generate makefile rust/cli -p project_name=demo`).\n"
     )
+    return o
 
-    o.append("## Subcommands by parent\n")
-    for c in tree:
-        if not c["subs"]:
-            continue
+
+def _subcommand_rows(c):
+    o = []
+    for s in c["subs"]:
+        sal = ", ".join(f"`{a}`" for a in s["aliases"]) or "—"
+        mark = "⚠ " if unavailable(s["desc"]) else ""
+        o.append(
+            f"| `pmat {c['name']} {s['name']}` | {sal} | {path_arg(s)} | "
+            f"{mark}{cell(s['desc'])} |"
+        )
+    return o
+
+
+def _by_parent(tree):
+    o = ["## Subcommands by parent\n"]
+    for c in (c for c in tree if c["subs"]):
         o.append(f'<a id="{anchor(c["name"])}"></a>\n')
         al = " ".join(f"`{a}`" for a in c["aliases"])
-        head = f"### `pmat {c['name']}`"
-        if al:
-            head += f" (aliases: {al})"
+        head = f"### `pmat {c['name']}`" + (f" (aliases: {al})" if al else "")
         o.append(head + "\n")
         o.append(cell(c["desc"], 400) + "\n")
         o.append("| Subcommand | Aliases | Path | What it does |")
         o.append("|------------|---------|------|--------------|")
-        for s in c["subs"]:
-            sal = ", ".join(f"`{a}`" for a in s["aliases"]) or "—"
-            mark = "⚠ " if unavailable(s["desc"]) else ""
-            o.append(
-                f"| `pmat {c['name']} {s['name']}` | {sal} | {path_arg(s)} | "
-                f"{mark}{cell(s['desc'])} |"
-            )
+        o.extend(_subcommand_rows(c))
         o.append("")
+    return o
 
+
+def main():
+    if not shutil.which(PMAT):
+        sys.exit(f"FAIL: '{PMAT}' is not on PATH. Set PMAT=/path/to/pmat.")
+    version, tree, top = build_tree()
+    date = datetime.date.today().isoformat()
+    n_top = len(tree)
+    n_sub = sum(len(c["subs"]) for c in tree)
+
+    o = [PREAMBLE.format(version=version, date=date, n_top=n_top, n_sub=n_sub)]
+    o += _top_level_table(tree)
+    o += _no_subcommand_table(tree)
+    o += _by_parent(tree)
     o.append(EXAMPLES.format(version=version, date=date))
     o.append(FICTION.format(version=version, date=date))
     o.append(TAIL.format(version=version))
