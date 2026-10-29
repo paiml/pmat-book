@@ -684,6 +684,29 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-071
+  github_issue: 71
+  item_type: task
+  title: 'ch03 transport test hangs: unbounded foreground pmat serve + no job timeout'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-29T13:07:25Z
+  updated: 2026-10-29T13:07:25Z
+  spec: null
+  acceptance_criteria:
+  - 'No foreground pmat or curl call in tests/ch03/test_04_mcp_transports.sh can run unbounded (bounded() / curl -m)'
+  - 'test-examples job has timeout-minutes'
+  - 'Stray scripts/__pycache__ .pyc untracked and ignored (committed by mistake in the #62 merge)'
+  - 'Chapter 3.4 and its test follow the released pmat: no token mints a token (measured: CI run 40881829439 killed the tokenless serve at rc 137), unauthenticated request still 401'
+  - 'Fix: pmat-book#70'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 63
 - id: PMAT-067
   github_issue: 67
   item_type: task
