@@ -1,0 +1,23 @@
+# Look-ahead kit for the train after v3.43.0. Flat, awk-readable.
+train: "v3.44.0"
+epic: 63
+theme: "Every printed pmat command runs"
+criteria:
+  - {id: T1, pass: "every pmat command printed in src/ exits 0 (or its documented code) under the pinned pmat", falsifier: "one invented flag reverted into a chapter turns the check red", command: "make command-audit", ruling: asked}
+  - {id: T2, pass: "no chapter test passes with pmat absent or mocked", falsifier: "PATH without pmat makes every chapter test fail", command: "make test-no-pmat-must-fail", ruling: asked}
+  - {id: T3, pass: "SUMMARY.md lists every chapter and every in-prose link resolves", falsifier: "a planted dead link fails the link check", command: "make link-check", ruling: asked}
+baselines:
+  - {criterion: T1, receipt: "#43 (169 broken commands in 39 chapters) + per-chapter issues #11-#42"}
+  - {criterion: T2, receipt: "#19 (88 mock PASSes), #45, #46, #49"}
+  - {criterion: T3, receipt: "#3, #4, #5"}
+must_carry: []
+staged: []
+in_flight_prs:
+  - {pr: 1, issues: [11, 13], note: "MCP stdio transcript; rebase onto E1's green CI"}
+  - {pr: 2, issues: [13, 14, 15], note: "MCP three surfaces"}
+questions:
+  - {id: Q1, text: "Which make targets carry T1-T3 (none exist yet)?", asked: 2026-10-10, answer: open}
+  - {id: Q2, text: "Should chapters documenting removed commands (#29, #30, #31) be cut rather than rewritten?", asked: 2026-10-10, answer: open}
+risks:
+  - {risk: "pmat flags drift again between book and binary", mechanism: "the book pins no pmat version", tripwire: "T1 run against each new pmat tag"}
+  - {risk: "50 children exceed one train", mechanism: "audit issues are per chapter", tripwire: "budget 50; split into v3.45.0 at the v3.44.0 cut"}

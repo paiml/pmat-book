@@ -6,7 +6,21 @@ set -e
 
 echo "=== Testing Chapter 7: pmat quality-gate Command ==="
 
-# Check if pmat is available
+# Check if pmat is available.
+#
+# MOCK_MODE IS INITIALISED HERE, AND THAT IS THE WHOLE POINT. This block used to
+# leave it UNSET on the success path: `MOCK_MODE=true` was assigned only in the
+# not-found branch, and `MOCK_MODE=false` only inside
+# `if [ "$PMAT_BIN" != "pmat" ] && ...`, which is false precisely when pmat WAS
+# found on PATH. Every guard below reads `[ "$MOCK_MODE" = false ]`, and with the
+# variable unset that test is FALSE — so a working, installed pmat selected the
+# MOCK branch in all eight tests and the script never invoked pmat once.
+#
+# Measured against pmat 3.33.0 on PATH before this fix: 8 "Mock ..." passes,
+# 0 real invocations, and a final "All tests passed!". That is what
+# paiml/pmat#1084's falsification control caught -- the chapter passed against a
+# deliberately BROKEN pmat, because it was never calling pmat either way.
+MOCK_MODE=false
 PMAT_BIN=""
 if command -v pmat &> /dev/null; then
     PMAT_BIN="pmat"
@@ -23,8 +37,7 @@ else
     PMAT_BIN="pmat"
 fi
 
-if [ "$PMAT_BIN" != "pmat" ] && [ -x "$PMAT_BIN" ]; then
-    MOCK_MODE=false
+if [ "$MOCK_MODE" = false ]; then
     echo "Using PMAT binary: $PMAT_BIN"
 fi
 
@@ -147,12 +160,18 @@ EOF
 
 test_pass "Test project created with complexity and quality issues"
 
+# `pmat quality-gate` takes the project through `-p/--project-path`, NOT as a
+# positional argument. Every call in this file used to pass a bare `.`, which
+# pmat rejects with "unexpected argument found" -- and six of the seven tests
+# below have a fallback branch that greps the output for words like "checks"
+# or "violations", so they reported PASS on an argument error. Only Test 2,
+# whose fallback needs one of those words, actually went red.
 # Test 2: Basic quality gate check (all checks)
 echo ""
 echo "Test 2: Basic quality gate check"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate . > quality_output.txt 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . > quality_output.txt 2>&1; then
         test_pass "Basic quality gate completed"
         
         if grep -q "Quality.*Gate\|passed\|failed\|checks" quality_output.txt; then
@@ -215,7 +234,7 @@ echo ""
 echo "Test 3: Running specific quality checks"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate . --checks=complexity,dead_code --format=json > specific_checks.json 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --checks=complexity,dead_code --format=json > specific_checks.json 2>&1; then
         test_pass "Specific checks completed"
         
         if command -v jq &> /dev/null && jq empty specific_checks.json 2>/dev/null; then
@@ -287,7 +306,7 @@ echo ""
 echo "Test 4: Quality gate with custom thresholds"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate . --max-complexity-p99=30 --max-dead-code=20.0 --format=human > thresholds.txt 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human > thresholds.txt 2>&1; then
         test_pass "Quality gate with custom thresholds completed"
     else
         test_pass "Quality gate with thresholds completed with expected failures"
@@ -337,7 +356,7 @@ echo "Test 5: Quality gate with fail-on-violation"
 
 if [ "$MOCK_MODE" = false ]; then
     # This should fail and return non-zero exit code
-    if $PMAT_BIN quality-gate . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1; then
         test_fail "Quality gate should have failed with strict thresholds"
     else
         test_pass "Quality gate correctly failed with strict enforcement"
@@ -369,7 +388,7 @@ echo ""
 echo "Test 6: Single file quality analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate . --file=src/lib.rs --format=json > single_file.json 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2>&1; then
         test_pass "Single file analysis completed"
     else
         test_pass "Single file analysis completed with expected issues"
@@ -414,7 +433,7 @@ echo ""
 echo "Test 7: Quality gate with output to file"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate . --output=quality-report.json --format=json > file_output.log 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --output=quality-report.json --format=json > file_output.log 2>&1; then
         if [ -f "quality-report.json" ]; then
             test_pass "Quality gate report saved to file"
         else
@@ -449,7 +468,7 @@ echo ""
 echo "Test 8: Quality gate with performance metrics"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate . --performance --format=human > perf.txt 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --performance --format=human > perf.txt 2>&1; then
         test_pass "Quality gate with performance metrics completed"
         
         if grep -q "Performance\|time\|ms\|seconds" perf.txt; then

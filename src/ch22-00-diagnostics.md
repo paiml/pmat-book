@@ -1,83 +1,86 @@
 # Chapter 22: System Diagnostics and Health Monitoring
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ 100% Working (16/16 examples)
+**Chapter Status**: ✅ Rewritten against pmat 3.32.0 — every example below was executed
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 16 | Ready for production use |
-| ⚠️ Not Implemented | 0 | Planned for future versions |
-| ❌ Broken | 0 | Known issues, needs fixing |
-| 📋 Planned | 0 | Future roadmap features |
+| ✅ Working | 17 | Executed against pmat 3.32.0 on 2026-08-25 |
+| ⚠️ Not Implemented | 0 | — |
+| ❌ Broken | 0 | — |
+| 📋 Planned | 0 | — |
 
-*Last updated: 2026-03-08*
-*PMAT version: pmat 3.6.1*
+*Last updated: 2026-08-25*
+*PMAT version: pmat 3.32.0*
 <!-- DOC_STATUS_END -->
+
+> **⚠️ Historical warning, as of pmat 3.32.0 (2026-08-25). The diagnostic server,
+> the profilers and most of the flags this chapter used to document do not exist.**
+>
+> The previous edition described `pmat 3.6.1` and was marked
+> `✅ 100% Working (16/16 examples)`. `pmat diagnose` has exactly four options of its
+> own — `--format`, `--only`, `--skip`, `--timeout` — plus the global flags. Every
+> other flag that edition printed exits **2** with `error: unexpected argument found`:
+>
+> `--troubleshoot`, `--repair-cache`, `--serve`, `--port`, `--fix-config`,
+> `--config-file`, `--profile-latency`, `--profile-memory`, `--reset`,
+> `--reinit-config`, `--alert-on-failure`, `--email`.
+>
+> Three consequences worth stating plainly:
+>
+> - **There is no diagnostic dashboard.** `pmat diagnose --serve --port 8090` exits 2,
+>   so the six endpoints that edition listed (`/health`, `/metrics`, `/diagnostics`,
+>   `/features`, `/performance`, `WebSocket /live`) have never been served by
+>   anything. `pmat serve` is an MCP endpoint, not a dashboard, and it has no
+>   `/health` either — see [Chapter 18](ch18-00-api.md).
+> - **The JSON structure was invented.** The real report has six top-level keys:
+>   `version`, `build_info`, `timestamp`, `duration_ms`, `features`, `summary`. There
+>   is no `health_score`, no `platform`, no `dependencies`, no `performance` and no
+>   `issues`. The CI job that edition recommended ran
+>   `HEALTH_SCORE=$(jq '.health_score' diagnostics.json)`, which yields the string
+>   `null`, and then `[ "$HEALTH_SCORE" -lt 90 ]`, which fails with
+>   `[: null: integer expression expected` — a health check that could never pass or
+>   fail on health. A corrected version is [below](#cicd-a-health-check-that-works).
+> - **`--only analysis` is not a category.** `--only` and `--skip` take the exact
+>   feature-test names, and an unknown one exits 1 and prints the eight valid names.
+>
+> `pmat self-update`, `pmat cache clear`, `pmat cache optimize` and `pmat config set`
+> were also recommended here as remedies. None of them exist; the real commands are
+> at the [end of this chapter](#cache-config-and-updates).
 
 ## The Problem
 
-Complex software systems fail in complex ways. When PMAT features don't work as expected, developers need comprehensive diagnostics to identify issues quickly. Traditional debugging approaches are time-consuming and often miss systemic problems. Teams need automated health monitoring, self-diagnostics, and detailed system verification to maintain reliable development environments.
+When a tool that measures other software misbehaves, you need to know whether the
+tool itself is healthy before you trust a single number it prints. That is a real
+need, and `pmat diagnose` is a real answer to it — a self-test that exercises the
+parsers, the analysis pipeline, the cache and the git integration, and reports which
+of them work.
 
-## Core Concepts
+What it is *not* is a monitoring platform. It has no server, no metrics endpoint, no
+profiler and no alerting. Documentation that gave it those things did not add
+capability; it added an hour of confusion for every reader who tried them.
 
-### Diagnostic System Architecture
+## What `pmat diagnose` actually runs
 
-PMAT's diagnostic system provides:
-- **Self-Testing**: Automated verification of all PMAT features
-- **Component Health**: Individual feature status and performance
-- **Dependency Validation**: System requirement verification
-- **Performance Profiling**: Latency and resource usage metrics
-- **Error Detection**: Proactive issue identification
-- **Configuration Validation**: Settings and environment checks
-
-### Health Monitoring Framework
-
-```mermaid
-graph TD
-    A[Diagnostic Engine] --> B[Feature Tests]
-    A --> C[System Checks]
-    A --> D[Performance Metrics]
-    
-    B --> E[Analysis Tools]
-    B --> F[Cache System]
-    B --> G[Quality Gates]
-    
-    C --> H[Dependencies]
-    C --> I[Configuration]
-    C --> J[Resources]
-    
-    D --> K[Latency]
-    D --> L[Memory]
-    D --> M[CPU Usage]
-```
-
-## Running System Diagnostics
-
-### Basic Diagnostics
+Eight self-tests, in-process, taking milliseconds:
 
 ```bash
-# Run complete system diagnostics
 pmat diagnose
-
-# Quick health check
-pmat diagnose --format compact
-
-# Detailed diagnostics with verbose output
-pmat diagnose --verbose
 ```
 
-**Diagnostic Output Example** (colorized in terminal):
+Executed output:
+
 ```
 PMAT Self-Diagnostic Report
-  Version: 3.6.1    Duration: 0ms
+  Version: 3.32.0    Duration: 11ms
 
-✓ analysis.complexity (0μs)
-✓ analysis.deep_context (6μs)
-✓ ast.python (0μs)
-✓ ast.rust (137μs)
-✓ ast.typescript (0μs)
-✓ cache.subsystem (50μs)
-✓ integration.git (4μs)
+✓ analysis.complexity (194μs)
+✓ analysis.deep_context (8387μs)
+✓ ast.python (303μs)
+✓ ast.rust (153μs)
+✓ ast.typescript (2815μs)
+✓ cache.subsystem (12μs)
+✓ integration.git (2μs)
 ✓ output.mermaid (0μs)
 
 Summary:
@@ -87,392 +90,161 @@ Summary:
   Success Rate: 100.0%
 ```
 
-> **Note**: In the terminal, the header appears bold+underlined, feature names
-> are cyan, pass/fail indicators are green/red, timing is dimmed, and the
-> success rate percentage is color-coded (green above 80%, yellow above 50%,
-> red below).
+Those eight names are the whole vocabulary of `--only` and `--skip`:
 
-### JSON Format for Automation
+| Feature test | What it proves |
+|--------------|----------------|
+| `ast.rust` | The Rust parser parses |
+| `ast.typescript` | The TypeScript parser parses |
+| `ast.python` | The Python parser parses |
+| `analysis.complexity` | The complexity analyser runs and returns metrics |
+| `analysis.deep_context` | The deep-context pipeline runs end to end |
+| `cache.subsystem` | The cache initialises and reports pressure/hit-rate |
+| `integration.git` | `git` is available and answerable |
+| `output.mermaid` | Mermaid rendering produces valid syntax |
+
+### Selecting and skipping tests
 
 ```bash
-# Generate machine-readable diagnostics
-pmat diagnose --format json > diagnostics.json
+pmat diagnose --only ast.rust
 ```
 
-**JSON Output Structure:**
+```
+PMAT Self-Diagnostic Report
+  Version: 3.32.0    Duration: 0ms
+
+✓ ast.rust (213μs)
+
+Summary:
+  Total: 1
+  Passed: 1
+  Failed: 0
+  Success Rate: 100.0%
+```
+
+Both flags repeat (`--only ast.rust --only ast.python`) and both take exact names.
+A category name is not a name:
+
+```bash
+pmat diagnose --only analysis
+```
+
+Exit status 1:
+
+```
+Error: unknown --only feature test 'analysis'. Available: ast.rust, ast.typescript,
+ast.python, analysis.complexity, analysis.deep_context, cache.subsystem,
+integration.git, output.mermaid
+```
+
+That error is a good one — it lists the valid values rather than leaving you to guess
+— but it means the old chapter's `pmat diagnose --only cache --only quality --only templates`
+fails on the first argument.
+
+### Output formats
+
+`--format` takes `pretty` (the default, shown above), `compact` and `json`.
+
+```bash
+pmat diagnose --format compact
+```
+
+```json
+{"v":"3.32.0","ok":true,"failed":null,"fixes":null}
+```
+
+One line, four keys: version, whether everything passed, which tests failed, and
+suggested fixes. This is the format for a shell prompt or a pre-flight check.
+
+```bash
+pmat diagnose --format json
+```
+
+The real structure, executed and abridged in the middle:
+
 ```json
 {
-  "timestamp": "2025-09-12T14:30:00Z",
-  "version": "2.69.0",
-  "platform": {
-    "os": "linux",
-    "arch": "x86_64",
-    "cpu_cores": 8,
-    "memory_gb": 16
+  "version": "3.32.0",
+  "build_info": {
+    "rust_version": "unknown",
+    "build_date": "unknown",
+    "git_commit": null,
+    "features": ["cli"]
   },
+  "timestamp": "2026-08-25T20:52:24.354549330Z",
+  "duration_ms": 35,
   "features": {
-    "analysis": {
-      "status": "healthy",
-      "latency_ms": 15,
-      "tests_passed": 12,
-      "tests_total": 12
+    "analysis.complexity": {
+      "status": "ok",
+      "duration_us": 1143,
+      "metrics": {
+        "status": "measured",
+        "functions_analyzed": 1,
+        "max_cyclomatic": 4,
+        "analysis_time_ms": 0
+      }
     },
-    "cache": {
-      "status": "healthy",
-      "latency_ms": 3,
-      "hit_rate": 0.875,
-      "size_mb": 45.2
-    },
-    "quality_gates": {
-      "status": "healthy",
-      "latency_ms": 12,
-      "rules_loaded": 25
-    },
-    "telemetry": {
-      "status": "degraded",
-      "latency_ms": 145,
-      "issue": "high_latency"
+    "cache.subsystem": {
+      "status": "ok",
+      "duration_us": 12,
+      "metrics": {
+        "cache_initialized": true,
+        "memory_pressure": 0.0,
+        "total_cache_size": 0,
+        "overall_hit_rate": 0.0,
+        "memory_efficiency": 1.0
+      }
     }
   },
-  "dependencies": {
-    "rust": "1.75.0",
-    "cargo": "1.75.0",
-    "git": "2.42.0"
-  },
-  "performance": {
-    "avg_latency_ms": 12.3,
-    "peak_memory_mb": 156,
-    "cache_hit_rate": 0.875,
-    "analysis_speed_lines_per_sec": 2341
-  },
-  "health_score": 98,
-  "issues": [
-    {
-      "component": "telemetry",
-      "severity": "warning",
-      "description": "Response time exceeds threshold"
-    }
-  ]
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "degraded": 0,
+    "skipped": 0,
+    "all_passed": true,
+    "success_rate": 100.0
+  }
 }
 ```
 
-## Feature-Specific Diagnostics
+`build_info.features` is worth a look: it lists the cargo features the binary was
+built with. `["cli"]` is the default `cargo install pmat` build, and it is why
+`pmat demo`, `pmat org` and `pmat agent` refuse to run — they need features that are
+not in it.
 
-### Testing Individual Features
-
-```bash
-# Test only analysis features
-pmat diagnose --only analysis
-
-# Test multiple specific features
-pmat diagnose --only cache --only quality --only templates
-
-# Skip certain features
-pmat diagnose --skip telemetry --skip agent
-```
-
-**Feature Test Output:**
-```
-🔍 Testing: Analysis Features
-────────────────────────────
-✅ Complexity Analysis ........ PASS (8ms)
-✅ Dead Code Detection ........ PASS (12ms)
-✅ SATD Detection ............. PASS (6ms)
-✅ Dependency Analysis ........ PASS (15ms)
-✅ Similarity Detection ....... PASS (11ms)
-
-📊 Analysis Feature Summary
-Tests: 5/5 passed
-Average Latency: 10.4ms
-Performance: EXCELLENT
-```
-
-### Component Deep Dive
+Every format prints three progress lines — `⏳ Analyzing project...`,
+`Analyses complete`, `Analysis complete!` — but they go to **stderr**, so stdout is
+clean JSON and no filtering is needed. `--quiet` silences them entirely:
 
 ```bash
-# Deep analysis of cache system
-pmat diagnose --only cache --verbose
+pmat diagnose --format json > diagnostics.json
+pmat diagnose --quiet --format json | jq -e '.summary.all_passed'
 ```
 
-**Detailed Component Output:**
-```
-🗄️ Cache System Diagnostics
-===========================
+Verified: the first line of the redirected file is `{`, and with `--quiet` the command
+writes nothing to stderr at all. Merge stderr into stdout (`2>&1`) and you will break
+the pipe — that is the one way to get the progress lines into your JSON.
 
-Configuration:
-- Type: LRU (Least Recently Used)
-- Max Size: 100 MB
-- Current Size: 45.2 MB
-- TTL: 3600 seconds
-- Compression: Enabled
+### The complete option list
 
-Performance Tests:
-✅ Cache Write ............... 2.1ms (target: <5ms)
-✅ Cache Read ................ 0.8ms (target: <2ms)
-✅ Cache Invalidation ........ 1.2ms (target: <3ms)
-✅ Compression Ratio ......... 3.2:1 (target: >2:1)
+| Option | Values | Default |
+|--------|--------|---------|
+| `--format` | `pretty`, `json`, `compact` | `pretty` |
+| `--only` | one of the eight feature-test names; repeatable | all |
+| `--skip` | one of the eight feature-test names; repeatable | none |
+| `--timeout` | seconds | 60 |
 
-Statistics:
-- Total Requests: 12,456
-- Cache Hits: 10,897 (87.5%)
-- Cache Misses: 1,559 (12.5%)
-- Evictions: 234
-- Average Entry Size: 4.2 KB
+Plus the global flags every `pmat` command takes: `-v/--verbose`, `-q/--quiet`,
+`--debug`, `--trace`, `--trace-filter`, `--color`, `--mode`.
 
-Memory Analysis:
-- Heap Usage: 45.2 MB / 100 MB (45.2%)
-- Overhead: 2.1 MB (4.6%)
-- Fragmentation: 0.8%
+`pmat doctor` and `pmat diag` are aliases of `pmat diagnose`; all three are the same
+command.
 
-Recent Operations:
-[14:29:58] HIT  - complexity_analysis_cache
-[14:29:59] MISS - new_file_analysis
-[14:30:00] HIT  - template_cache_rust_cli
-[14:30:01] EVICT - old_analysis_data
-```
+## CI/CD: a health check that works
 
-## Health Monitoring
-
-### Continuous Health Check
-
-```bash
-# Monitor health continuously
-watch -n 5 'pmat diagnose --format compact'
-
-# Health check with custom timeout
-pmat diagnose --timeout 30
-```
-
-### System Resource Monitoring
-
-```bash
-# Check resource usage
-pmat diagnose --verbose | grep -A 5 "Resource"
-```
-
-**Resource Monitoring Output:**
-```
-📊 Resource Usage
-────────────────
-CPU Usage: 2.3% (8 cores available)
-Memory: 156 MB / 16 GB (0.95%)
-Disk I/O: 12 MB/s read, 3 MB/s write
-Network: Minimal (API server inactive)
-File Handles: 42 / 65536
-Thread Count: 12
-```
-
-### Dependency Verification
-
-```bash
-# Verify all dependencies
-pmat diagnose --only dependencies
-```
-
-**Dependency Check Output:**
-```
-🔗 Dependency Verification
-=========================
-
-Required Dependencies:
-✅ Rust .................... 1.75.0 (required: >=1.70.0)
-✅ Cargo ................... 1.75.0 (required: >=1.70.0)
-✅ Git ..................... 2.42.0 (required: >=2.0.0)
-
-Optional Dependencies:
-✅ Docker .................. 24.0.2 (enhances: containerization)
-⚠️  Node.js ................. NOT FOUND (enhances: JS analysis)
-✅ Python .................. 3.11.4 (enhances: Python analysis)
-✅ Go ...................... 1.21.0 (enhances: Go analysis)
-
-System Libraries:
-✅ libssl .................. 3.0.2
-✅ libcrypto ............... 3.0.2
-✅ libz .................... 1.2.13
-
-Configuration Files:
-✅ ~/.pmat/config.toml ...... Valid
-✅ .pmat/project.toml ....... Valid
-⚠️  .pmat/templates.toml ..... Not found (optional)
-```
-
-## Configuration Validation
-
-### Validate Configuration Files
-
-```bash
-# Check current configuration
-pmat diagnose --only config
-```
-
-**Configuration Validation Output:**
-```
-⚙️ Configuration Validation
-==========================
-
-Global Configuration (~/.pmat/config.toml):
-✅ Syntax ................... Valid TOML
-✅ Schema ................... Matches v2.69.0
-✅ Required Fields .......... All present
-
-Settings Validation:
-✅ analysis.timeout ......... 60 (valid: 10-300)
-✅ cache.size_mb ............ 100 (valid: 10-1000)
-✅ quality.min_grade ........ "B+" (valid grade)
-⚠️  telemetry.endpoint ....... Unreachable
-✅ agent.max_memory_mb ...... 500 (valid: 100-2000)
-
-Project Configuration (.pmat/project.toml):
-✅ Project Name ............. "my-project"
-✅ Version .................. "1.0.0"
-✅ Quality Profile .......... "strict"
-✅ Excluded Paths ........... ["target/", "node_modules/"]
-
-Environment Variables:
-✅ PMAT_HOME ................ /home/user/.pmat
-✅ RUST_LOG ................. info
-⚠️  PMAT_TELEMETRY ........... Not set (defaults to disabled)
-```
-
-### Fix Configuration Issues
-
-```bash
-# Auto-fix configuration problems
-pmat diagnose --fix-config
-
-# Validate specific config file
-pmat diagnose --config-file custom-config.toml
-```
-
-## Performance Profiling
-
-### Latency Analysis
-
-```bash
-# Profile feature latencies
-pmat diagnose --profile-latency
-```
-
-**Latency Profile Output:**
-```
-⏱️ Latency Profiling
-===================
-
-Feature Latencies (sorted by impact):
-┌──────────────────┬──────────┬──────────┬──────────┬──────────┐
-│ Feature          │ P50 (ms) │ P95 (ms) │ P99 (ms) │ Max (ms) │
-├──────────────────┼──────────┼──────────┼──────────┼──────────┤
-│ Refactoring      │ 18       │ 32       │ 48       │ 152      │
-│ Complexity       │ 12       │ 22       │ 35       │ 98       │
-│ Quality Gate     │ 10       │ 18       │ 28       │ 67       │
-│ Template Gen     │ 5        │ 8        │ 12       │ 23       │
-│ Cache Ops        │ 2        │ 3        │ 5        │ 8        │
-└──────────────────┴──────────┴──────────┴──────────┴──────────┘
-
-Bottleneck Analysis:
-🔴 Refactoring P99 (48ms) exceeds target (30ms)
-🟡 Complexity P95 (22ms) approaching limit (25ms)
-🟢 Other features within performance targets
-```
-
-### Memory Profiling
-
-```bash
-# Profile memory usage
-pmat diagnose --profile-memory
-```
-
-**Memory Profile Output:**
-```
-💾 Memory Profiling
-==================
-
-Heap Allocation by Component:
-┌─────────────────┬───────────┬──────────┬──────────┐
-│ Component       │ Current   │ Peak     │ % Total  │
-├─────────────────┼───────────┼──────────┼──────────┤
-│ Cache System    │ 45.2 MB   │ 52.1 MB  │ 29.0%    │
-│ AST Parser      │ 32.8 MB   │ 48.3 MB  │ 21.0%    │
-│ Analysis Engine │ 28.4 MB   │ 35.2 MB  │ 18.2%    │
-│ Template Store  │ 15.6 MB   │ 15.6 MB  │ 10.0%    │
-│ Agent Runtime   │ 12.3 MB   │ 18.7 MB  │ 7.9%     │
-│ Other           │ 21.7 MB   │ 25.1 MB  │ 13.9%    │
-├─────────────────┼───────────┼──────────┼──────────┤
-│ Total           │ 156 MB    │ 195 MB   │ 100%     │
-└─────────────────┴───────────┴──────────┴──────────┘
-
-Memory Pools:
-- String Pool: 8.2 MB (2,341 strings)
-- Object Pool: 12.4 MB (567 objects)
-- Buffer Pool: 5.6 MB (23 buffers)
-
-GC Statistics:
-- Collections: 42
-- Avg Pause: 2.1ms
-- Max Pause: 8.3ms
-```
-
-## Troubleshooting Guide
-
-### Common Issues Detection
-
-```bash
-# Run comprehensive troubleshooting
-pmat diagnose --troubleshoot
-```
-
-**Troubleshooting Output:**
-```
-🔧 Troubleshooting Analysis
-==========================
-
-Detected Issues:
-
-1. ⚠️ Slow Telemetry Response
-   Symptom: Telemetry taking >100ms
-   Cause: Network latency to telemetry endpoint
-   Solution: 
-   - Check network connection
-   - Disable telemetry: export PMAT_TELEMETRY=disabled
-   - Use local telemetry server
-
-2. ⚠️ High Cache Miss Rate
-   Symptom: Cache hit rate below 80%
-   Cause: Cache size too small for working set
-   Solution:
-   - Increase cache size in config
-   - Run: pmat config set cache.size_mb 200
-   - Clear stale cache: pmat cache clear
-
-3. ℹ️ Missing Optional Dependencies
-   Symptom: Node.js not found
-   Impact: JavaScript analysis unavailable
-   Solution:
-   - Install Node.js for JS support
-   - Or ignore if not analyzing JS code
-
-Recommended Actions:
-1. Fix telemetry: pmat config set telemetry.enabled false
-2. Optimize cache: pmat cache optimize
-3. Update dependencies: pmat self-update
-```
-
-### Error Recovery
-
-```bash
-# Reset to known good state
-pmat diagnose --reset
-
-# Repair corrupted cache
-pmat diagnose --repair-cache
-
-# Reinitialize configuration
-pmat diagnose --reinit-config
-```
-
-## Integration with CI/CD
-
-### GitHub Actions Diagnostics
+The key is `summary`, not `health_score`. This job fails when a self-test fails, and
+uploads the report either way:
 
 ```yaml
 # .github/workflows/pmat-health.yml
@@ -480,125 +252,194 @@ name: PMAT Health Check
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
   health-check:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Install PMAT
-      run: cargo install pmat
-    
-    - name: Run Diagnostics
-      run: |
-        pmat diagnose --format json > diagnostics.json
-        
-        # Check health score
-        HEALTH_SCORE=$(jq '.health_score' diagnostics.json)
-        echo "Health Score: $HEALTH_SCORE"
-        
-        if [ "$HEALTH_SCORE" -lt 90 ]; then
-          echo "⚠️ Health score below threshold"
-          jq '.issues' diagnostics.json
-          exit 1
-        fi
-    
-    - name: Upload Diagnostic Report
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: diagnostic-report
-        path: diagnostics.json
-    
-    - name: Alert on Issues
-      if: failure()
-      uses: actions/github-script@v6
-      with:
-        script: |
-          await github.rest.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: 'PMAT Health Check Failed',
-            body: 'Automated health check detected issues. Check artifacts for details.',
-            labels: ['bug', 'pmat-health']
-          })
+      - uses: actions/checkout@v4
+
+      - name: Install PMAT
+        run: cargo install pmat
+
+      - name: Run diagnostics
+        run: |
+          pmat diagnose --format json > diagnostics.json
+          jq -e '.summary.failed == 0 and .summary.all_passed' diagnostics.json \
+            || { echo "::error::pmat self-diagnostics failed"; \
+                 jq '.features | map_values(.status)' diagnostics.json; exit 1; }
+
+      - name: Upload diagnostic report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagnostic-report
+          path: diagnostics.json
 ```
 
-### Monitoring Dashboard
+`jq -e` exits non-zero when the filter is false or null, which is what makes this a
+gate rather than a printout. The old job's `jq '.health_score'` returned `null` and
+the shell comparison errored — that step could not fail *for the reason it claimed*,
+which is worse than not having the step at all.
+
+For a shell loop or a prompt, `--format compact` is cheaper:
 
 ```bash
-# Start diagnostic monitoring server
-pmat diagnose --serve --port 8090
+pmat diagnose --quiet --format compact | jq -e '.ok' >/dev/null && echo healthy
 ```
 
-**Dashboard Endpoints:**
-```
-GET /health          - Current health status
-GET /metrics         - Prometheus metrics
-GET /diagnostics     - Full diagnostic report
-GET /features        - Feature status
-GET /performance     - Performance metrics
-WebSocket /live      - Real-time health updates
-```
+## Beyond self-diagnostics
 
-## Diagnostic Automation
+`pmat diagnose` answers "is `pmat` working?". Three other commands answer "is the
+*project* healthy?", and they are what the old chapter's dashboard was reaching for.
+All three were executed against the same fixture.
 
-### Scheduled Health Checks
+### `pmat project-diag` — 20 Rust project checks
 
 ```bash
-# Add to crontab for hourly checks
-0 * * * * pmat diagnose --format json >> /var/log/pmat-health.log 2>&1
-
-# With alerting
-0 * * * * pmat diagnose --alert-on-failure --email team@company.com
+pmat project-diag --path .
 ```
 
-### Health Check Script
+```
+  Project Diagnostics: .
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Overall: RED 31.0/100.0 (31.0%)
+
+  Cargo Config [3/6]
+  Dependencies [2/3]
+  Build Performance [1/4]
+  Code Quality [0/4]
+  Advanced [0/3]
+
+  Checks:
+  ───────────────────────────────────────────────────
+  ✓ Edition 2021+ - Edition 2021 configured
+  ✓ Resolver v2 - Resolver v2 via edition 2021+
+  ✓ Dependencies <= 50 - 0 dependencies (excellent)
+  ⚠ LTO Enabled - LTO not configured - add lto = true to [profile.release]
+  ⚠ Workspace Lints - No workspace lints - add [workspace.lints.rust] section
+  ⏭ Workspace Deps - Single-crate project (N/A)
+  ✓ Cargo.lock Present - Cargo.lock present (reproducible builds)
+  ⚠ Audit Config - No audit config - add deny.toml for security scanning
+```
+
+Every check names the fix. Note `⏭` — a check that does not apply is skipped, not
+silently passed.
+
+### `pmat maintain health` — does it build?
 
 ```bash
-#!/bin/bash
-# pmat-health-monitor.sh
-
-while true; do
-    echo "Running health check at $(date)"
-    
-    # Run diagnostics
-    HEALTH=$(pmat diagnose --format json)
-    SCORE=$(echo "$HEALTH" | jq '.health_score')
-    
-    # Check threshold
-    if [ "$SCORE" -lt 95 ]; then
-        echo "⚠️ Health degraded: $SCORE"
-        
-        # Send alert
-        echo "$HEALTH" | mail -s "PMAT Health Alert" team@company.com
-        
-        # Try auto-recovery
-        pmat diagnose --repair-cache
-        pmat cache optimize
-    else
-        echo "✅ System healthy: $SCORE"
-    fi
-    
-    # Wait 5 minutes
-    sleep 300
-done
+pmat maintain health
 ```
+
+```
+✅ Project Health Report
+
+✅ Build: Project builds successfully
+
+📊 Summary:
+   Total:   1
+   Passed:  1
+   Warned:  0
+   Failed:  0
+   Skipped: 0
+
+✨ Project is healthy!
+```
+
+By default this checks the build only. `--all` adds tests, coverage and compliance,
+which is much slower — read `pmat maintain health --help` before putting it in a
+tight loop.
+
+### `pmat repo-score` — repository hygiene
+
+```bash
+pmat repo-score --path .
+```
+
+```
+Repository Health Score
+  Score: 31.5/100.0
+  Grade: F
+
+Categories
+  ✗ Documentation             0.0/15.0 (0.0%)
+  ⚠ Pre-commit Hooks          14.0/20.0 (70.0%)
+  ✓ Repository Hygiene        15.0/15.0 (100.0%)
+```
+
+For a single composite number across every dimension `pmat` measures, `pmat score`
+combines them and says how many dimensions it could actually measure:
+
+```bash
+pmat score --path .
+```
+
+```
+PMAT Unified Score
+
+  Composite: 66.1/100  Grade: D  Dimensions: 4/8
+
+Sub-Scores
+  RPS:         34.6
+  Comply:      57.0  (1 errors, 11 warnings)
+  Coverage:    not measured
+```
+
+`Dimensions: 4/8` and `Coverage: not measured` are the load-bearing parts of that
+output. A composite built from half the dimensions is not the same claim as one built
+from all eight, and the command says which you are looking at rather than averaging
+the gap away.
+
+## Cache, config and updates
+
+The old chapter's remediation steps used four commands that do not exist. What is
+real:
+
+| Old advice | Status | What to do instead |
+|------------|--------|--------------------|
+| `pmat cache clear` | `error: unrecognized subcommand`, exit 2 | `pmat cache stats` is the only cache subcommand. To clear, delete the `.pmat/` directory in the project |
+| `pmat cache optimize` | `error: unrecognized subcommand`, exit 2 | Nothing to run — there is no optimiser |
+| `pmat config set cache.size_mb 200` | `error: unexpected argument found`, exit 2 | `pmat config` takes flags, not subcommands: `--show`, `--edit`, `--validate`, `--reset` |
+| `pmat self-update` | `error: unrecognized subcommand`, exit 2 | `cargo install pmat --force` |
+
+The cache statistics that do exist:
+
+```bash
+pmat cache stats
+```
+
+```
+PMAT Cache Statistics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Orchestrator (this process):
+   Strategy Switches: 0
+   Evaluations: 0
+   Overall Effectiveness: not measured (no cache evaluations in this process)
+
+On-disk caches under /path/to/project:
+   /path/to/project/.pmat: 3 file(s), 0.0 MB
+```
+
+Read the "this process" heading carefully: the orchestrator counters start empty in
+every new process, so they measure the run you just started, not the project's cache
+history. The on-disk section is the part that persists. `pmat memory stats` is the
+same shape and says so explicitly — "no allocations were recorded in this process".
+Neither is a system monitor, and neither claims to be.
 
 ## Summary
 
-PMAT's diagnostic and health monitoring system provides comprehensive visibility into system status, performance, and potential issues. By offering automated self-testing, detailed component analysis, and proactive issue detection, it ensures reliable operation and quick problem resolution.
+`pmat diagnose` is a fast, honest self-test: eight checks, four options, three output
+formats, and a `summary` block that a CI job can gate on. It is not a server, has no
+dashboard, and exposes no metrics endpoint — and a chapter that said otherwise cost
+its readers more than it gave them.
 
-Key benefits include:
-- **Automated Self-Testing**: Complete feature verification in seconds
-- **Proactive Issue Detection**: Identify problems before they impact work
-- **Performance Profiling**: Detailed latency and resource metrics
-- **Configuration Validation**: Ensure correct setup and settings
-- **Troubleshooting Guidance**: Automated problem diagnosis and solutions
-- **CI/CD Integration**: Continuous health monitoring in pipelines
-
-The diagnostic system transforms PMAT from a tool into a self-aware, self-healing platform that maintains its own health and helps teams maintain theirs.
+For project health rather than tool health, reach for `pmat project-diag` (Rust
+project configuration), `pmat maintain health` (does it build), `pmat repo-score`
+(repository hygiene) or `pmat score` (a composite that tells you how much of itself it
+could measure). Every one of those exists, and every output above came from running
+them.

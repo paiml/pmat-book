@@ -1,412 +1,250 @@
 #!/bin/bash
 # TDD Test: Chapter 11 - Custom Quality Rules
-# Tests all custom rule examples documented in the book
+#
+# WHAT THIS REPLACES
+#
+# The previous version of this file wrote seven YAML "rule" files under
+# .pmat/rules/ and then asserted, seven times, that the files it had just
+# written existed. It never invoked pmat once. It passed for a year while every
+# command the chapter documented (`pmat rules init`, `create`, `test`, ...)
+# exited with `error: unrecognized subcommand`, and the chapter carried a
+# "✅ 100% Working" badge on the strength of it.
+#
+# Every assertion below runs the real binary and checks its real output. If a
+# claim in src/ch11-00-custom-rules.md stops being true, this test goes red.
+#
+# No cargo toolchain is required: the fixture disables the clippy, test and
+# coverage gates and exercises the complexity gate, which is pmat's own AST
+# analysis.
 
-set -e
+set -u
 
 echo "=== Testing Chapter 11: Custom Quality Rules ==="
 
+PMAT_BIN=""
+if command -v pmat &> /dev/null; then
+    PMAT_BIN="pmat"
+elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
+    PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
+elif [ -x "../paiml-mcp-agent-toolkit/target/debug/pmat" ]; then
+    PMAT_BIN="../paiml-mcp-agent-toolkit/target/debug/pmat"
+fi
+
+if [ -z "$PMAT_BIN" ]; then
+    echo "⚠️  SKIPPED: pmat not found on PATH — this run verified NOTHING"
+    echo "   Install it with: cargo install pmat"
+    exit 0
+fi
+
+PMAT_BIN=$(command -v "$PMAT_BIN" || echo "$PMAT_BIN")
+echo "Using PMAT binary: $PMAT_BIN"
+"$PMAT_BIN" --version | head -1
+
+PASS_COUNT=0
+FAIL_COUNT=0
+test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
+test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+
 TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
+cleanup() { rm -rf "$TEST_DIR"; }
+trap cleanup EXIT
 
-# Initialize git repo
-git init --initial-branch=main
+# ---------------------------------------------------------------------------
+# Fixture: the crate printed in the chapter. `classify` has cyclomatic 6.
+# ---------------------------------------------------------------------------
+mkdir -p "$TEST_DIR/rules-demo/src"
+cd "$TEST_DIR/rules-demo" || exit 1
 
-# Test 1: Basic custom rule definition
-echo "Test 1: Basic custom rule definition"
-mkdir -p .pmat/rules
-cat > .pmat/rules/no-hardcoded-secrets.yaml << 'EOF'
-name: "no-hardcoded-secrets"
-description: "Prevent hardcoded API keys and secrets"
-severity: "error"
-category: "security"
-languages: ["python", "javascript", "java", "go"]
-
-patterns:
-  - regex: '(api_key|secret_key|password)\s*=\s*["\'][^"\']{20,}["\']'
-    message: "Hardcoded secret detected"
-    
-  - regex: 'Bearer\s+[A-Za-z0-9]{40,}'
-    message: "Hardcoded Bearer token found"
-
-fixes:
-  - suggestion: "Use environment variables: os.environ.get('API_KEY')"
-  - suggestion: "Use configuration files with proper access controls"
-
-examples:
-  bad: |
-    api_key = "sk-1234567890abcdef1234567890abcdef"
-    
-  good: |
-    api_key = os.environ.get('API_KEY')
-    
-metadata:
-  created_by: "security-team"
-  created_date: "2025-01-15"
-  tags: ["security", "secrets", "hardcoded"]
+cat > Cargo.toml << 'EOF'
+[package]
+name = "rules-demo"
+version = "0.1.0"
+edition = "2021"
 EOF
 
-if [ -f .pmat/rules/no-hardcoded-secrets.yaml ]; then
-    echo "✅ Basic custom rule created"
-else
-    echo "❌ Failed to create basic custom rule"
-    exit 1
-fi
-
-# Test 2: Advanced pattern matching rule
-echo "Test 2: Advanced pattern matching rule"
-cat > .pmat/rules/enforce-error-handling.yaml << 'EOF'
-name: "enforce-error-handling"
-description: "Ensure proper error handling in critical functions"
-severity: "warning"
-languages: ["python"]
-
-ast_patterns:
-  - pattern: |
-      def $func_name($params):
-          $body
-    where:
-      - $func_name matches: "(save|delete|update|create)_.*"
-      - not contains: "try:"
-      - not contains: "except:"
-    message: "Critical functions must include error handling"
-
-contextual_rules:
-  - when: "function_name.startswith('save_')"
-    require: ["try_except_block", "logging_statement"]
-    
-  - when: "function_calls_external_api"
-    require: ["timeout_handling", "retry_logic"]
-
-file_scope_rules:
-  - pattern: "class.*Repository"
-    requires:
-      - "at_least_one_method_with_error_handling"
-      - "connection_cleanup_in_destructor"
+cat > src/lib.rs << 'EOF'
+pub fn classify(n: i32) -> &'static str {
+    if n < 0 {
+        "negative"
+    } else if n == 0 {
+        "zero"
+    } else if n < 10 {
+        "small"
+    } else if n < 100 {
+        "medium"
+    } else if n < 1000 {
+        "large"
+    } else {
+        "huge"
+    }
+}
 EOF
 
-if [ -f .pmat/rules/enforce-error-handling.yaml ]; then
-    echo "✅ Advanced pattern rule created"
+# ---------------------------------------------------------------------------
+# Test 1: `pmat quality-gates init` writes .pmat-gates.toml
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 1: quality-gates init"
+INIT_OUT=$("$PMAT_BIN" quality-gates init 2>&1)
+if [ -f .pmat-gates.toml ] && echo "$INIT_OUT" | grep -q "Created .pmat-gates.toml"; then
+    test_pass "quality-gates init created .pmat-gates.toml"
 else
-    echo "❌ Failed to create advanced pattern rule"
-    exit 1
+    test_fail "quality-gates init did not create the config (output: $INIT_OUT)"
 fi
 
-# Test 3: Microservices architecture rule
-echo "Test 3: Microservices architecture rule"
-cat > .pmat/rules/microservice-boundaries.yaml << 'EOF'
-name: "microservice-boundaries"
-description: "Enforce microservice architectural boundaries"
-severity: "error"
-category: "architecture"
+# The chapter states the schema is exactly these eight keys. If pmat grows a
+# key, the chapter is stale and this must go red.
+for key in run_clippy clippy_strict run_tests test_timeout \
+           check_coverage min_coverage check_complexity max_complexity; do
+    grep -q "^${key} = " .pmat-gates.toml || test_fail "generated config is missing key: $key"
+done
+GEN_KEYS=$(grep -cE '^[a-z_]+ = ' .pmat-gates.toml)
+if [ "$GEN_KEYS" = "8" ]; then
+    test_pass "generated config has exactly the 8 keys the chapter documents"
+else
+    test_fail "generated config has $GEN_KEYS keys, chapter documents 8"
+fi
 
-cross_file_rules:
-  - name: "no-direct-db-access"
-    description: "Services should only access their own database"
-    pattern: |
-      from $service_name.models import $model
-    where:
-      - current_file not in: "$service_name/**"
-    message: "Direct database access across service boundaries"
-    
-  - name: "api-communication-only"
-    description: "Inter-service communication must use APIs"
-    ast_pattern: |
-      import $module
-    where:
-      - $module matches: "(user_service|order_service|payment_service)\\.(?!api)"
-    message: "Use API endpoints for inter-service communication"
+# ---------------------------------------------------------------------------
+# Test 2: `pmat quality-gates validate` accepts a good file, rejects a bad one
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 2: quality-gates validate"
+if "$PMAT_BIN" quality-gates validate 2>&1 | grep -q "Configuration is valid"; then
+    test_pass "validate accepts the generated config"
+else
+    test_fail "validate rejected a freshly generated config"
+fi
 
-dependency_rules:
-  allowed_imports:
-    "user_service/**":
-      - "shared.utils.*"
-      - "user_service.*"
-      - "api_client.*"
-    "order_service/**":
-      - "shared.utils.*"  
-      - "order_service.*"
-      - "api_client.*"
-      
-  forbidden_imports:
-    "user_service/**":
-      - "order_service.models.*"
-      - "payment_service.database.*"
+cp .pmat-gates.toml .pmat-gates.toml.bak
+printf '[gates]\nmax_complexity = "ten"\n' > .pmat-gates.toml
+BAD_OUT=$("$PMAT_BIN" quality-gates validate 2>&1)
+BAD_RC=$?
+if [ "$BAD_RC" -ne 0 ] && echo "$BAD_OUT" | grep -q "expected u32"; then
+    test_pass "validate rejects a wrongly-typed value and exits non-zero"
+else
+    test_fail "validate accepted max_complexity = \"ten\" (rc=$BAD_RC): $BAD_OUT"
+fi
+mv .pmat-gates.toml.bak .pmat-gates.toml
+
+# ---------------------------------------------------------------------------
+# Test 3: `pmat quality-gates show` prints the MERGED configuration
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 3: quality-gates show reflects edits"
+cat > .pmat-gates.toml << 'EOF'
+[gates]
+run_clippy = false
+run_tests = false
+check_coverage = false
+check_complexity = true
+max_complexity = 10
 EOF
-
-if [ -f .pmat/rules/microservice-boundaries.yaml ]; then
-    echo "✅ Microservice architecture rule created"
+SHOW_OUT=$("$PMAT_BIN" quality-gates show 2>&1)
+if echo "$SHOW_OUT" | grep -q "run_clippy = false" && \
+   echo "$SHOW_OUT" | grep -q "max_complexity = 10"; then
+    test_pass "show reports the edited values"
 else
-    echo "❌ Failed to create architecture rule"
-    exit 1
+    test_fail "show did not reflect the edited config: $SHOW_OUT"
+fi
+# The chapter warns that an unknown KEY is silently ignored. Prove it.
+cp .pmat-gates.toml .pmat-gates.toml.bak
+printf 'max_complexty = 3\n' >> .pmat-gates.toml
+if "$PMAT_BIN" quality-gates show 2>&1 | grep -q "max_complexty"; then
+    test_fail "a misspelled key now surfaces — the chapter's warning is stale"
+else
+    test_pass "a misspelled key is silently ignored (as the chapter warns)"
+fi
+mv .pmat-gates.toml.bak .pmat-gates.toml
+
+# ---------------------------------------------------------------------------
+# Test 4: the complexity gate PASSES at 10 and FAILS at 5, with exit 1
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 4: the gate actually enforces"
+PASS_OUT=$("$PMAT_BIN" quality-gates 2>&1)
+PASS_RC=$?
+if [ "$PASS_RC" -eq 0 ] && echo "$PASS_OUT" | grep -q "✓ complexity"; then
+    test_pass "gate passes at max_complexity = 10 (exit 0)"
+else
+    test_fail "gate did not pass at max_complexity = 10 (rc=$PASS_RC): $PASS_OUT"
 fi
 
-# Test 4: Performance critical code rule  
-echo "Test 4: Performance critical code rule"
-cat > .pmat/rules/performance-critical.yaml << 'EOF'
-name: "performance-critical-code"
-description: "Enforce performance standards in critical paths"
-severity: "warning"
-category: "performance"
-
-metric_rules:
-  - name: "hot-path-complexity"
-    description: "Hot paths must have low complexity"
-    applies_to:
-      - functions_with_decorator: "@performance_critical"
-      - files_matching: "*/hot_paths/*"
-    thresholds:
-      cyclomatic_complexity: 5
-      cognitive_complexity: 8
-      max_depth: 3
-      
-  - name: "no-inefficient-operations"
-    description: "Avoid inefficient operations in performance critical code"
-    patterns:
-      - regex: '\.sort\(\)'
-        context: "@performance_critical"
-        message: "Sorting in hot path - consider pre-sorted data"
-        
-      - ast_pattern: |
-          for $var in $iterable:
-              if $condition:
-                  $body
-        context: "function_has_decorator('@performance_critical')"
-        message: "Consider list comprehension or generator"
-
-benchmarking:
-  required_for:
-    - functions_with_decorator: "@performance_critical"
-  benchmark_file: "benchmarks/test_{function_name}.py"
-  performance_regression_threshold: "10%"
-EOF
-
-if [ -f .pmat/rules/performance-critical.yaml ]; then
-    echo "✅ Performance rule created"
+sed -i.bak 's/max_complexity = 10/max_complexity = 5/' .pmat-gates.toml
+FAIL_OUT=$("$PMAT_BIN" quality-gates 2>&1)
+FAIL_RC=$?
+if [ "$FAIL_RC" -eq 1 ]; then
+    test_pass "gate exits 1 when the threshold is breached"
 else
-    echo "❌ Failed to create performance rule"
-    exit 1
+    test_fail "gate exited $FAIL_RC instead of 1 on a breach"
+fi
+# The chapter quotes this message verbatim, including the denominator.
+if echo "$FAIL_OUT" | grep -q "classify in ./src/lib.rs has cyclomatic 6 (> 5)"; then
+    test_pass "failure names the function and the measured value"
+else
+    test_fail "failure message changed shape: $FAIL_OUT"
+fi
+if echo "$FAIL_OUT" | grep -q "measured 1 function(s) in 1 of 1 file(s)"; then
+    test_pass "failure reports the denominator (files parsed)"
+else
+    test_fail "failure no longer reports a denominator: $FAIL_OUT"
 fi
 
-# Test 5: Team coding standards rule
-echo "Test 5: Team coding standards rule"
-cat > .pmat/rules/team-standards.yaml << 'EOF'
-name: "team-coding-standards"
-description: "Enforce team-specific coding practices"
-severity: "info"
-category: "style"
-
-documentation_rules:
-  - name: "public-api-docs"
-    description: "Public APIs must have comprehensive documentation"
-    applies_to:
-      - classes_with_decorator: "@public_api"
-      - functions_starting_with: "api_"
-    requires:
-      - docstring_with_args
-      - docstring_with_return_type  
-      - docstring_with_examples
-      - type_annotations
-
-  - name: "complex-function-docs"
-    description: "Complex functions need detailed documentation"
-    applies_to:
-      - cyclomatic_complexity: "> 8"
-      - function_length: "> 30"
-    requires:
-      - docstring_with_algorithm_explanation
-      - docstring_with_time_complexity
-
-naming_conventions:
-  constants: "UPPER_SNAKE_CASE"
-  classes: "PascalCase"
-  functions: "snake_case"
-  private_methods: "_snake_case"
-  
-  custom_patterns:
-    database_models: ".*Model$"
-    test_functions: "test_.*"
-    fixture_functions: ".*_fixture$"
-
-git_integration:
-  pr_requirements:
-    - "all_custom_rules_pass"
-    - "documentation_coverage >= 80%"
-    - "no_todo_comments_in_production_code"
-EOF
-
-if [ -f .pmat/rules/team-standards.yaml ]; then
-    echo "✅ Team standards rule created"
+# ---------------------------------------------------------------------------
+# Test 5: --json and --config
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 5: machine-readable output and an alternate config path"
+JSON_OUT=$("$PMAT_BIN" quality-gates --json 2>&1 | sed -n '/^{/,$p')
+if echo "$JSON_OUT" | grep -q '"passed": false' && echo "$JSON_OUT" | grep -q '"name": "complexity"'; then
+    test_pass "--json emits a gates array with a passed flag"
 else
-    echo "❌ Failed to create team standards rule"
-    exit 1
+    test_fail "--json output changed shape: $JSON_OUT"
 fi
 
-# Test 6: Python-specific rules
-echo "Test 6: Python-specific rules"
-cat > .pmat/rules/python-specific.yaml << 'EOF'
-name: "python-best-practices"
-description: "Python-specific quality rules"
-languages: ["python"]
-
-python_rules:
-  - name: "proper-exception-handling"
-    description: "Use specific exception types"
-    patterns:
-      - regex: 'except:'
-        message: "Use specific exception types instead of bare except"
-        
-      - regex: 'except Exception:'
-        message: "Catch specific exceptions when possible"
-        
-  - name: "dataclass-over-namedtuple"
-    description: "Prefer dataclasses for complex data structures"
-    ast_pattern: |
-      from collections import namedtuple
-      $name = namedtuple($args)
-    where:
-      - field_count: "> 5"
-    message: "Consider using @dataclass for complex structures"
-    
-  - name: "async-proper-usage"
-    description: "Async functions should use await"
-    ast_pattern: |
-      async def $name($params):
-          $body
-    where:
-      - not contains: "await"
-      - function_length: "> 5"
-    message: "Async function should contain await statements"
-
-type_checking:
-  require_type_hints:
-    - "public_functions"
-    - "class_methods"
-    - "functions_with_complexity > 5"
-    
-  mypy_integration:
-    strict_mode: true
-    check_untyped_defs: true
-EOF
-
-if [ -f .pmat/rules/python-specific.yaml ]; then
-    echo "✅ Python-specific rule created"
+mkdir -p ci
+sed 's/max_complexity = 5/max_complexity = 99/' .pmat-gates.toml > ci/lenient-gates.toml
+if "$PMAT_BIN" quality-gates --config ci/lenient-gates.toml >/dev/null 2>&1; then
+    test_pass "--config reads an alternate gate file"
 else
-    echo "❌ Failed to create Python rule"
-    exit 1
+    test_fail "--config ci/lenient-gates.toml did not pass at max_complexity = 99"
 fi
 
-# Test 7: JavaScript/TypeScript rules
-echo "Test 7: JavaScript/TypeScript rules"
-cat > .pmat/rules/javascript-specific.yaml << 'EOF'
-name: "javascript-modern-practices"
-description: "Modern JavaScript/TypeScript practices"
-languages: ["javascript", "typescript"]
-
-modern_javascript:
-  - name: "prefer-async-await"
-    description: "Use async/await over Promise chains"
-    patterns:
-      - regex: '\.then\(.*\.then\('
-        message: "Consider using async/await for multiple Promise chains"
-        
-  - name: "const-over-let"
-    description: "Prefer const for immutable values"
-    ast_pattern: |
-      let $var = $value;
-    where:
-      - variable_never_reassigned: true
-    message: "Use const for variables that are never reassigned"
-    
-  - name: "destructuring-assignments"
-    description: "Use destructuring for object properties"
-    patterns:
-      - regex: 'const \w+ = \w+\.\w+;\s*const \w+ = \w+\.\w+;'
-        message: "Consider using destructuring assignment"
-
-react_specific:
-  - name: "hooks-rules"
-    description: "Enforce React Hooks rules"
-    file_patterns: ["*.jsx", "*.tsx"]
-    rules:
-      - pattern: "use\\w+\\("
-        context: "inside_condition"
-        message: "Hooks cannot be called conditionally"
-        
-      - pattern: "useState\\(.*\\)"
-        requires: "component_function"
-        message: "Hooks can only be called in React components"
-
-typescript_specific:
-  strict_types:
-    - "no_any_types"
-    - "explicit_return_types_for_exported_functions"
-    - "prefer_readonly_arrays"
-EOF
-
-if [ -f .pmat/rules/javascript-specific.yaml ]; then
-    echo "✅ JavaScript/TypeScript rule created"
+# ---------------------------------------------------------------------------
+# Test 6: `pmat quality-gate` (singular) — check selection and --report-only
+# ---------------------------------------------------------------------------
+echo ""
+echo "Test 6: quality-gate (singular)"
+SEL_OUT=$("$PMAT_BIN" quality-gate -p . --checks complexity,satd 2>&1)
+if echo "$SEL_OUT" | grep -q "Complexity analysis" && echo "$SEL_OUT" | grep -q "SATD"; then
+    test_pass "--checks accepts a comma-separated list and runs both"
 else
-    echo "❌ Failed to create JavaScript rule"
-    exit 1
+    test_fail "--checks complexity,satd did not run both checks: $SEL_OUT"
 fi
 
-# Test 8: PMAT configuration for custom rules
-echo "Test 8: PMAT custom rules configuration"
-cat > pmat.toml << 'EOF'
-[rules]
-enabled = true
-custom_rules_directory = ".pmat/rules"
-default_severity = "warning"
-
-[rules.processing]
-parallel = true
-max_threads = 4
-cache_enabled = true
-
-[rules.categories]
-security = "error"
-performance = "warning"
-style = "info"
-architecture = "error"
-
-[rules.language_specific]
-python = [
-    "python-best-practices",
-    "enforce-error-handling"
-]
-javascript = [
-    "javascript-modern-practices"
-]
-
-[rules.exclusions]
-paths = ["tests/", "vendor/", "node_modules/"]
-files = ["*.test.*", "*_test.*"]
-EOF
-
-if [ -f pmat.toml ]; then
-    echo "✅ PMAT custom rules configuration created"
+if "$PMAT_BIN" quality-gate -p . --checks bogus >/dev/null 2>&1; then
+    test_fail "an unknown --checks value was accepted"
 else
-    echo "❌ Failed to create PMAT configuration"
-    exit 1
+    test_pass "an unknown --checks value is rejected, not silently skipped"
 fi
 
-# Cleanup
-cd /
-rm -rf "$TEST_DIR"
+if "$PMAT_BIN" quality-gate -p . --report-only >/dev/null 2>&1; then
+    test_pass "--report-only exits 0 even with blocking violations"
+else
+    test_fail "--report-only exited non-zero"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 7: the commands the OLD chapter documented must stay gone
+# ---------------------------------------------------------------------------
+echo ""
+echo 'Test 7: the rules subcommand remains nonexistent'
+if "$PMAT_BIN" rules --help >/dev/null 2>&1; then
+    test_fail "a 'rules' subcommand now exists — the chapter's banner is stale"
+else
+    test_pass "no 'rules' subcommand (banner is still correct)"
+fi
 
 echo ""
-echo "=== Chapter 11 Test Summary ==="
-echo "✅ All 8 custom rule tests passed!"
-echo ""
-echo "Custom rule configurations validated:"
-echo "- Basic custom rule definition"
-echo "- Advanced pattern matching rule"
-echo "- Microservices architecture rule"
-echo "- Performance critical code rule"
-echo "- Team coding standards rule"
-echo "- Python-specific rules"
-echo "- JavaScript/TypeScript rules"
-echo "- PMAT custom rules configuration"
-
-exit 0
+echo "=== Chapter 11: $PASS_COUNT passed, $FAIL_COUNT failed ==="
+[ "$FAIL_COUNT" -eq 0 ] || exit 1
