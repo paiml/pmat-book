@@ -695,30 +695,14 @@ roadmap:
   updated: 2026-10-29T13:07:25Z
   spec: null
   acceptance_criteria:
+  - 'No foreground pmat or curl call in tests/ch03/test_04_mcp_transports.sh can run unbounded (bounded() / curl -m)'
+  - 'test-examples job has timeout-minutes'
+  - 'Stray scripts/__pycache__ .pyc untracked and ignored (committed by mistake in the #62 merge)'
   - 'Fix: pmat-book#70'
   phases: []
   subtasks: []
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
-  epic: 63
-- id: PMAT-072
-  github_issue: 72
-  item_type: task
-  title: 'ch45: MCP stdio transcript for the 4 pmat_* tools (KAIZEN-0165, PR #1)'
-  status: planned
-  priority: medium
-  assigned_to: null
-  created: 2026-10-29T13:07:36Z
-  updated: 2026-10-29T13:07:36Z
-  spec: null
-  acceptance_criteria:
-  - Tracks pmat-book#1
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels:
-  - kind:docs
   notes: null
   epic: 63

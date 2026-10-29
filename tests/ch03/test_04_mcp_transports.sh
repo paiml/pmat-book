@@ -29,10 +29,13 @@ bounded() {
     local secs=$1; shift
     "$@" <&0 &
     local pid=$!
-    ( sleep "$secs"; kill -9 "$pid" 2>/dev/null ) &
+    # The watchdog must not hold the caller's pipe open (its sleep would delay
+    # EOF for the whole `| sed | jq` chain), so it gets its own fds.
+    ( sleep "$secs"; kill -9 "$pid" 2>/dev/null ) >/dev/null 2>&1 &
     local watchdog=$!
     local rc=0
     wait "$pid" || rc=$?
+    pkill -P "$watchdog" 2>/dev/null || true
     kill "$watchdog" 2>/dev/null || true
     wait "$watchdog" 2>/dev/null || true
     return "$rc"
@@ -143,7 +146,7 @@ else
 fi
 
 # The env-var entry point must start the same server as --mode mcp.
-printf '%s\n%s\n' "$INIT" "$LIST" | MCP_VERSION=1 "$PMAT_BIN" 2>/dev/null \
+printf '%s\n%s\n' "$INIT" "$LIST" | MCP_VERSION=1 bounded 30 "$PMAT_BIN" 2>/dev/null \
     | sed -n 2p | jq -S '.result.tools | sort_by(.name)' > "$TEST_DIR/tools-envvar.json" || true
 
 ENVVAR_TOOL_COUNT=$(jq length "$TEST_DIR/tools-envvar.json" 2>/dev/null || echo 0)
