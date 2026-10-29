@@ -707,3 +707,22 @@ roadmap:
   - kind:code
   notes: null
   epic: 63
+- id: PMAT-072
+  github_issue: 72
+  item_type: task
+  title: 'ch45: MCP stdio transcript for the 4 pmat_* tools (KAIZEN-0165, PR #1)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T13:07:36Z
+  updated: 2026-10-29T13:07:36Z
+  spec: null
+  acceptance_criteria:
+  - Tracks pmat-book#1
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 63

@@ -609,6 +609,58 @@ Check index health and statistics.
 }
 ```
 
+## Driving `pmat_*` tools via MCP stdio
+
+The four tools above are registered on the pmcp-backed MCP server that `pmat` ships. Agents reach them over newline-delimited JSON-RPC 2.0 on stdin/stdout. The four tools in one sentence each:
+
+- **`pmat_query_code`** — natural-language semantic search returning quality-ranked function results.
+- **`pmat_get_function`** — full function metadata (signature, grade, complexity, optional source) by `function_id`.
+- **`pmat_find_similar`** — refactor-friendly similarity search given a reference `function_id`.
+- **`pmat_index_stats`** — index manifest + health snapshot (counts, grade distribution, languages).
+
+Start the server and drive it:
+
+```bash
+PMAT_PMCP_MCP=1 pmat
+```
+
+Minimal transcript — `initialize` handshake, `tools/list` filtered to the four tools, and one `tools/call` with its reply:
+
+```jsonc
+// → initialize
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"demo","version":"1"}}}
+
+// ← initialize result
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"paiml-mcp-agent-toolkit","version":"3.14.0"}}}
+
+// → tools/list
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+
+// ← tools/list result (pmat_* excerpt)
+{"jsonrpc":"2.0","id":2,"result":{"tools":[
+  {"name":"pmat_query_code", ...},
+  {"name":"pmat_get_function", ...},
+  {"name":"pmat_find_similar", ...},
+  {"name":"pmat_index_stats", ...}
+]}}
+
+// → tools/call pmat_index_stats
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"pmat_index_stats","arguments":{"rebuild":false}}}
+
+// ← tools/call result (structured)
+{"jsonrpc":"2.0","id":3,"result":{"structuredContent":{
+  "manifest":{"function_count":42168,"file_count":1846,"languages":["rust","typescript"]},
+  "quality_distribution":{"A":38102,"B":3001,"C":702,"D":250,"F":113},
+  "total_functions":42168
+}}}
+```
+
+The typical call sequence for an agent is: `pmat_index_stats` (confirm the index is built and fresh) → `pmat_query_code` with a natural-language query (pick up candidate `function_id`s) → `pmat_get_function` or `pmat_find_similar` on those ids for deeper inspection.
+
+A fully worked Rust client that spawns `pmat` and walks this exact sequence is in the main repo at [`examples/mcp_agent_context_demo.rs`](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/examples/mcp_agent_context_demo.rs). It uses plain `std::process::Command` + `serde_json::json!` and prints one summary line per tool. Run it from the project root with `cargo run --example mcp_agent_context_demo`.
+
+The 4-tool registration landed in [PR #349 (KAIZEN-0165)](https://github.com/paiml/paiml-mcp-agent-toolkit/pull/349); before that fix, the tools compiled but weren't `.tool()`-registered, so stdio clients got a `tool not found` error.
+
 ## CB-130: Agent Context Adoption Compliance
 
 `pmat comply check` includes CB-130 to validate that agent context is set up:
