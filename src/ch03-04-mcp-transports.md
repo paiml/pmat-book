@@ -478,14 +478,14 @@ Error: PMAT_MCP_HTTP_TOKEN must be at least 16 characters; got 13
 
 Exit code **1**. No socket is bound. The minimum is 16 characters.
 
-### No token at all — pmat mints one
+### No token at all — the server mints one
 
 ```bash
 env -u PMAT_MCP_HTTP_TOKEN pmat serve --transport http --port 8823
 ```
 
 ```
-PMAT_MCP_HTTP_TOKEN was unset, so pmat generated a token for this process:
+PMAT_MCP_HTTP_TOKEN was unset, so … generated a token for this process:
 ```
 
 The server **starts** and keeps running; the banner prints the generated token

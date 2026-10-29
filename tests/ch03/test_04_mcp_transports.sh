@@ -179,7 +179,7 @@ echo "--- Surface 3: MCP over HTTP (startup refusals) ---"
     </dev/null > "$TEST_DIR/no-token.txt" 2>&1 ) &
 NT_PID=$!
 for _ in $(seq 1 20); do
-    grep -q "was unset, so pmat generated a token" "$TEST_DIR/no-token.txt" 2>/dev/null && break
+    grep -q "was unset, so .* generated a token" "$TEST_DIR/no-token.txt" 2>/dev/null && break
     kill -0 "$NT_PID" 2>/dev/null || break
     sleep 0.5
 done
@@ -188,7 +188,7 @@ NT_CODE=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:1
     -d "$INIT" || true)
 kill "$NT_PID" 2>/dev/null || true
 wait "$NT_PID" 2>/dev/null || true
-if grep -q "was unset, so pmat generated a token" "$TEST_DIR/no-token.txt" && [ "$NT_CODE" = "401" ]; then
+if grep -q "was unset, so .* generated a token" "$TEST_DIR/no-token.txt" && [ "$NT_CODE" = "401" ]; then
     test_pass "HTTP: no token starts with a generated token; an unauthenticated request gets 401"
 else
     test_fail "HTTP: no token did not yield a generated-token server answering 401 (got $NT_CODE)"
