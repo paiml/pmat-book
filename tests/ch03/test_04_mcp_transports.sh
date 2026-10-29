@@ -56,7 +56,7 @@ fi
 
 PMAT_BIN=$(command -v "$PMAT_BIN" || echo "$PMAT_BIN")
 echo "Using PMAT binary: $PMAT_BIN"
-"$PMAT_BIN" --version | head -1
+bounded 30 "$PMAT_BIN" --version | head -1
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -114,7 +114,7 @@ CALL_SATD="{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\
 echo ""
 echo "--- Surface 1: CLI ---"
 
-if "$PMAT_BIN" analyze satd --path "$FIXTURE" > "$TEST_DIR/cli-satd.txt" 2>&1 &&
+if bounded 60 "$PMAT_BIN" analyze satd --path "$FIXTURE" > "$TEST_DIR/cli-satd.txt" 2>&1 &&
    grep -q "Found 1 SATD violations" "$TEST_DIR/cli-satd.txt"; then
     test_pass "CLI: pmat analyze satd finds the fixture's single TODO"
 else
@@ -380,7 +380,7 @@ echo ""
 echo "--- Registration ---"
 
 mkdir -p "$TEST_DIR/workspace"
-"$PMAT_BIN" init --target claude --path "$TEST_DIR/workspace" > "$TEST_DIR/init.log" 2>&1 || true
+bounded 60 "$PMAT_BIN" init --target claude --path "$TEST_DIR/workspace" > "$TEST_DIR/init.log" 2>&1 || true
 if [ -f "$TEST_DIR/workspace/.mcp.json" ] &&
    [ "$(jq -r '.mcpServers.pmat.args | join(" ")' "$TEST_DIR/workspace/.mcp.json")" = "--mode mcp" ]; then
     test_pass "pmat init --target claude registers 'pmat --mode mcp' in .mcp.json"
