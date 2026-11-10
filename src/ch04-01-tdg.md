@@ -873,6 +873,5 @@ TDG transforms code quality from abstract concept to measurable, manageable metr
 
 ## Next Steps
 
-- [Chapter 4.2: Code Similarity Detection](ch04-02-similarity.md)
-- [Chapter 4.3: Multi-Language Support](ch04-03-languages.md)
-- [Chapter 5: CLI Mastery](ch05-00-cli.md)
+- [Chapter 4.2: TDG Enforcement](ch04-02-tdg-enforcement.md)
+- [Chapter 5: CLI Mastery](ch05-00-analyze-suite.md)
