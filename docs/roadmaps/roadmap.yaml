@@ -725,3 +725,60 @@ roadmap:
   - kind:docs
   notes: null
   epic: 57
+- id: PMAT-078
+  github_issue: 78
+  item_type: task
+  title: readme-root SHACL shape + census
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-13T13:49:45Z
+  updated: 2026-11-13T13:49:45Z
+  spec: null
+  acceptance_criteria:
+  - 'Child of #77.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 77
+- id: PMAT-079
+  github_issue: 79
+  item_type: task
+  title: README.md frontmatter + claim-fence resolution
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-13T13:49:46Z
+  updated: 2026-11-13T13:49:46Z
+  spec: null
+  acceptance_criteria:
+  - 'Child of #77.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 77
+- id: PMAT-080
+  github_issue: 80
+  item_type: task
+  title: readme-shape-falsifier.sh
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-13T13:49:48Z
+  updated: 2026-11-13T13:49:48Z
+  spec: null
+  acceptance_criteria:
+  - 'Child of #77.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 77

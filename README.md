@@ -1,6 +1,12 @@
-<div align="center">
-
+---
+schema_version: "1.0"
+kind: spec
+entrypoints: [book.toml, Makefile]
+contract_count: 1
+---
 # The PMAT Book
+
+<!-- CONTRACT_COUNT_START -->1<!-- CONTRACT_COUNT_END -->
 
 [![Deploy Book](https://github.com/paiml/pmat-book/actions/workflows/pages.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/pages.yml)
 [![Test Examples](https://github.com/paiml/pmat-book/actions/workflows/test.yml/badge.svg)](https://github.com/paiml/pmat-book/actions/workflows/test.yml)
@@ -10,113 +16,46 @@
 
 📚 **[Read the Book Online](https://paiml.github.io/pmat-book/)** | [PMAT Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
 
-</div>
-
-## Table of Contents
-
-- [Features](#features)
-- [About](#about)
-- [Quick Start](#building-the-book)
-- [Book Structure](#book-structure)
-- [Contributing](#contributing)
-- [Resources](#resources)
-
-## Features
-
-- **28 Chapters** - Comprehensive coverage from installation to advanced usage
-- **TDD-Validated Examples** - Every code example is tested and verified
-- **Real-World Tutorials** - Practical guides for actual use cases
-- **Complete CLI Reference** - Full documentation of all PMAT commands
-
 ## About
 
-This book provides comprehensive documentation for PMAT, covering:
-- Installation and setup
-- Core concepts and analysis capabilities
-- MCP (Model Context Protocol) integration
-- Technical Debt Grading (TDG) system
-- Code similarity detection
-- Real-world usage examples
-- Advanced features and optimization
+This book provides comprehensive documentation for PMAT: installation and setup, core concepts
+and analysis capabilities, MCP (Model Context Protocol) integration, Technical Debt Grading
+(TDG), code similarity detection, and real-world usage examples. See `src/SUMMARY.md` for the
+full chapter list.
 
-## Building the Book
+## Building
 
-### Prerequisites
-
-- Rust and Cargo (for installing mdBook)
-- Git
-
-### Quick Start
-
-```bash
-# Clone the repository
+```text
 git clone https://github.com/paiml/pmat-book.git
 cd pmat-book
-
-# Install git hooks (RECOMMENDED to prevent 404 issues)
-bash scripts/install-hooks.sh
-
-# Install dependencies
+bash scripts/install-hooks.sh   # prevents 404s from unpushed commits
 make install-deps
-
-# Build the book
-make build
-
-# Serve locally (opens in browser)
-make serve
+make serve                      # local preview at http://localhost:3000
 ```
 
-The book will be available at http://localhost:3000
-
-**Important**: The git hook warns you about unpushed commits that would cause the live book at https://paiml.github.io/pmat-book/ to be out of date. Always push your commits after committing!
-
-### Available Commands
+The two commands above that CI itself runs, verbatim, on the merge path:
 
 ```bash
-make help          # Show all available commands
-make build         # Build the book
-make serve         # Serve with auto-reload
-make clean         # Remove build artifacts
-make validate      # Run quality checks
-make test          # Test code examples (when implemented)
+mdbook build
 ```
 
-## Book Structure
+```bash
+make build
+```
 
-```
-src/
-├── SUMMARY.md                # Table of contents
-├── title-page.md            # Title page
-├── foreword.md              # Foreword
-├── introduction.md          # Introduction
-├── ch01-*.md               # Installation and setup
-├── ch02-*.md               # Core concepts
-├── ch03-*.md               # MCP integration
-├── ch04-*.md               # Advanced features
-├── ch05-*.md               # CLI mastery
-├── ch06-*.md               # Real-world examples
-├── ch07-*.md               # Architecture patterns
-├── ch08-*.md               # Performance and scale
-├── appendix-*.md           # Reference materials
-└── conclusion.md           # Conclusion
-```
+(`.github/workflows/pages.yml` builds and deploys the book on every push to `main`;
+`.github/workflows/test.yml` builds it again, plus the flag/command-verification suite, on every
+push and pull request to `main`.) Everything else above is illustration.
 
 ## Contributing
 
-Contributions are welcome! Please ensure:
-1. All code examples are tested and working
-2. Chapter status blocks are updated
-3. Run `make validate` before submitting
+Contributions are welcome. All code examples must be tested and working; run `make validate`
+before submitting.
 
-## Status
+## pv-readme Contract
 
-The book is currently in active development. Chapters marked as "✅ Working" are production-ready.
-
-## Resources
-
-- [PMAT GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
-- [Pragmatic AI Labs](https://paiml.com)
-- [MCP Documentation](https://modelcontextprotocol.io)
+This file is graded by `contracts/readme-root.yaml` (a `readme:Readme` SHACL shape) via
+`pv-readme --check`, falsified by `tests/readme-shape-falsifier.sh` (paiml/pmat-book#80).
 
 ## License
 
