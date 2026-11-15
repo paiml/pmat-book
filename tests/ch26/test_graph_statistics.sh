@@ -1,437 +1,127 @@
 #!/bin/bash
-# TDD Test: Chapter 26 - Graph Statistics and Network Analysis
-# Tests the graph analytics features added in PMAT v2.95.0
+# TDD Test: Chapter 26 - Graph Statistics (`pmat analyze graph-metrics`)
+# Every check asserts on real output of the installed pmat and can fail.
+# No path to a pmat source checkout is used. Node names carry the temp path
+# and node/density counts differ between pmat versions, so those are not asserted.
+# Not asserted (host-flaky): `pmat context` (slow, scans the whole tree) and
+# timings from --perf. Not asserted (book/pmat mismatch, ticketed): node count
+# 5, --pagerank-seeds changing scores, --min-centrality 0.5 keeping one row.
 
 PASS_COUNT=0
 FAIL_COUNT=0
 TEST_DIR=$(mktemp -d)
-PMAT_DIR="/home/noah/src/paiml-mcp-agent-toolkit"
+trap 'rm -rf "${TEST_DIR:?}"' EXIT
 
-# Test utilities
-test_pass() {
-    echo "✅ PASS: $1"
-    PASS_COUNT=$((PASS_COUNT + 1))
+test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
+test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+
+# expect_match <label> <text> <egrep pattern>
+expect_match() {
+    if echo "$2" | grep -qE -e "$3"; then test_pass "$1"; else test_fail "$1 (no match for: $3)"; fi
+}
+# expect_nomatch <label> <text> <egrep pattern>
+expect_nomatch() {
+    if echo "$2" | grep -qE -e "$3"; then test_fail "$1 (unexpected match: $3)"; else test_pass "$1"; fi
 }
 
-test_fail() {
-    echo "❌ FAIL: $1"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
+# The five-file crate from the chapter.
+mkdir "$TEST_DIR/src"
+printf 'pub mod core;\npub mod api;\npub mod utils;\n' > "$TEST_DIR/src/lib.rs"
+printf 'use crate::utils;\n' > "$TEST_DIR/src/core.rs"
+printf 'use crate::core;\nuse crate::utils;\n' > "$TEST_DIR/src/api.rs"
+: > "$TEST_DIR/src/utils.rs"
+printf 'fn main() {}\n' > "$TEST_DIR/src/main.rs"
+
+# gm <args>: run graph-metrics; print output then a final "rc=N" line.
+gm() {
+    local out rc
+    out=$(timeout 60 pmat analyze graph-metrics -p "$TEST_DIR" "$@" 2>&1)
+    rc=$?
+    printf '%s\nrc=%s\n' "$out" "$rc"
 }
 
-# Cleanup on exit
-cleanup() {
-    rm -rf "$TEST_DIR"
-}
-trap cleanup EXIT
+echo "Testing the default summary..."
+OUT=$(gm)
+expect_match "default run exits 0" "$OUT" '^rc=0$'
+expect_match "summary reports 3 edges" "$OUT" 'Built graph with [0-9]+ nodes and 3 edges'
+expect_match "summary has Total edges: 3" "$OUT" 'Total edges: 3'
+expect_nomatch "summary has no per-node table" "$OUT" 'degree_centrality'
+DEFAULT_NODES=$(echo "$OUT" | sed -n 's/.*Built graph with \([0-9]*\) nodes.*/\1/p' | head -1)
 
-# Test 1: Graph module structure exists
-test_graph_modules() {
-    echo "Testing graph module structure..."
+echo "Testing page-rank only (unrequested metrics are not computed)..."
+OUT=$(gm --metrics page-rank --format csv)
+expect_match "csv header" "$OUT" '^name,degree_centrality,betweenness,closeness,pagerank,clustering,component_id,in_degree,out_degree$'
+expect_match "page-rank csv leaves betweenness/closeness empty" "$OUT" '_src_utils,[0-9.]+,,,[0-9.]+,,,[0-9]+,[0-9]+$'
+FIRST=$(echo "$OUT" | grep -E '^[^,]+_src_[a-z]+,' | head -1)
+expect_match "highest PageRank node is utils" "$FIRST" '_src_utils,'
+OUT=$(gm --metrics page-rank --format json)
+expect_match "json: unrequested metric is null" "$OUT" '"betweenness_centrality": null'
+expect_match "json: requested metric is a number" "$OUT" '"pagerank": [0-9.]+'
 
-    # Check core graph modules
-    if [ -d "$PMAT_DIR/server/src/graph" ]; then
-        test_pass "Graph module directory exists"
-    else
-        test_fail "Graph module directory not found"
-        return 1
-    fi
+echo "Testing all metrics..."
+OUT=$(gm --metrics all --format csv)
+expect_match "all metrics fills every column" "$OUT" '_src_api,[0-9.]+,[0-9.]+,[0-9.]+,[0-9.]+,[0-9.]+,[0-9]+,[0-9]+,[0-9]+$'
+OUT=$(gm --format markdown)
+expect_match "markdown report heading" "$OUT" '^# Graph Metrics Report$'
 
-    # Check key graph files
-    local modules=(
-        "builder.rs"
-        "centrality.rs"
-        "community.rs"
-        "context_annotator.rs"
-        "structure.rs"
-        "types.rs"
-    )
+echo "Testing PageRank tuning..."
+BASE=$(gm --metrics page-rank --format csv | grep '_src_utils,')
+LOW=$(gm --metrics page-rank --damping-factor 0.5 --format csv | grep '_src_utils,')
+if [ -n "$BASE" ] && [ "$BASE" != "$LOW" ]; then test_pass "damping 0.5 changes the scores"; else test_fail "damping 0.5 changes the scores"; fi
+OUT=$(gm --metrics page-rank --max-iterations 200 --convergence-threshold 0.00000001 --format csv)
+expect_match "max-iterations/convergence-threshold run" "$OUT" '^rc=0$'
 
-    for module in "${modules[@]}"; do
-        if [ -f "$PMAT_DIR/server/src/graph/$module" ]; then
-            test_pass "Graph module $module exists"
-        else
-            test_fail "Graph module $module not found"
-        fi
-    done
-}
-
-# Test 2: PageRank implementation
-test_pagerank_implementation() {
-    echo "Testing PageRank implementation..."
-
-    # Check for PageRank in source code
-    if grep -r "PageRank\|pagerank" "$PMAT_DIR/server/src/graph/" >/dev/null 2>&1; then
-        test_pass "PageRank implementation found"
-    else
-        test_fail "PageRank implementation not found"
-    fi
-
-    # Check for power iteration algorithm
-    if grep -r "power.*iteration\|damping.*factor" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "Power iteration algorithm present"
-    else
-        test_fail "Power iteration algorithm not found"
-    fi
-}
-
-# Test 3: Community detection (Louvain algorithm)
-test_community_detection() {
-    echo "Testing community detection..."
-
-    # Check for Louvain algorithm
-    if [ -f "$PMAT_DIR/server/src/graph/community.rs" ]; then
-        if grep -q "LouvainDetector\|Louvain" "$PMAT_DIR/server/src/graph/community.rs"; then
-            test_pass "Louvain community detection implemented"
-        else
-            test_fail "Louvain algorithm not found"
-        fi
-
-        # Check for modularity calculation
-        if grep -q "modularity" "$PMAT_DIR/server/src/graph/community.rs"; then
-            test_pass "Modularity optimization present"
-        else
-            test_fail "Modularity optimization not found"
-        fi
-    else
-        test_fail "Community detection module not found"
-    fi
-}
-
-# Test 4: Graph context annotation
-test_context_annotation() {
-    echo "Testing graph context annotation..."
-
-    if [ -f "$PMAT_DIR/server/src/graph/context_annotator.rs" ]; then
-        test_pass "Context annotator module exists"
-
-        # Check for annotation features
-        if grep -q "ContextAnnotation\|importance_score\|community_id" "$PMAT_DIR/server/src/graph/context_annotator.rs"; then
-            test_pass "Context annotation structures defined"
-        else
-            test_fail "Context annotation structures not found"
-        fi
-
-        # Check for complexity classification
-        if grep -q "classify_complexity" "$PMAT_DIR/server/src/graph/context_annotator.rs"; then
-            test_pass "Complexity classification implemented"
-        else
-            test_fail "Complexity classification not found"
-        fi
-    else
-        test_fail "Context annotator not found"
-    fi
-}
-
-# Test 5: CLI integration
-test_cli_integration() {
-    echo "Testing CLI integration..."
-
-    # Check for graph metrics in CLI
-    if grep -r "graph.*metrics\|GraphMetric" "$PMAT_DIR/server/src/cli/" >/dev/null 2>&1; then
-        test_pass "Graph metrics CLI integration found"
-    else
-        test_fail "Graph metrics CLI integration not found"
-    fi
-
-    # Check for context integration
-    if [ -f "$PMAT_DIR/server/src/cli/handlers/graph_context_integration_tests.rs" ]; then
-        test_pass "Graph context integration tests exist"
-    else
-        test_fail "Graph context integration tests not found"
-    fi
-}
-
-# Test 6: Dependency graph construction
-test_dependency_graph() {
-    echo "Testing dependency graph construction..."
-
-    # Create test project structure
-    mkdir -p "$TEST_DIR/test_project/src"
-
-    # Create sample Rust files with dependencies
-    cat > "$TEST_DIR/test_project/src/main.rs" << 'EOF'
-mod utils;
-mod config;
-
-use utils::helper_function;
-use config::Settings;
-
-fn main() {
-    let settings = Settings::new();
-    helper_function(&settings);
-}
-EOF
-
-    cat > "$TEST_DIR/test_project/src/utils.rs" << 'EOF'
-use crate::config::Settings;
-
-pub fn helper_function(settings: &Settings) {
-    println!("Helper called with: {:?}", settings);
-}
-EOF
-
-    cat > "$TEST_DIR/test_project/src/config.rs" << 'EOF'
-#[derive(Debug)]
-pub struct Settings {
-    pub debug: bool,
-}
-
-impl Settings {
-    pub fn new() -> Self {
-        Settings { debug: true }
-    }
-}
-EOF
-
-    if [ -f "$TEST_DIR/test_project/src/main.rs" ] && \
-       [ -f "$TEST_DIR/test_project/src/utils.rs" ] && \
-       [ -f "$TEST_DIR/test_project/src/config.rs" ]; then
-        test_pass "Test project with dependencies created"
-    else
-        test_fail "Failed to create test project"
-    fi
-}
-
-# Test 7: Graph statistics output formats
-test_output_formats() {
-    echo "Testing graph statistics output formats..."
-
-    # Check for GraphML export
-    if grep -r "GraphML\|graphml" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "GraphML export support found"
-    else
-        test_fail "GraphML export support not found"
-    fi
-
-    # Check for JSON output
-    if grep -r "serde.*Serialize" "$PMAT_DIR/server/src/graph/" >/dev/null 2>&1; then
-        test_pass "JSON serialization support found"
-    else
-        test_fail "JSON serialization support not found"
-    fi
-
-    # Check for markdown formatting
-    if grep -r "markdown\|md" "$PMAT_DIR/server/src/cli/handlers/" >/dev/null 2>&1; then
-        test_pass "Markdown output support found"
-    else
-        test_fail "Markdown output support not found"
-    fi
-}
-
-# Test 8: Centrality metrics
-test_centrality_metrics() {
-    echo "Testing centrality metrics..."
-
-    if [ -f "$PMAT_DIR/server/src/graph/centrality.rs" ]; then
-        test_pass "Centrality module exists"
-
-        # Check for centrality types
-        local metrics=(
-            "degree"
-            "betweenness"
-            "closeness"
-            "eigenvector"
-        )
-
-        for metric in "${metrics[@]}"; do
-            if grep -q "$metric" "$PMAT_DIR/server/src/graph/centrality.rs"; then
-                test_pass "$metric centrality defined"
-            else
-                test_fail "$metric centrality not found"
-            fi
-        done
-    else
-        test_fail "Centrality module not found"
-    fi
-}
-
-# Test 9: Graph structural analysis
-test_structural_analysis() {
-    echo "Testing graph structural analysis..."
-
-    if [ -f "$PMAT_DIR/server/src/graph/structure.rs" ]; then
-        test_pass "Structural analysis module exists"
-
-        # Check for structural metrics
-        local metrics=(
-            "density"
-            "diameter"
-            "clustering_coefficient"
-            "components"
-        )
-
-        for metric in "${metrics[@]}"; do
-            if grep -q "$metric" "$PMAT_DIR/server/src/graph/structure.rs"; then
-                test_pass "$metric structural metric defined"
-            else
-                test_fail "$metric structural metric not found"
-            fi
-        done
-    else
-        test_fail "Structural analysis module not found"
-    fi
-}
-
-# Test 10: Performance optimizations
-test_performance_optimizations() {
-    echo "Testing performance optimizations..."
-
-    # Check for CSR (Compressed Sparse Row) matrices
-    if grep -r "CSR\|csr\|sparse.*matrix" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "Sparse matrix optimizations found"
-    else
-        test_fail "Sparse matrix optimizations not found"
-    fi
-
-    # Check for parallel processing
-    if grep -r "rayon\|parallel" "$PMAT_DIR/server/src/graph/" >/dev/null 2>&1; then
-        test_pass "Parallel processing support found"
-    else
-        test_fail "Parallel processing support not found"
-    fi
-}
-
-# Test 11: Multi-language support
-test_multi_language_support() {
-    echo "Testing multi-language dependency analysis..."
-
-    # Check for language-specific parsers
-    if grep -r "rust\|python\|typescript\|javascript" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "Multi-language support indicators found"
-    else
-        test_fail "Multi-language support not found"
-    fi
-
-    # Check for AST processing
-    if grep -r "AST\|ast\|syntax.*tree" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "AST processing support found"
-    else
-        test_fail "AST processing support not found"
-    fi
-}
-
-# Test 12: Graph visualization support
-test_visualization_support() {
-    echo "Testing graph visualization support..."
-
-    # Check for Mermaid generation
-    if grep -r "mermaid\|Mermaid" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "Mermaid diagram support found"
-    else
-        test_fail "Mermaid diagram support not found"
-    fi
-
-    # Check for DOT format
-    if grep -r "dot\|graphviz" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "DOT/Graphviz support found"
-    else
-        test_fail "DOT/Graphviz support not found"
-    fi
-}
-
-# Test 13: Quality metrics integration
-test_quality_integration() {
-    echo "Testing quality metrics integration..."
-
-    # Check for complexity integration
-    if grep -r "complexity.*graph\|graph.*complexity" "$PMAT_DIR/server/src/" >/dev/null 2>&1; then
-        test_pass "Complexity-graph integration found"
-    else
-        test_fail "Complexity-graph integration not found"
-    fi
-
-    # Check for TDD test coverage
-    if [ -d "$PMAT_DIR/server/src/graph/tests" ]; then
-        test_pass "Graph module test directory exists"
-    else
-        test_fail "Graph module test directory not found"
-    fi
-}
-
-# Test 14: Context command integration
-test_context_integration() {
-    echo "Testing context command integration..."
-
-    # Check for context integration tests
-    if [ -f "$PMAT_DIR/server/src/cli/handlers/graph_context_integration_tests.rs" ]; then
-        test_pass "Context integration test file exists"
-
-        # Check test content
-        if grep -q "graph.*analysis\|PageRank\|community" "$PMAT_DIR/server/src/cli/handlers/graph_context_integration_tests.rs"; then
-            test_pass "Context integration tests contain graph analysis"
-        else
-            test_fail "Context integration tests missing graph analysis"
-        fi
-    else
-        test_fail "Context integration test file not found"
-    fi
-}
-
-# Test 15: Configuration and thresholds
-test_configuration() {
-    echo "Testing graph analysis configuration..."
-
-    # Create sample configuration
-    cat > "$TEST_DIR/graph_config.toml" << 'EOF'
-[graph_analysis]
-pagerank_damping = 0.85
-pagerank_iterations = 100
-pagerank_convergence = 1e-6
-community_resolution = 1.0
-min_centrality_threshold = 0.01
-top_k_nodes = 10
-
-[performance]
-parallel_processing = true
-cache_results = true
-max_nodes = 10000
-EOF
-
-    if [ -f "$TEST_DIR/graph_config.toml" ]; then
-        test_pass "Graph configuration file created"
-
-        # Validate TOML structure
-        if grep -q "pagerank_damping\|community_resolution" "$TEST_DIR/graph_config.toml"; then
-            test_pass "Configuration has required graph parameters"
-        else
-            test_fail "Configuration missing graph parameters"
-        fi
-    else
-        test_fail "Failed to create graph configuration"
-    fi
-}
-
-# Run all tests
-echo "=================================="
-echo "Running Chapter 26 Graph Statistics Tests"
-echo "=================================="
-
-test_graph_modules
-test_pagerank_implementation
-test_community_detection
-test_context_annotation
-test_cli_integration
-test_dependency_graph
-test_output_formats
-test_centrality_metrics
-test_structural_analysis
-test_performance_optimizations
-test_multi_language_support
-test_visualization_support
-test_quality_integration
-test_context_integration
-test_configuration
-
-# Summary
-echo "=================================="
-echo "Test Summary:"
-echo "  Passed: $PASS_COUNT"
-echo "  Failed: $FAIL_COUNT"
-
-if [ $FAIL_COUNT -eq 0 ]; then
-    echo "✅ All tests passed!"
-    exit 0
+echo "Testing scoping..."
+OUT=$(gm --top-k 2 --format csv)
+ROWS=$(echo "$OUT" | grep -cE '^[^,]+_src_[a-z]+,')
+if [ "$ROWS" -eq 2 ]; then test_pass "--top-k 2 prints two rows"; else test_fail "--top-k 2 prints two rows (got $ROWS)"; fi
+OUT=$(gm --include src --exclude main)
+EXC_NODES=$(echo "$OUT" | sed -n 's/.*Built graph with \([0-9]*\) nodes.*/\1/p' | head -1)
+if [ -n "$EXC_NODES" ] && [ -n "$DEFAULT_NODES" ] && [ "$EXC_NODES" -lt "$DEFAULT_NODES" ]; then
+    test_pass "--exclude main removes nodes ($DEFAULT_NODES -> $EXC_NODES)"
 else
-    echo "❌ $FAIL_COUNT tests failed"
-    exit 1
+    test_fail "--exclude main removes nodes (default=$DEFAULT_NODES exclude=$EXC_NODES)"
 fi
+OUT=$(gm --include 'src/**/*.rs')
+expect_match "glob --include finds nothing" "$OUT" 'Built graph with 0 nodes and 0 edges'
+expect_match "glob --include fails loudly (exit 5)" "$OUT" '^rc=5$'
+
+echo "Testing GraphML export..."
+OUT=$(gm --export-graphml -o "$TEST_DIR/g.graphml")
+expect_match "export reports the file" "$OUT" 'Results written to: .*g\.graphml'
+GML=$(cat "$TEST_DIR/g.graphml" 2>/dev/null)
+expect_match "graphml has a label key" "$GML" 'attr.name="label"'
+expect_nomatch "graphml carries no scores" "$GML" 'pagerank|community|complexity'
+EDGES=$(echo "$GML" | grep -c '<edge ')
+if [ "$EDGES" -eq 3 ]; then test_pass "graphml has 3 edges"; else test_fail "graphml has 3 edges (got $EDGES)"; fi
+gm -o "$TEST_DIR/graph_export" > /dev/null
+if [ -f "$TEST_DIR/graph_export" ] && [ ! -f "$TEST_DIR/graph_export.graphml" ]; then
+    test_pass "-o without extension writes that exact filename"
+else
+    test_fail "-o without extension writes that exact filename"
+fi
+
+echo "Testing things the chapter says do not exist (must be rejected)..."
+OUT=$(gm --metrics pagerank)
+expect_match "--metrics pagerank is rejected (exit 2)" "$OUT" '^rc=2$'
+expect_match "rejection suggests page-rank" "$OUT" "similar value exists: 'page-rank'"
+OUT=$(gm --metrics community)
+expect_match "--metrics community is rejected" "$OUT" "invalid value 'community'"
+for flag in --pagerank-damping --community-resolution --quality-assessment --hotspot-detection \
+            --parallel --cache-enabled --incremental --sample-ratio --memory-limit; do
+    OUT=$(gm "$flag")
+    expect_match "$flag is rejected" "$OUT" "unexpected argument '$flag'"
+done
+OUT=$(timeout 30 pmat analyze graph-trends -p "$TEST_DIR" 2>&1)
+expect_match "pmat analyze graph-trends does not exist" "$OUT" "unrecognized subcommand 'graph-trends'"
+
+echo ""
+echo "=== Test Summary ==="
+echo "Passed: $PASS_COUNT"
+echo "Failed: $FAIL_COUNT"
+if [ "$FAIL_COUNT" -eq 0 ]; then
+    echo "✅ All graph statistics tests passed!"
+    exit 0
+fi
+echo "❌ Some tests failed"
+exit 1
