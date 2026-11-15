@@ -29,7 +29,7 @@ trap cleanup EXIT
 cd "$TEST_DIR"
 
 # Create benchmark project
-mkdir -p benches
+mkdir -p benches src
 cat > benches/bench_main.rs << 'EOF'
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
