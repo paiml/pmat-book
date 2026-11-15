@@ -20,13 +20,23 @@ test_fail() {
 TEST_DIR=$(mktemp -d)
 echo "Test directory: $TEST_DIR"
 
+# Stop the server: SERVER_PID leads its own process group (setsid), so signal the
+# whole group. TERM first (timeout forwards it), then KILL the group if any member lives.
+stop_server() {
+    [ -n "$SERVER_PID" ] || return 0
+    kill -TERM -- "-$SERVER_PID" 2>/dev/null || true
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        ps -o stat= -g "$SERVER_PID" 2>/dev/null | grep -qv "^Z" || break
+        sleep 0.5
+    done
+    kill -KILL -- "-$SERVER_PID" 2>/dev/null || true
+    wait "$SERVER_PID" 2>/dev/null || true
+    SERVER_PID=""
+}
+
 # Cleanup on exit
 cleanup() {
-    # Kill server if running
-    if [ ! -z "$SERVER_PID" ]; then
-        kill "$SERVER_PID" 2>/dev/null || true
-        wait "$SERVER_PID" 2>/dev/null || true
-    fi
+    stop_server
     rm -rf "$TEST_DIR"
 }
 trap cleanup EXIT
@@ -66,28 +76,27 @@ EOF
 echo "=== Test 1: Start API Server ==="
 # The server never exits on its own: bound its lifetime with timeout(1) so a
 # lost cleanup cannot hold the job, and wait only on pids we name.
-if timeout 120 pmat serve --port 9090 > server.log 2>&1 &
-then
-    SERVER_PID=$!
-    sleep 2  # Give server time to start
-    
-    # Check if server is running
-    if ps -p $SERVER_PID > /dev/null 2>&1; then
-        test_pass "API server started on port 9090"
-    else
-        test_fail "API server failed to start"
-    fi
+setsid timeout -k 5 120 pmat serve --port 9090 > server.log 2>&1 &
+SERVER_PID=$!
+LISTENING=0
+for _ in $(seq 1 40); do
+    if (exec 3<>/dev/tcp/127.0.0.1/9090) 2>/dev/null; then LISTENING=1; break; fi
+    kill -0 "$SERVER_PID" 2>/dev/null || break
+    sleep 0.25
+done
+if [ "$LISTENING" = 1 ]; then
+    test_pass "API server listening on port 9090"
 else
-    test_fail "Failed to start API server"
+    test_fail "API server did not listen on port 9090 within 10 s (or exited)"
 fi
 
 echo "=== Test 2: Health Check Endpoint ==="
-if curl -s http://localhost:9090/health | grep -q "healthy"
+if curl -s -m 10 http://localhost:9090/health | grep -q "healthy"
 then
     test_pass "Health check endpoint responds"
 else
     # Try alternative response format
-    HEALTH_RESPONSE=$(curl -s http://localhost:9090/health)
+    HEALTH_RESPONSE=$(curl -s -m 10 http://localhost:9090/health)
     if [ ! -z "$HEALTH_RESPONSE" ]; then
         test_pass "Health endpoint returns: $HEALTH_RESPONSE"
     else
@@ -96,7 +105,7 @@ else
 fi
 
 echo "=== Test 3: Analyze Endpoint ==="
-ANALYZE_RESPONSE=$(curl -s -X POST http://localhost:9090/analyze \
+ANALYZE_RESPONSE=$(curl -s -m 10 -X POST http://localhost:9090/analyze \
     -H "Content-Type: application/json" \
     -d "{\"path\": \"$TEST_DIR\"}" 2>/dev/null || echo "")
 
@@ -112,7 +121,7 @@ else
 fi
 
 echo "=== Test 4: Context Generation Endpoint ==="
-CONTEXT_RESPONSE=$(curl -s -X POST http://localhost:9090/context \
+CONTEXT_RESPONSE=$(curl -s -m 10 -X POST http://localhost:9090/context \
     -H "Content-Type: application/json" \
     -d "{\"path\": \"$TEST_DIR\"}" 2>/dev/null || echo "")
 
@@ -129,7 +138,7 @@ then
     test_pass "WebSocket support detected in server logs"
 else
     # Alternative: Check for upgrade headers support
-    WS_CHECK=$(curl -s -I -H "Upgrade: websocket" \
+    WS_CHECK=$(curl -s -m 10 -I -H "Upgrade: websocket" \
         -H "Connection: Upgrade" \
         http://localhost:9090/ws 2>/dev/null || echo "")
     
@@ -142,8 +151,8 @@ else
 fi
 
 echo "=== Test 6: API Version Endpoint ==="
-VERSION_RESPONSE=$(curl -s http://localhost:9090/version 2>/dev/null || \
-    curl -s http://localhost:9090/api/version 2>/dev/null || echo "")
+VERSION_RESPONSE=$(curl -s -m 10 http://localhost:9090/version 2>/dev/null || \
+    curl -s -m 10 http://localhost:9090/api/version 2>/dev/null || echo "")
 
 if [ ! -z "$VERSION_RESPONSE" ]; then
     test_pass "Version endpoint responds"
@@ -171,19 +180,16 @@ else
 fi
 
 echo "=== Test 8: Graceful Shutdown ==="
-if kill -TERM $SERVER_PID 2>/dev/null; then
-    sleep 1
-    if ! ps -p $SERVER_PID > /dev/null 2>&1; then
-        test_pass "Server shuts down gracefully"
-        SERVER_PID=""
+if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+    GPID=$SERVER_PID
+    stop_server
+    if ps -o stat= -g "$GPID" 2>/dev/null | grep -qv "^Z"; then
+        test_fail "Server survived shutdown"
     else
-        kill -9 $SERVER_PID 2>/dev/null || true
-        test_pass "Server shutdown completed"
-        SERVER_PID=""
+        test_pass "Server shut down"
     fi
 else
-    test_pass "Server shutdown initiated"
-    SERVER_PID=""
+    test_fail "Server was not running at shutdown"
 fi
 
 # Summary
