@@ -1,4 +1,4 @@
-# Chapter 9: Pre-commit Hooks Management
+# Chapter 10: Pre-commit Hooks Management
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (8/8 examples)

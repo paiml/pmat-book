@@ -1,4 +1,4 @@
-# Chapter 12: Architecture Analysis
+# Chapter 13: Architecture Analysis
 
 > **⚠️ Superseded, as of pmat 3.32.0 (2026-08-25). `pmat` has no
 > `architecture` subcommand, and never has had one.**

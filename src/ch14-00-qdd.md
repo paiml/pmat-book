@@ -1,4 +1,4 @@
-# Chapter 14: Quality-Driven Development (QDD)
+# Chapter 27: Quality-Driven Development (QDD)
 
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ⚠️ Partially superseded — see the banner below
