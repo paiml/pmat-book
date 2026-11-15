@@ -106,7 +106,11 @@ fn main() {
 }
 EOF
 FIXTURE="$TEST_DIR/src/main.rs"
-CALL_SATD="{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"analyze_satd\",\"arguments\":{\"paths\":[\"$FIXTURE\"]}}}"
+# A native Windows pmat cannot resolve a MSYS path (/tmp/...) inside a JSON body
+# (argv paths are converted by the shell, JSON strings are not): use the mixed
+# form (C:/...) where cygpath exists. Elsewhere the path is unchanged.
+FIXTURE_JSON="$(cygpath -m "$FIXTURE" 2>/dev/null || printf %s "$FIXTURE")"
+CALL_SATD="{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"analyze_satd\",\"arguments\":{\"paths\":[\"$FIXTURE_JSON\"]}}}"
 
 # ---------------------------------------------------------------------------
 # Surface 1: the CLI
@@ -365,8 +369,8 @@ else
     RC=0
     PMAT_MCP_HTTP_TOKEN="$TOKEN" bounded 20 "$PMAT_BIN" serve --transport http --port "$PORT" \
         > "$TEST_DIR/in-use.txt" 2>&1 || RC=$?
-    if [ "$RC" -eq 1 ] && grep -q "Address already in use" "$TEST_DIR/in-use.txt"; then
-        test_pass "HTTP: a second server on the same port fails with 'Address already in use'"
+    if [ "$RC" -eq 1 ] && grep -qE "Address already in use|Only one usage of each socket address" "$TEST_DIR/in-use.txt"; then
+        test_pass "HTTP: a second server on the same port fails with 'Address already in use' (or the Windows equivalent)"
     else
         test_fail "HTTP: second server on a busy port exited $RC"
         cat "$TEST_DIR/in-use.txt"
