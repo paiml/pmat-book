@@ -85,6 +85,7 @@ else
 fi
 
 # Test 5: Team workflow automation
+mkdir -p .github/workflows
 cat > .github/workflows/team-workflow.yml << 'EOF'
 name: Team Quality Workflow
 on:
