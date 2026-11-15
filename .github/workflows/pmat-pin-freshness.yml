@@ -1,14 +1,14 @@
 name: pmat-pin-freshness
 
-# LAB row, not a gate: schedule + manual only, never on a pull request or push.
+# Nightly, non-blocking check (not a merge or release gate): schedule + manual only, never on a pull request or push.
 # Compares PMAT_VERSION in test.yml with the newest stable pmat on crates.io.
-# Standing ticket: pmat-book#105 (one ticket, one owner; it stays open).
+# Standing ticket: pmat-book#105 (it stays open).
 #   green         pin equals crates.io max_stable_version
 #   red           pin differs: comment on #105 ONLY on the green->red edge
 #   not_measured  pin or crates.io unreadable: reported in the summary, never green,
 #                 never "pin is stale", no comment
 # 7-day stop: when the 7 most recent completed nights before this one were all not
-# green, the summary says STOP and the owner disables this workflow
+# green, the summary says STOP and a maintainer disables this workflow
 # (`gh workflow disable pmat-pin-freshness.yml`) until they bring it back.
 on:
   schedule:
@@ -50,7 +50,7 @@ jobs:
         n=$(head -n7 prev.txt | bash scripts/pmat-pin-freshness.sh streak)
         echo "streak=$n" >> "$GITHUB_OUTPUT"
         if [ "$n" -ge 7 ]; then
-          echo "STOP: 7 consecutive non-green nights. Owner: gh workflow disable pmat-pin-freshness.yml" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "STOP: 7 consecutive non-green nights. Maintainer: gh workflow disable pmat-pin-freshness.yml" | tee -a "$GITHUB_STEP_SUMMARY"
         fi
 
     - name: Comment on the standing ticket (green to red edge only)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pin-freshness LAB row helper (pmat-book#105). Never runs on a PR path.
+# Pin-freshness helper for the nightly check (pmat-book#105). Never runs on a PR path.
 #   verdict <workflow-file>   print "<state> <detail>"; exit 0 green, 1 red (pin behind), 2 not_measured
 #   should_comment <prev> <state>   exit 0 only on the green->red edge (prev=success, state=red)
 #   streak                    read conclusions (newest first) on stdin; print the leading non-success count

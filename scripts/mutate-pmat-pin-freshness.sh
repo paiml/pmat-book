@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Mutation table for scripts/pmat-pin-freshness.sh: each mutant must turn the stub test red.
-# Mutants are sed edits of a COPY in a mktemp dir; the target script contains no delete/sweep rule.
+# Mutants are sed edits of a COPY in a mktemp dir; the target script has no delete rule.
 # Exit 0 only if every mutant is killed and every sed edit actually changed the copy.
 # shellcheck disable=SC2016  # sed programs are single-quoted on purpose
 set -u
@@ -26,7 +26,7 @@ mutant M4 "pin semver check dropped"            '/grep -Eq "\$SEMVER" || return 
 mutant M5 "latest semver check dropped"         's/printf .%s\\n. "\$latest" | grep -Eq "\$SEMVER" || return 1/true/'
 mutant M6 "user agent dropped"                  's/ -A "pmat-book-pin-freshness-check"//'
 mutant M7 "curl -f dropped"                     's/curl -fsS/curl -sS/'
-mutant M8 "user agent carries an identifier"   's/pmat-book-pin-freshness-check/tail-cop/'
+mutant M8 "user agent changed"   's/pmat-book-pin-freshness-check/pmat-book-pin-freshness-checkx/'
 mutant M9 "comment on any prev"                's/\[ "\${1:-}" = "success" \] \&\& //'
 mutant M10 "comment on any state"               's/ \&\& \[ "\${2:-}" = "red" \]//'
 mutant M11 "streak ignores success"             's/\[ "\$c" = "success" \] \&\& break/:/'

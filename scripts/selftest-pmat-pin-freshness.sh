@@ -46,7 +46,7 @@ chmod +x "$T/bin/curl"
 CURL_ARGS="$T/args" PATH="$T/bin:$PATH" bash "$SCRIPT" verdict "$T/pin-ok.yml" >/dev/null
 grep -qx -- '-A' "$T/args"; check "curl sends -A user agent" 0 $?
 grep -Eq -- '^-[a-zA-Z]*f' "$T/args"; check "curl fails on HTTP errors (-f)" 0 $?
-grep -qiE 'noah|paiml|tail-cop|claude' "$T/args"; check "user agent carries no identifiers" 1 $?
+grep -qx 'pmat-book-pin-freshness-check' "$T/args"; check "user agent is the fixed generic string" 0 $?
 
 sc() { bash "$SCRIPT" should_comment "$1" "$2"; echo $?; }
 check "comment: success->red"     0 "$(sc success red)"
@@ -60,5 +60,16 @@ check "streak: 3 then success" 3 "$(st failure failure cancelled success failure
 check "streak: success first"  0 "$(st success failure)"
 check "streak: all non-green"  7 "$(st failure failure failure failure failure failure failure)"
 check "streak: empty"          0 "$(printf '' | bash "$SCRIPT" streak)"
+
+
+# stdout contract: the workflow reads the first word as the state
+o() { CRATES_API_URL="file://$T/$2" bash "$SCRIPT" verdict "$T/$1" 2>/dev/null | cut -d' ' -f1; }
+check "stdout word: green"        green        "$(o pin-ok.yml api-same.json)"
+check "stdout word: red"          red          "$(o pin-ok.yml api-newer.json)"
+check "stdout word: not_measured" not_measured "$(o pin-none.yml api-same.json)"
+check "stdout word: not_measured on fetch failure" not_measured "$(o pin-ok.yml api-absent.json)"
+bash "$SCRIPT" bogus >/dev/null 2>"$T/err"; check "unknown subcommand exits 64" 64 $?
+[ -s "$T/err" ]; check "unknown subcommand prints usage on stderr" 0 $?
+bash "$SCRIPT" >/dev/null 2>&1; check "no subcommand exits 64" 64 $?
 
 exit "$fail"
