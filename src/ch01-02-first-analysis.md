@@ -1,5 +1,9 @@
 # First Analysis
 
+> **Superseded.** This is the earlier version of this chapter. Read
+> [First Analysis (TDD)](ch01-02-first-analysis-tdd.md) instead, the later
+> test-driven rewrite covering the same ground.
+
 <!-- DOC_STATUS_START -->
 **Chapter Status**: ✅ 100% Working (5/5 examples)
 

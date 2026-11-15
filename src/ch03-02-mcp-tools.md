@@ -1,5 +1,11 @@
 # MCP Tools
 
+> **Historical, as of pmat 2.215.0 (2026-02-04).** This page lists 25 MCP tools
+> from that release and has not been re-checked against a later pmat. For the
+> current picture read [Chapter 3.4](ch03-04-mcp-transports.md) (CLI, MCP stdio
+> and MCP over HTTP) and the tool list rebuilt from `tools/list` in
+> [Chapter 15](ch15-00-mcp-tools.md).
+
 **Chapter Status**: Working (25/25 tools documented)
 
 *Last updated: 2026-02-04*
