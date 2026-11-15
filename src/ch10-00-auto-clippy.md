@@ -1,4 +1,4 @@
-# Chapter 10: Auto-clippy Integration
+# Chapter 11: Auto-clippy Integration
 
 > **⚠️ Rewritten against pmat 3.32.0 (2026-08-25).**
 >

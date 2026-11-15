@@ -1,4 +1,4 @@
-# Chapter 11: Custom Quality Rules
+# Chapter 12: Custom Quality Rules
 
 > **⚠️ Superseded, as of pmat 3.32.0 (2026-08-25). `pmat` has no `rules`
 > subcommand, and never has had one.**
