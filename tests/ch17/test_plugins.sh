@@ -26,6 +26,7 @@ else
 fi
 
 # Test 2: Rust plugin source
+mkdir -p src
 cat > src/lib.rs << 'EOF'
 use pmat_plugin_api::*;
 
@@ -40,7 +41,6 @@ impl Plugin for MyAnalyzer {
 }
 EOF
 
-mkdir -p src
 if [ -f src/lib.rs ]; then
     echo "✅ Plugin source created"
 else
