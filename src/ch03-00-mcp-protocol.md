@@ -38,11 +38,11 @@ Model Context Protocol (MCP) is a standardized protocol for AI agents to interac
 ### 1. Start the MCP Server
 
 ```bash
-# Start with default configuration (localhost:3000)
-pmat mcp-server
+# Serve over HTTP (pmat prints a bearer token and the exact client line)
+pmat serve --transport http --port 3000
 
-# Start with custom bind address
-pmat mcp-server --bind 127.0.0.1:8080
+# Bind another port
+pmat serve --transport http --port 8080
 ```
 
 ### 2. Connect a Client
@@ -225,7 +225,7 @@ node scripts/validate-docs.js || exit 1
 # .github/workflows/quality.yml
 - name: Quality Gate
   run: |
-    pmat mcp-server &
+    pmat serve --transport http --port 3000 &
     sleep 2
     node scripts/quality-gate.js
 ```

@@ -14,14 +14,14 @@ This chapter covers setting up and configuring the PMAT MCP server for AI-assist
 ### Start the Server
 
 ```bash
-# Start with default configuration (localhost:3000)
-pmat mcp-server
+# Serve over HTTP (pmat prints a bearer token and the exact client line)
+pmat serve --transport http --port 3000
 
-# Start with custom bind address
-pmat mcp-server --bind 127.0.0.1:8080
+# Bind another port
+pmat serve --transport http --port 8080
 
 # Enable verbose logging
-RUST_LOG=debug pmat mcp-server
+RUST_LOG=debug pmat serve --transport http --port 3000
 ```
 
 ### Verify Server is Running
@@ -78,14 +78,11 @@ export RUST_LOG=info  # Options: error, warn, info, debug, trace
 ### Custom Configuration
 
 ```bash
-# Custom bind address
-pmat mcp-server --bind 0.0.0.0:8080
-
-# Unix socket (for local IPC)
-pmat mcp-server --unix-socket /tmp/pmat.sock
+# Bind another host and port (non-loopback needs PMAT_MCP_HTTP_TOKEN set)
+pmat serve --transport http --host 0.0.0.0 --port 8080
 
 # Enable verbose logging
-RUST_LOG=debug pmat mcp-server
+RUST_LOG=debug pmat serve --transport http --port 3000
 ```
 
 ## Connection Examples
@@ -168,7 +165,7 @@ async def connect_to_pmat():
 lsof -i :3000
 
 # Check logs
-RUST_LOG=debug pmat mcp-server
+RUST_LOG=debug pmat serve --transport http --port 3000
 
 # Check firewall
 sudo ufw status
@@ -194,7 +191,7 @@ pmat config --set semantic.enabled=true
 export PMAT_SEMANTIC_ENABLED=true
 
 # Check server logs for semantic tool registration
-RUST_LOG=info pmat mcp-server | grep semantic
+RUST_LOG=info pmat serve --transport http --port 3000 | grep semantic
 ```
 
 **Note**: Semantic search uses local TF-IDF embeddings via the aprender library. No API keys required.
