@@ -12,6 +12,11 @@ on:
     # that never runs is not a gate.
     - cron: '17 5 * * 1'
 
+env:
+  # Single source of the pmat under test (read by pmat-pin-freshness.yml). 3.44.0 is the
+  # crates.io max_stable_version the floating install resolved when this was pinned.
+  PMAT_VERSION: "3.44.0"
+
 jobs:
   documented-commands:
     # POKA-YOKE, not a test: every `pmat` invocation the book PRINTS must resolve
@@ -27,8 +32,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install PMAT
       run: |
-        cargo install pmat
-        pmat --version
+        cargo install pmat --version "=${PMAT_VERSION}" --locked
+        [ "$(pmat --version | head -n1)" = "pmat ${PMAT_VERSION}" ]
     - name: Gate scripts must be shellcheck-clean
       # Every hazard these gates guard against is a shell hazard. Linting them
       # is not housekeeping, it is the gate on the gates.
@@ -73,52 +78,203 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install PMAT
       run: |
-        cargo install pmat
-        pmat --version
+        cargo install pmat --version "=${PMAT_VERSION}" --locked
+        [ "$(pmat --version | head -n1)" = "pmat ${PMAT_VERSION}" ]
     - name: Run every documented command for real
       run: bash scripts/verify-documented-flags.sh --execute --jobs 4 --budget 2700
 
-  test-examples:
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20  # a hung chapter test fails in 20 min, not after the 6 h runner default
+  # One build + one test job per OS, with NO edge between OSes: a slow or failed
+  # build on one OS holds back only that OS's 8 cells. (A `needs` on a matrix job
+  # waits for every leg, so a single matrix build would couple all three OSes.)
+  # pmat is compiled once per OS instead of once per cell (windows: 8 -> 1).
+  # A failed build is red on pmat-build-<os>; its cells then show as skipped.
+  # If checks are ever made required, require the three pmat-build-* jobs too:
+  # GitHub treats a skipped required check as passing.
+  pmat-build-ubuntu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # was part of the 20 min cell limit; measured max compile 1155 s (windows)
+    permissions:
+      contents: read
+    steps:
+    - name: Build PMAT
+      shell: bash
+      run: |
+        cargo install pmat --version "=${PMAT_VERSION}" --locked --root "$GITHUB_WORKSPACE/pmat-root"
+        [ "$("$GITHUB_WORKSPACE/pmat-root/bin/pmat" --version | head -n1)" = "pmat ${PMAT_VERSION}" ]
+    - uses: actions/upload-artifact@v4
+      with:
+        name: pmat-ubuntu-latest
+        path: pmat-root/bin
+        if-no-files-found: error
+
+  test-ubuntu:
+    # Name kept identical to the old matrix job's check name.
+    name: test-examples (ubuntu-latest, ${{ matrix.chapter }})
+    needs: pmat-build-ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 20  # unchanged: a hung chapter test fails in 20 min, not after the 6 h runner default
+    permissions:
+      contents: read
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
-    
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Install PMAT
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: pmat-ubuntu-latest
+        path: .pmat-bin
+
+    - name: Put the built PMAT on PATH
+      shell: bash
       run: |
-        cargo install pmat
-        pmat --version
-    
+        chmod +x .pmat-bin/pmat*
+        echo "$GITHUB_WORKSPACE/.pmat-bin" >> "$GITHUB_PATH"
+
+    - name: Check PMAT version
+      shell: bash
+      run: '[ "$(pmat --version | head -n1)" = "pmat ${PMAT_VERSION}" ]'
+
     - name: Run chapter tests
       run: |
         make test-${{ matrix.chapter }}
-    
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        # v4 requires artifact names unique across the WHOLE run. This job is
-        # a 3-OS x 8-chapter matrix, so the chapter alone collides three ways
-        # and every upload after the first would fail.
-        name: test-results-${{ matrix.os }}-${{ matrix.chapter }}
+        # v4 requires artifact names unique across the WHOLE run: 3 OS x 8 chapters.
+        name: test-results-ubuntu-latest-${{ matrix.chapter }}
         path: test-results/
-  
+
+  pmat-build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30  # was part of the 20 min cell limit; measured max compile 1155 s (windows)
+    permissions:
+      contents: read
+    steps:
+    - name: Build PMAT
+      shell: bash
+      run: |
+        cargo install pmat --version "=${PMAT_VERSION}" --locked --root "$GITHUB_WORKSPACE/pmat-root"
+        [ "$("$GITHUB_WORKSPACE/pmat-root/bin/pmat" --version | head -n1)" = "pmat ${PMAT_VERSION}" ]
+    - uses: actions/upload-artifact@v4
+      with:
+        name: pmat-macos-latest
+        path: pmat-root/bin
+        if-no-files-found: error
+
+  test-macos:
+    # Name kept identical to the old matrix job's check name.
+    name: test-examples (macos-latest, ${{ matrix.chapter }})
+    needs: pmat-build-macos
+    runs-on: macos-latest
+    timeout-minutes: 20  # unchanged: a hung chapter test fails in 20 min, not after the 6 h runner default
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: pmat-macos-latest
+        path: .pmat-bin
+
+    - name: Put the built PMAT on PATH
+      shell: bash
+      run: |
+        chmod +x .pmat-bin/pmat*
+        echo "$GITHUB_WORKSPACE/.pmat-bin" >> "$GITHUB_PATH"
+
+    - name: Check PMAT version
+      shell: bash
+      run: '[ "$(pmat --version | head -n1)" = "pmat ${PMAT_VERSION}" ]'
+
+    - name: Run chapter tests
+      run: |
+        make test-${{ matrix.chapter }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        # v4 requires artifact names unique across the WHOLE run: 3 OS x 8 chapters.
+        name: test-results-macos-latest-${{ matrix.chapter }}
+        path: test-results/
+
+  pmat-build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30  # was part of the 20 min cell limit; measured max compile 1155 s (windows)
+    permissions:
+      contents: read
+    steps:
+    - name: Build PMAT
+      shell: bash
+      run: |
+        cargo install pmat --version "=${PMAT_VERSION}" --locked --root "$GITHUB_WORKSPACE/pmat-root"
+        [ "$("$GITHUB_WORKSPACE/pmat-root/bin/pmat" --version | head -n1)" = "pmat ${PMAT_VERSION}" ]
+    - uses: actions/upload-artifact@v4
+      with:
+        name: pmat-windows-latest
+        path: pmat-root/bin
+        if-no-files-found: error
+
+  test-windows:
+    # Name kept identical to the old matrix job's check name.
+    name: test-examples (windows-latest, ${{ matrix.chapter }})
+    needs: pmat-build-windows
+    runs-on: windows-latest
+    timeout-minutes: 20  # unchanged: a hung chapter test fails in 20 min, not after the 6 h runner default
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        chapter: [ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08]
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: pmat-windows-latest
+        path: .pmat-bin
+
+    - name: Put the built PMAT on PATH
+      shell: bash
+      run: |
+        chmod +x .pmat-bin/pmat*
+        echo "$GITHUB_WORKSPACE/.pmat-bin" >> "$GITHUB_PATH"
+
+    - name: Check PMAT version
+      shell: bash
+      run: '[ "$(pmat --version | head -n1)" = "pmat ${PMAT_VERSION}" ]'
+
+    - name: Run chapter tests
+      run: |
+        make test-${{ matrix.chapter }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        # v4 requires artifact names unique across the WHOLE run: 3 OS x 8 chapters.
+        name: test-results-windows-latest-${{ matrix.chapter }}
+        path: test-results/
+
   dogfood-pmat:
     runs-on: ubuntu-latest
-    needs: test-examples
+    needs: [test-ubuntu, test-macos, test-windows]
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Install PMAT
       run: |
-        cargo install pmat
-        pmat --version
+        cargo install pmat --version "=${PMAT_VERSION}" --locked
+        [ "$(pmat --version | head -n1)" = "pmat ${PMAT_VERSION}" ]
     
     - name: Analyze book codebase with PMAT
       run: |
@@ -178,7 +334,7 @@ jobs:
   
   build-book:
     runs-on: ubuntu-latest
-    needs: [test-examples, dogfood-pmat]
+    needs: [test-ubuntu, test-macos, test-windows, dogfood-pmat]
     
     steps:
     - uses: actions/checkout@v4

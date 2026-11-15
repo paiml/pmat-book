@@ -1,0 +1,68 @@
+name: pmat-pin-freshness
+
+# LAB row, not a gate: schedule + manual only, never on a pull request or push.
+# Compares PMAT_VERSION in test.yml with the newest stable pmat on crates.io.
+# Standing ticket: pmat-book#105 (one ticket, one owner; it stays open).
+#   green         pin equals crates.io max_stable_version
+#   red           pin differs: comment on #105 ONLY on the green->red edge
+#   not_measured  pin or crates.io unreadable: reported in the summary, never green,
+#                 never "pin is stale", no comment
+# 7-day stop: when the 7 most recent completed nights before this one were all not
+# green, the summary says STOP and the owner disables this workflow
+# (`gh workflow disable pmat-pin-freshness.yml`) until they bring it back.
+on:
+  schedule:
+    - cron: '43 3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TICKET: "105"
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Compare the pin with crates.io
+      id: verdict
+      run: |
+        if out=$(bash scripts/pmat-pin-freshness.sh verdict .github/workflows/test.yml); then rc=0; else rc=$?; fi
+        echo "$out" | tee -a "$GITHUB_STEP_SUMMARY"
+        echo "state=${out%% *}" >> "$GITHUB_OUTPUT"
+        echo "rc=$rc" >> "$GITHUB_OUTPUT"
+
+    - name: Previous completed nights
+      id: prev
+      run: |
+        gh run list --workflow pmat-pin-freshness.yml --status completed --limit 8 \
+          --json databaseId,conclusion \
+          --jq "[.[] | select(.databaseId != ${GITHUB_RUN_ID})] | .[].conclusion" > prev.txt
+        echo "last=$(head -n1 prev.txt)" >> "$GITHUB_OUTPUT"
+        n=$(head -n7 prev.txt | bash scripts/pmat-pin-freshness.sh streak)
+        echo "streak=$n" >> "$GITHUB_OUTPUT"
+        if [ "$n" -ge 7 ]; then
+          echo "STOP: 7 consecutive non-green nights. Owner: gh workflow disable pmat-pin-freshness.yml" | tee -a "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Comment on the standing ticket (green to red edge only)
+      if: steps.verdict.outputs.state == 'red'
+      env:
+        LAST: ${{ steps.prev.outputs.last }}
+        STATE: ${{ steps.verdict.outputs.state }}
+      run: |
+        if bash scripts/pmat-pin-freshness.sh should_comment "$LAST" "$STATE"; then
+          gh issue comment "$TICKET" --body "pmat-pin-freshness went red: the PMAT_VERSION pin in test.yml is behind crates.io. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Bump the pin by PR; the gate re-runs against the new version."
+        fi
+
+    - name: Fail unless green
+      if: steps.verdict.outputs.rc != '0'
+      run: exit 1
