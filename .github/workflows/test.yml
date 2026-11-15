@@ -122,14 +122,14 @@ jobs:
     
     - name: Analyze book codebase with PMAT
       run: |
-        pmat analyze . --format json > pmat-analysis.json
-        pmat analyze tdg . --format json > pmat-tdg.json
-        pmat similarity . --format json > pmat-similarity.json
+        pmat analyze comprehensive -p . --format json > pmat-analysis.json
+        pmat tdg . --format json > pmat-tdg.json
+        pmat analyze duplicates -p . --format json > pmat-similarity.json
     
     - name: Check quality gates
       run: |
         # Extract grade from TDG analysis
-        GRADE=$(jq -r '.grade' pmat-tdg.json)
+        GRADE=$(jq -r '.score.grade' pmat-tdg.json)
         echo "Code Quality Grade: $GRADE"
         
         # Fail if grade is below B
@@ -145,13 +145,13 @@ jobs:
         echo "# PMAT Quality Report" > quality-report.md
         echo "" >> quality-report.md
         echo "## Analysis Summary" >> quality-report.md
-        jq -r '"- Files: \(.summary.total_files)\n- Lines: \(.summary.total_lines)\n- Languages: \(.languages | length)"' pmat-analysis.json >> quality-report.md
+        jq -r '"- Files: \(.summary.total_files)\n- Issues: \(.summary.total_issues)\n- Quality score: \(.summary.quality_score)"' pmat-analysis.json >> quality-report.md
         echo "" >> quality-report.md
         echo "## Technical Debt Grade" >> quality-report.md
-        jq -r '"- Grade: \(.grade)\n- Score: \(.overall_score)"' pmat-tdg.json >> quality-report.md
+        jq -r '"- Grade: \(.score.grade)\n- Score: \(.score.total)"' pmat-tdg.json >> quality-report.md
         echo "" >> quality-report.md
         echo "## Code Similarity" >> quality-report.md
-        jq -r '"- Duplicates Found: \(.summary.total_duplicates)\n- Similarity Ratio: \(.summary.similarity_ratio)"' pmat-similarity.json >> quality-report.md
+        jq -r '"- Duplicates Found: \(.total_duplicates)\n- Duplication: \(.duplication_percentage)%"' pmat-similarity.json >> quality-report.md
     
     - name: Upload PMAT reports
       uses: actions/upload-artifact@v4
