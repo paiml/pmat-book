@@ -13,62 +13,65 @@ row() { # name, then a command that must succeed
   local name=$1; shift
   if "$@" >/dev/null 2>&1; then echo "ok   $name"; else echo "FAIL $name"; fail=1; fi
 }
+res() { # name; reports the status of the command run just before it
+  local rc=$?
+  if [ "$rc" -eq 0 ]; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi
+}
 q() { yq -r "$1" "$2"; }          # q <expr> <file>
 eqq() { [ "$(q "$1" "$3")" = "$2" ]; }   # eqq <expr> <want> <file>
-count() { grep -c -- "$1" "$2"; } # count <fixed text> <file>
 cnt_is() { [ "$(grep -cF -- "$1" "$2")" -eq "$3" ]; }  # cnt_is <text> <file> <n>
 
 row "test.yml parses" yq . "$T_YML"
 row "fresh.yml parses" yq . "$F_YML"
-row "PMAT_VERSION defined once at top level" eqq '.env.PMAT_VERSION' 3.44.0 "$T_YML"
-row "6 install sites all pinned =PMAT_VERSION" cnt_is 'cargo install pmat --version "=${PMAT_VERSION}" --locked' "$T_YML" 6
+eqq '.env.PMAT_VERSION' 3.44.0 "$T_YML" >/dev/null 2>&1; res "PMAT_VERSION defined once at top level"
+cnt_is 'cargo install pmat --version "=${PMAT_VERSION}" --locked' "$T_YML" 6 >/dev/null 2>&1; res "6 install sites all pinned =PMAT_VERSION"
 row "no other cargo install pmat" eval '[ "$(grep -c "cargo install pmat" "$T_YML")" -eq 6 ]'
 row "install sites use --locked (6)" eval '[ "$(grep "cargo install pmat" "$T_YML" | grep -c -- "--locked")" -eq 6 ]'
-row "3 builds install into pmat-root" cnt_is '--locked --root "$GITHUB_WORKSPACE/pmat-root"' "$T_YML" 3
-row "exact version read-back present 9 times (6 installs + 3 cells)" cnt_is '= "pmat ${PMAT_VERSION}" ]' "$T_YML" 9
+cnt_is '--locked --root "$GITHUB_WORKSPACE/pmat-root"' "$T_YML" 3 >/dev/null 2>&1; res "3 builds install into pmat-root"
+cnt_is '= "pmat ${PMAT_VERSION}" ]' "$T_YML" 9 >/dev/null 2>&1; res "exact version read-back present 9 times (6 installs + 3 cells)"
 row "read-back is head -n1 exact match, not grep" eval '[ "$(grep -c "head -n1" "$T_YML")" -eq 9 ] && ! grep -q "grep -F" "$T_YML"'
 for os in ubuntu macos windows; do
-  row "pmat-build-$os runs on $os-latest" eqq ".jobs.pmat-build-$os.\"runs-on\"" "$os-latest" "$T_YML"
-  row "pmat-build-$os timeout 30" eqq ".jobs.pmat-build-$os.\"timeout-minutes\"" 30 "$T_YML"
-  row "pmat-build-$os permissions contents read only" eqq ".jobs.pmat-build-$os.permissions | to_entries | map(.key + \"=\" + .value) | join(\",\")" "contents=read" "$T_YML"
-  row "pmat-build-$os upload errors on missing files" eqq ".jobs.pmat-build-$os.steps[-1].with.\"if-no-files-found\"" error "$T_YML"
-  row "pmat-build-$os uploads artifact pmat-$os-latest" eqq ".jobs.pmat-build-$os.steps[-1].with.name" "pmat-$os-latest" "$T_YML"
-  row "test-$os needs only its own build" eqq ".jobs.test-$os.needs" "pmat-build-$os" "$T_YML"
-  row "test-$os check name unchanged" eqq ".jobs.test-$os.name" "test-examples ($os-latest, \${{ matrix.chapter }})" "$T_YML"
-  row "test-$os runs on $os-latest" eqq ".jobs.test-$os.\"runs-on\"" "$os-latest" "$T_YML"
-  row "test-$os cell timeout 10" eqq ".jobs.test-$os.\"timeout-minutes\"" 10 "$T_YML"
-  row "test-$os runs after a failed build (not skipped)" eqq ".jobs.test-$os.if" '${{ !cancelled() }}' "$T_YML"
+  eqq ".jobs.pmat-build-$os.\"runs-on\"" "$os-latest" "$T_YML" >/dev/null 2>&1; res "pmat-build-$os runs on $os-latest"
+  eqq ".jobs.pmat-build-$os.\"timeout-minutes\"" 30 "$T_YML" >/dev/null 2>&1; res "pmat-build-$os timeout 30"
+  eqq ".jobs.pmat-build-$os.permissions | to_entries | map(.key + \"=\" + .value) | join(\",\")" "contents=read" "$T_YML" >/dev/null 2>&1; res "pmat-build-$os permissions contents read only"
+  eqq ".jobs.pmat-build-$os.steps[-1].with.\"if-no-files-found\"" error "$T_YML" >/dev/null 2>&1; res "pmat-build-$os upload errors on missing files"
+  eqq ".jobs.pmat-build-$os.steps[-1].with.name" "pmat-$os-latest" "$T_YML" >/dev/null 2>&1; res "pmat-build-$os uploads artifact pmat-$os-latest"
+  eqq ".jobs.test-$os.needs" "pmat-build-$os" "$T_YML" >/dev/null 2>&1; res "test-$os needs only its own build"
+  eqq ".jobs.test-$os.name" "test-examples ($os-latest, \${{ matrix.chapter }})" "$T_YML" >/dev/null 2>&1; res "test-$os check name unchanged"
+  eqq ".jobs.test-$os.\"runs-on\"" "$os-latest" "$T_YML" >/dev/null 2>&1; res "test-$os runs on $os-latest"
+  eqq ".jobs.test-$os.\"timeout-minutes\"" 10 "$T_YML" >/dev/null 2>&1; res "test-$os cell timeout 10"
+  eqq ".jobs.test-$os.if" '${{ !cancelled() }}' "$T_YML" >/dev/null 2>&1; res "test-$os runs after a failed build (not skipped)"
   row "test-$os first step fails unless build succeeded" eval "yq -r '.jobs.test-$os.steps[0].run' '$T_YML' | grep -q 'exit 1' && [ \"\$(yq -r '.jobs.test-$os.steps[0].env.BUILD_RESULT' '$T_YML')\" = '\${{ needs.pmat-build-$os.result }}' ]"
   row "test-$os guard compares to success" eval "yq -r '.jobs.test-$os.steps[0].run' '$T_YML' | grep -qF '!= success'"
-  row "test-$os permissions contents read only" eqq ".jobs.test-$os.permissions | to_entries | map(.key + \"=\" + .value) | join(\",\")" "contents=read" "$T_YML"
-  row "test-$os 8 chapters" eqq ".jobs.test-$os.strategy.matrix.chapter | length" 8 "$T_YML"
-  row "test-$os downloads pmat-$os-latest" eqq ".jobs.test-$os.steps[] | select(.uses == \"actions/download-artifact@v4\") | .with.name" "pmat-$os-latest" "$T_YML"
-  row "test-$os runs make test-chapter" eqq ".jobs.test-$os.steps[] | select(.name == \"Run chapter tests\") | .run" 'make test-${{ matrix.chapter }}' "$T_YML"
-  row "test-$os uploads results always" eqq ".jobs.test-$os.steps[-1].if" 'always()' "$T_YML"
+  eqq ".jobs.test-$os.permissions | to_entries | map(.key + \"=\" + .value) | join(\",\")" "contents=read" "$T_YML" >/dev/null 2>&1; res "test-$os permissions contents read only"
+  eqq ".jobs.test-$os.strategy.matrix.chapter | length" 8 "$T_YML" >/dev/null 2>&1; res "test-$os 8 chapters"
+  eqq ".jobs.test-$os.steps[] | select(.uses == \"actions/download-artifact@v4\") | .with.name" "pmat-$os-latest" "$T_YML" >/dev/null 2>&1; res "test-$os downloads pmat-$os-latest"
+  eqq ".jobs.test-$os.steps[] | select(.name == \"Run chapter tests\") | .run" 'make test-${{ matrix.chapter }}' "$T_YML" >/dev/null 2>&1; res "test-$os runs make test-chapter"
+  eqq ".jobs.test-$os.steps[-1].if" 'always()' "$T_YML" >/dev/null 2>&1; res "test-$os uploads results always"
 done
-row "dogfood-pmat needs the 3 test jobs" eqq '.jobs.dogfood-pmat.needs | join(",")' test-ubuntu,test-macos,test-windows "$T_YML"
-row "build-book needs 3 tests + dogfood" eqq '.jobs.build-book.needs | join(",")' test-ubuntu,test-macos,test-windows,dogfood-pmat "$T_YML"
-row "no test-examples job id left" eqq '.jobs."test-examples"' null "$T_YML"
+eqq '.jobs.dogfood-pmat.needs | join(",")' test-ubuntu,test-macos,test-windows "$T_YML" >/dev/null 2>&1; res "dogfood-pmat needs the 3 test jobs"
+eqq '.jobs.build-book.needs | join(",")' test-ubuntu,test-macos,test-windows,dogfood-pmat "$T_YML" >/dev/null 2>&1; res "build-book needs 3 tests + dogfood"
+eqq '.jobs."test-examples"' null "$T_YML" >/dev/null 2>&1; res "no test-examples job id left"
 row "no continue-on-error anywhere" eval '! grep -q "continue-on-error" "$T_YML" "$F_YML"'
 row "no || true anywhere" eval '! grep -q "|| true" "$T_YML" "$F_YML"'
-row "test.yml triggers unchanged (push, pull_request, dispatch, schedule)" eqq '.on | keys | join(",")' push,pull_request,workflow_dispatch,schedule "$T_YML"
+eqq '.on | keys | join(",")' push,pull_request,workflow_dispatch,schedule "$T_YML" >/dev/null 2>&1; res "test.yml triggers unchanged (push, pull_request, dispatch, schedule)"
 
-row "fresh: triggers are schedule + dispatch only" eqq '.on | keys | join(",")' schedule,workflow_dispatch "$F_YML"
-row "fresh: top-level permissions empty" eqq '.permissions | length' 0 "$F_YML"
-row "fresh: job permissions exactly contents,actions read + issues write" eqq '.jobs.check.permissions | to_entries | map(.key + "=" + .value) | join(",")' "contents=read,actions=read,issues=write" "$F_YML"
-row "fresh: timeout 5" eqq '.jobs.check."timeout-minutes"' 5 "$F_YML"
-row "fresh: ticket is 105" eqq '.jobs.check.env.TICKET' 105 "$F_YML"
-row "fresh: only one gh issue comment" cnt_is 'gh issue comment' "$F_YML" 1
+eqq '.on | keys | join(",")' schedule,workflow_dispatch "$F_YML" >/dev/null 2>&1; res "fresh: triggers are schedule + dispatch only"
+eqq '.permissions | length' 0 "$F_YML" >/dev/null 2>&1; res "fresh: top-level permissions empty"
+eqq '.jobs.check.permissions | to_entries | map(.key + "=" + .value) | join(",")' "contents=read,actions=read,issues=write" "$F_YML" >/dev/null 2>&1; res "fresh: job permissions exactly contents,actions read + issues write"
+eqq '.jobs.check."timeout-minutes"' 5 "$F_YML" >/dev/null 2>&1; res "fresh: timeout 5"
+eqq '.jobs.check.env.TICKET' 105 "$F_YML" >/dev/null 2>&1; res "fresh: ticket is 105"
+cnt_is 'gh issue comment' "$F_YML" 1 >/dev/null 2>&1; res "fresh: only one gh issue comment"
 row "fresh: never creates an issue or PR comment" eval '! grep -qE "gh (issue create|pr comment)" "$F_YML"'
-row "fresh: current run excluded from history" cnt_is 'select(.databaseId != ${GITHUB_RUN_ID})' "$F_YML" 1
-row "fresh: history is completed runs only" cnt_is '--status completed' "$F_YML" 1
+cnt_is 'select(.databaseId != ${GITHUB_RUN_ID})' "$F_YML" 1 >/dev/null 2>&1; res "fresh: current run excluded from history"
+cnt_is '--status completed' "$F_YML" 1 >/dev/null 2>&1; res "fresh: history is completed runs only"
 row "fresh: STOP uses streak >= 7" eval 'grep -qF -- '"'"'[ "$n" -ge 7 ]'"'"' "$F_YML" && grep -qF "STOP:" "$F_YML"'
-row "fresh: streak looks at the last 7 nights" cnt_is 'head -n7 prev.txt' "$F_YML" 1
-row "fresh: comment step only when red" eqq '.jobs.check.steps[] | select(.name | test("Comment")) | .if' "steps.verdict.outputs.state == 'red'" "$F_YML"
-row "fresh: comment goes through should_comment" cnt_is 'should_comment "$LAST" "$STATE"' "$F_YML" 1
-row "fresh: run fails unless green" eqq '.jobs.check.steps[-1].if' "steps.verdict.outputs.rc != '0'" "$F_YML"
-row "fresh: final step is exit 1" eqq '.jobs.check.steps[-1].run' 'exit 1' "$F_YML"
-row "fresh: verdict is read from the script" cnt_is 'scripts/pmat-pin-freshness.sh verdict .github/workflows/test.yml' "$F_YML" 1
+cnt_is 'head -n7 prev.txt' "$F_YML" 1 >/dev/null 2>&1; res "fresh: streak looks at the last 7 nights"
+eqq '.jobs.check.steps[] | select(.name | test("Comment")) | .if' "steps.verdict.outputs.state == 'red'" "$F_YML" >/dev/null 2>&1; res "fresh: comment step only when red"
+cnt_is 'should_comment "$LAST" "$STATE"' "$F_YML" 1 >/dev/null 2>&1; res "fresh: comment goes through should_comment"
+eqq '.jobs.check.steps[-1].if' "steps.verdict.outputs.rc != '0'" "$F_YML" >/dev/null 2>&1; res "fresh: run fails unless green"
+eqq '.jobs.check.steps[-1].run' 'exit 1' "$F_YML" >/dev/null 2>&1; res "fresh: final step is exit 1"
+cnt_is 'scripts/pmat-pin-freshness.sh verdict .github/workflows/test.yml' "$F_YML" 1 >/dev/null 2>&1; res "fresh: verdict is read from the script"
 
 
 # --- snapshot rows: the whole job/file as parsed YAML (comments and formatting are not part of it) ---
@@ -116,8 +119,8 @@ runs_parse() {
     yq "[.jobs[].steps[] | select(has(\"run\"))] | .[$i].run" "$file" | sed 's/\${{[^}]*}}/X/g' | bash -n 2>/dev/null || return 1
   done
 }
-row "test.yml run blocks parse as shell" runs_parse "$T_YML"
-row "pmat-pin-freshness.yml run blocks parse as shell" runs_parse "$F_YML"
+runs_parse "$T_YML" >/dev/null 2>&1; res "test.yml run blocks parse as shell"
+runs_parse "$F_YML" >/dev/null 2>&1; res "pmat-pin-freshness.yml run blocks parse as shell"
 
 # script text rows (the offline fixtures cannot see the real endpoint or the timeout)
 S_SH="${SCRIPT:-$HERE/pmat-pin-freshness.sh}"

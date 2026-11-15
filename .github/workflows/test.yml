@@ -87,9 +87,9 @@ jobs:
   # build on one OS holds back only that OS's 8 cells. (A `needs` on a matrix job
   # waits for every leg, so a single matrix build would couple all three OSes.)
   # pmat is compiled once per OS instead of once per cell (windows: 8 -> 1).
-  # A failed build is red on pmat-build-<os>; its cells then show as skipped.
-  # If checks are ever made required, require the three pmat-build-* jobs too:
-  # GitHub treats a skipped required check as passing.
+  # A failed build is red on pmat-build-<os>, and its 8 cells go red too: their first step fails unless the build succeeded.
+  # If checks are ever made required, require the three pmat-build-* jobs too
+  # (a build job that is skipped or cancelled must not read as passing).
   pmat-build-ubuntu:
     runs-on: ubuntu-latest
     timeout-minutes: 30  # the compile used to sit inside the 20 min cell limit; measured max compile 1193 s (windows)
