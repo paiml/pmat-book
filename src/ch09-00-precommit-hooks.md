@@ -821,4 +821,4 @@ With PMAT hooks, technical debt is caught at the source, making your codebase he
 
 - [Chapter 10: PMAT in CI/CD Pipelines](ch10-00-cicd-integration.md)
 - [Chapter 11: Custom Quality Rules](ch11-00-custom-rules.md)
-- [Appendix C: Configuration Reference](appendix-c-config.md)
+- [Hook Configuration Reference](#configuration-options)
