@@ -53,7 +53,7 @@ echo "Test 3: Command syntax validation"
 TEMP_FILE=$(mktemp)
 
 # Extract bash code blocks and validate syntax
-grep -A 10 "```bash" src/ch01-01-installing.md | grep -E "^(cargo|npm|docker|brew)" > "$TEMP_FILE" || true
+grep -A 10 "\`\`\`bash" src/ch01-01-installing.md | grep -E "^(cargo|npm|docker|brew)" > "$TEMP_FILE" || true
 
 if [ -s "$TEMP_FILE" ]; then
     test_pass "Installation commands found in documentation"

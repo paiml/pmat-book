@@ -63,11 +63,11 @@ EOF
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
 # Verify only src/main.rs is analyzed (tests_disabled and target excluded)
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -eq 1 ]; then
         # Verify it's the right file
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"src/main.rs" ]]; then
             test_pass ".pmatignore successfully excludes tests_disabled/ and target/"
         else
@@ -106,10 +106,10 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
     if [ "$FILE_COUNT" -eq 1 ]; then
-        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.summary.files[0].path')
+        FOUND_FILE=$(echo "$OUTPUT" | jq -r '.files[0].path')
         if [[ "$FOUND_FILE" == *"src/lib.rs" ]]; then
             test_pass ".paimlignore legacy format works (build/ excluded)"
         else
@@ -154,9 +154,9 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
-    FILES=$(echo "$OUTPUT" | jq -r '.summary.files[].path' | sort)
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
+    FILES=$(echo "$OUTPUT" | jq -r '.files[].path' | sort)
 
     # Should exclude BOTH tmp/ and cache/ (union of both files)
     if [ "$FILE_COUNT" -eq 1 ] && [[ "$FILES" == *"src/app.rs" ]]; then
@@ -199,9 +199,9 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
-    FILES=$(echo "$OUTPUT" | jq -r '.summary.files[].path')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
+    FILES=$(echo "$OUTPUT" | jq -r '.files[].path')
 
     if [ "$FILE_COUNT" -eq 1 ] && [[ "$FILES" == *"src/main.rs" ]]; then
         if ! echo "$FILES" | grep -q "cache/"; then
@@ -245,9 +245,9 @@ EOF
 
 OUTPUT=$(pmat analyze complexity --path . --format json 2>&1 | grep -A 10000 '^{')
 
-if echo "$OUTPUT" | jq -e '.summary.files' &> /dev/null; then
-    FILE_COUNT=$(echo "$OUTPUT" | jq '.summary.files | length')
-    FILES=$(echo "$OUTPUT" | jq -r '.summary.files[].path')
+if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+    FILE_COUNT=$(echo "$OUTPUT" | jq '.files | length')
+    FILES=$(echo "$OUTPUT" | jq -r '.files[].path')
 
     if [ "$FILE_COUNT" -eq 1 ] && [[ "$FILES" == *"src/lib.rs" ]]; then
         if ! echo "$FILES" | grep -q "build/" && ! echo "$FILES" | grep -q "dist/"; then
