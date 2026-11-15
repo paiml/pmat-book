@@ -49,6 +49,7 @@ criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
 EOF
 
+mkdir -p src
 cat > src/lib.rs << 'EOF'
 pub fn process_data(data: &[u8]) -> Vec<u8> {
     data.iter().map(|x| x.wrapping_add(1)).collect()
