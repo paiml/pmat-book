@@ -24,7 +24,8 @@ echo "Test directory: $TEST_DIR"
 cleanup() {
     # Kill server if running
     if [ ! -z "$SERVER_PID" ]; then
-        kill $SERVER_PID 2>/dev/null || true
+        kill "$SERVER_PID" 2>/dev/null || true
+        wait "$SERVER_PID" 2>/dev/null || true
     fi
     rm -rf "$TEST_DIR"
 }
@@ -63,7 +64,9 @@ edition = "2021"
 EOF
 
 echo "=== Test 1: Start API Server ==="
-if pmat serve --port 9090 > server.log 2>&1 &
+# The server never exits on its own: bound its lifetime with timeout(1) so a
+# lost cleanup cannot hold the job, and wait only on pids we name.
+if timeout 120 pmat serve --port 9090 > server.log 2>&1 &
 then
     SERVER_PID=$!
     sleep 2  # Give server time to start
@@ -151,10 +154,14 @@ fi
 
 echo "=== Test 7: Concurrent Request Handling ==="
 # Send multiple requests in parallel
+CURL_PIDS=()
 for i in {1..5}; do
-    curl -s http://localhost:9090/health > /dev/null 2>&1 &
+    curl -s -m 10 http://localhost:9090/health > /dev/null 2>&1 &
+    CURL_PIDS+=($!)
 done
-wait
+for p in "${CURL_PIDS[@]}"; do
+    wait "$p" 2>/dev/null || true
+done
 
 # Check if server is still running
 if ps -p $SERVER_PID > /dev/null 2>&1; then
