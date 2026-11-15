@@ -111,5 +111,5 @@ cargo run --example split_demo
 ## See Also
 
 - [Chapter 56: Compliance Governance](ch56-00-comply.md) — `pmat comply check` with `--include-project`
-- [Pre-commit hook template](../templates/hooks/pre-commit-tdg.sh) — File health enforcement
-- [File Health Specification](../docs/specifications/max-lines.md) — Scientific foundation
+- Pre-commit hook template `templates/hooks/pre-commit-tdg.sh` (in the pmat repository) — File health enforcement
+- File Health Specification `docs/specifications/max-lines.md` (in the pmat repository) — Scientific foundation
