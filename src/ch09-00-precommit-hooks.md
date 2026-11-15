@@ -821,4 +821,4 @@ With PMAT hooks, technical debt is caught at the source, making your codebase he
 
 - [Chapter 7: Quality Gates](ch07-00-quality-gate.md)
 - [Chapter 11: Custom Quality Rules](ch11-00-custom-rules.md)
-- [Appendix F: Hook Configuration Reference](appendix-f-hooks-reference.md)
+- [Hook Configuration Reference](#configuration-options)
