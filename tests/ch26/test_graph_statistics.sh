@@ -66,8 +66,8 @@ expect_match "markdown report heading" "$OUT" '^# Graph Metrics Report$'
 
 echo "Testing PageRank tuning..."
 BASE=$(gm --metrics page-rank --format csv | grep '_src_utils,')
-LOW=$(gm --metrics page-rank --damping-factor 0.5 --format csv | grep '_src_utils,')
-if [ -n "$BASE" ] && [ "$BASE" != "$LOW" ]; then test_pass "damping 0.5 changes the scores"; else test_fail "damping 0.5 changes the scores"; fi
+LOW=$(gm --metrics page-rank ${DAMPING_FLAG:---damping-factor} 0.5 --format csv | grep '_src_utils,')
+if [ -n "$BASE" ] && [ -n "$LOW" ] && [ "$BASE" != "$LOW" ]; then test_pass "damping 0.5 changes the scores"; else test_fail "damping 0.5 changes the scores"; fi
 OUT=$(gm --metrics page-rank --max-iterations 200 --convergence-threshold 0.00000001 --format csv)
 expect_match "max-iterations/convergence-threshold run" "$OUT" '^rc=0$'
 
