@@ -87,89 +87,62 @@ name = "bench_main"
 harness = false
 EOF
 
-echo "=== Test 1: Performance Baseline ==="
-if timeout 30 pmat test performance --baseline 2>/dev/null
-then
-    test_pass "Performance baseline established"
-else
-    BASELINE_OUTPUT=$(timeout 30 pmat test performance 2>&1 || echo "baseline")
-    if echo "$BASELINE_OUTPUT" | grep -q "baseline\|performance\|benchmark"
+# Every check asserts on real `pmat test` output. The performance suite's exit
+# code depends on host throughput (it fails below its LOC/s target on slow or
+# loaded hosts), so exit codes are not asserted; the output is.
+# Flags the book documents as non-existent (src/ch23-00-testing.md) are asserted
+# to be rejected, never reported as "available".
+run_pmat() { timeout 120 pmat "$@" 2>&1 || true; }
+
+# expect_match <label> <output> <egrep pattern>
+expect_match() {
+    if echo "$2" | grep -qE "$3"
     then
-        test_pass "Baseline measurement available"
+        test_pass "$1"
     else
-        test_pass "Performance baseline system exists"
+        test_fail "$1 (no match for: $3)"
     fi
-fi
+}
 
-echo "=== Test 2: Performance Comparison ==="
-# Create modified version
-sed -i 's/wrapping_add(1)/wrapping_add(2)/g' src/lib.rs 2>/dev/null || true
+echo "=== Test 1: Performance Suite Runs ==="
+OUT=$(run_pmat test performance --iterations 1)
+expect_match "Performance suite runs and reports its suite" "$OUT" "Suite: Performance"
 
-if timeout 30 pmat test performance --compare-baseline 2>/dev/null
-then
-    test_pass "Performance comparison works"
-else
-    test_pass "Comparison functionality available"
-fi
+echo "=== Test 2: --compare-baseline Is Not A Real Flag ==="
+OUT=$(run_pmat test performance --compare-baseline)
+expect_match "--compare-baseline rejected as documented" "$OUT" "unexpected argument '--compare-baseline'"
 
 echo "=== Test 3: Custom Iterations ==="
-if timeout 30 pmat test performance --iterations 5 2>/dev/null
-then
-    test_pass "Custom iteration count works"
-else
-    test_pass "Iteration configuration available"
-fi
+OUT=$(run_pmat test performance --iterations 5)
+expect_match "Custom iteration count is applied" "$OUT" "Iterations: 5"
 
 echo "=== Test 4: Verbose Performance Metrics ==="
-VERBOSE_OUTPUT=$(timeout 30 pmat test performance --verbose 2>&1 || echo "")
-if echo "$VERBOSE_OUTPUT" | grep -q "latency\|throughput\|memory\|time"
-then
-    test_pass "Verbose metrics output works"
-else
-    test_pass "Detailed metrics available"
-fi
+OUT=$(run_pmat test performance --iterations 1 --verbose)
+expect_match "Verbose output reports measured throughput" "$OUT" "Single-threaded throughput: [0-9]+ LOC/s"
 
 echo "=== Test 5: Performance with Timeout ==="
-if timeout 20 pmat test performance --timeout 10 2>/dev/null
-then
-    test_pass "Timeout configuration works"
-else
-    test_pass "Time-bounded testing available"
-fi
+OUT=$(run_pmat test performance --iterations 1 --timeout 10)
+expect_match "Timeout configuration is applied" "$OUT" "Timeout: 10s"
 
-echo "=== Test 6: JSON Performance Report ==="
-if timeout 30 pmat test performance -o perf-report.json 2>/dev/null
+echo "=== Test 6: Output File ==="
+OUT=$(run_pmat test performance --iterations 1 -o perf-report.json)
+expect_match "-o reports where results were written" "$OUT" "Results written to: perf-report.json"
+if [ -s perf-report.json ]
 then
-    if [ -f perf-report.json ]; then
-        test_pass "JSON performance report generated"
-    else
-        test_pass "Report generation completed"
-    fi
+    expect_match "-o file holds the performance results" "$(cat perf-report.json)" "Suite: Performance"
 else
-    test_pass "Performance reporting available"
+    test_fail "-o did not write a non-empty perf-report.json"
 fi
 
 echo "=== Test 7: Performance Profiling ==="
-if timeout 30 pmat test performance --perf 2>/dev/null | grep -q "profile\|cpu\|memory"
-then
-    test_pass "Performance profiling works"
-else
-    test_pass "Profiling capability available"
-fi
+OUT=$(run_pmat test performance --iterations 1 --perf)
+expect_match "--perf run reports measured throughput" "$OUT" "Single-threaded throughput: [0-9]+ LOC/s"
 
-echo "=== Test 8: Regression Threshold ==="
-if timeout 30 pmat test regression --threshold 5 2>/dev/null
-then
-    test_pass "Regression threshold configuration works"
-else
-    # Try alternative
-    if timeout 30 pmat test --regression --iterations 2 2>/dev/null
-    then
-        test_pass "Regression detection with threshold works"
-    else
-        test_pass "Threshold-based regression detection available"
-    fi
-fi
+echo "=== Test 8: Regression Mode ==="
+OUT=$(run_pmat test performance --threshold 5)
+expect_match "--threshold rejected as documented" "$OUT" "unexpected argument '--threshold'"
+OUT=$(run_pmat test --regression --iterations 2)
+expect_match "--regression applies the iteration count" "$OUT" "Iterations: 2"
 
 # Summary
 echo ""
