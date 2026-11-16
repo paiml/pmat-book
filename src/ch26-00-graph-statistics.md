@@ -7,7 +7,7 @@
 |--------|-------|----------|
 | ✅ Working | 16 | Executed against pmat 3.44.0; output pasted verbatim |
 | ⚠️ Not Implemented | 0 | — |
-| ❌ Broken | 1 | `--pagerank-seeds` is accepted but does not change the scores (reported upstream) |
+| ❌ Broken | 1 | `--pagerank-seeds` is accepted but does not change the scores |
 | 📋 Planned | 0 | — |
 
 *Last updated: 2026-11-16*
@@ -511,12 +511,12 @@ The `pagerank` column across those two runs:
 Lowering the damping factor flattens the distribution, as theory says it should.
 
 > **Known issue: `--pagerank-seeds` ignores which node you name.** On pmat
-> 3.44.0 the flag is accepted, but `--pagerank-seeds src_utils`,
+> 3.45.1 (and 3.44.0) the flag is accepted, but `--pagerank-seeds src_utils`,
 > `--pagerank-seeds src_api` and `--pagerank-seeds src_core` all print the same
 > scores (`src_utils` 0.203, `src_core` 0.110, `src_api` 0.077), and a name that
 > is not a node at all prints the default scores. Personalised PageRank should
 > favour the seed, so this chapter does not document seeding behaviour: the tool
-> does not currently show any. It is reported upstream.
+> does not currently show any.
 
 `--max-iterations` (default 100) and `--convergence-threshold` (default 0.001)
 also parse and run. On this graph PageRank has already converged, so raising the
