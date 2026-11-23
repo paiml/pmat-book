@@ -121,3 +121,7 @@ The book is currently in active development. Chapters marked as "✅ Working" ar
 ## License
 
 MIT License - See LICENSE file for details
+
+<!-- FUNNEL-001 footer: replace pmat-book with the repo name -->
+---
+📚 **Learn this hands-on:** [Pragmatic AI Labs courses on Coursera](https://www.coursera.org/partners/pragmatic-ai-labs?utm_source=github&utm_medium=readme&utm_campaign=funnel_2026q4&utm_content=pmat-book) · ✉ [Free newsletter](https://ds500.paiml.com/mailing?utm_source=github&utm_medium=readme&utm_campaign=funnel_2026q4&utm_content=pmat-book)
