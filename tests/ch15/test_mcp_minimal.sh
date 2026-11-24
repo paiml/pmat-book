@@ -46,11 +46,15 @@ else
     test_fail "Context generation missing"
 fi
 
-# Test 5: Contains integration patterns
-if grep -q "Claude Desktop Integration" src/ch15-00-mcp-tools.md; then
-    test_pass "Integration patterns documented"
+# Test 5: Client registration. The chapter was rebuilt from `tools/list`; its
+# "Claude Desktop Integration" section went with the invented tools, and this
+# check kept asking for that heading. It asks for the section and the command
+# the chapter prints now.
+if grep -qxF "## Registering with a client" src/ch15-00-mcp-tools.md \
+    && grep -qxF "claude mcp add --scope user pmat -- pmat --mode mcp" src/ch15-00-mcp-tools.md; then
+    test_pass "Client registration documented"
 else
-    test_fail "Integration patterns missing"
+    test_fail "Client registration section or its 'claude mcp add' line missing"
 fi
 
 echo ""
