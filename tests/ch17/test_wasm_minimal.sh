@@ -32,32 +32,39 @@ else
     test_fail "WASM analysis content missing"
 fi
 
-# Test 3: Contains WASM commands
-if grep -q "pmat analyze wasm" src/ch17-00-wasm-analysis.md; then
-    test_pass "WASM commands documented"
+# Tests 3 to 6 used to ask for `pmat analyze wasm`, "Security Analysis",
+# "Performance Profiling" and "Formal Verification". The chapter was rewritten
+# around the two commands a default pmat build ships, and it removed the
+# invented profiling and verification sections, so three of those checks failed
+# and the fourth passed only on the banner that says the command is unavailable.
+
+# Test 3: Documents the commands a default build ships, as commands
+if grep -qxF "pmat analyze web-assembly --security" src/ch17-00-wasm-analysis.md \
+    && grep -qF "pmat analyze assembly-script -p ./as" src/ch17-00-wasm-analysis.md; then
+    test_pass "web-assembly and assembly-script commands documented"
 else
-    test_fail "WASM commands missing"
+    test_fail "web-assembly or assembly-script command missing"
 fi
 
-# Test 4: Contains security analysis
-if grep -q "Security Analysis" src/ch17-00-wasm-analysis.md; then
-    test_pass "Security analysis documented"
+# Test 4: Contains the security section
+if grep -qxF "## Security Validation" src/ch17-00-wasm-analysis.md; then
+    test_pass "Security validation documented"
 else
-    test_fail "Security analysis missing"
+    test_fail "Security validation section missing"
 fi
 
-# Test 5: Contains performance profiling
-if grep -q "Performance Profiling" src/ch17-00-wasm-analysis.md; then
-    test_pass "Performance profiling documented"
+# Test 5: Contains the memory and complexity section
+if grep -qxF "## Memory and Complexity" src/ch17-00-wasm-analysis.md; then
+    test_pass "Memory and complexity documented"
 else
-    test_fail "Performance profiling missing"
+    test_fail "Memory and complexity section missing"
 fi
 
-# Test 6: Contains formal verification
-if grep -q "Formal Verification" src/ch17-00-wasm-analysis.md; then
-    test_pass "Formal verification documented"
+# Test 6: The removed sections stay removed (no heading for either)
+if grep -qE "^#+ .*(Performance Profiling|Formal Verification)" src/ch17-00-wasm-analysis.md; then
+    test_fail "A 'Performance Profiling' or 'Formal Verification' heading is back; pmat has neither"
 else
-    test_fail "Formal verification missing"
+    test_pass "No profiling or formal-verification section"
 fi
 
 echo ""
