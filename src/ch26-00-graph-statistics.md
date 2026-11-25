@@ -1,17 +1,17 @@
 # Chapter 26: Graph Statistics and Network Analysis
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ Verified against pmat 3.32.0
+**Chapter Status**: ✅ Verified against pmat 3.47.0 (CI pin is 3.44.0; not yet re-run on the pin)
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 17 | Executed against pmat 3.32.0; output pasted verbatim |
+| ✅ Working | 17 | Executed against pmat 3.47.0; output pasted verbatim |
 | ⚠️ Not Implemented | 0 | — |
 | ❌ Broken | 0 | — |
 | 📋 Planned | 0 | — |
 
-*Last updated: 2026-08-25*
-*PMAT version: pmat 3.32.0*
+*Last updated: 2026-11-25*
+*PMAT version: pmat 3.47.0*
 <!-- DOC_STATUS_END -->
 
 > **What changed in this rewrite.** The 2025 edition of this chapter documented
@@ -52,18 +52,24 @@ enough that you can check the arithmetic by hand.
 Every command below runs against this five-file Rust crate:
 
 ```
-src/lib.rs     pub mod core; pub mod api; pub mod utils;   (3 outgoing edges)
+src/lib.rs     pub mod core; pub mod api; pub mod utils;
 src/core.rs    use crate::utils;
 src/api.rs     use crate::core; use crate::utils;
 src/utils.rs   (no imports)
-src/main.rs    (no imports of the crate's own modules)
+src/main.rs    fn main() {}
 ```
 
-`pmat` resolves this to **5 nodes and 3 edges** — the three `pub mod` declarations
-in `lib.rs`. Note what that implies: `use crate::…` statements inside `core.rs`
-and `api.rs` did *not* become edges. The graph is built from module declarations,
-not from every use-path, so `in_degree` counts "who declares me" rather than "who
-calls me". Keep that in mind before reading architectural meaning into a score.
+`pmat` resolves this to **9 nodes and 3 edges**. The three edges are the
+`use crate::…` statements between files: `api → core`, `api → utils` and
+`core → utils`. The `pub mod` declarations in `lib.rs` produce no edges. Six of
+the nine nodes have no edges at all: the two crate roots (`src_lib`, `src_main`)
+and four module-path nodes (`src_lib::api`, `src_lib::core`, `src_lib::utils`,
+`src_main::main`). The graph therefore has seven connected components: the
+`api`/`core`/`utils` triangle and six isolated nodes.
+
+So `in_degree` counts "who uses me" here: `src_utils` has in-degree 2 because
+both `api` and `core` import it. Keep the edge count in mind before reading
+architectural meaning into a score. Three edges over nine nodes is a thin graph.
 
 ## Core Concepts
 
@@ -103,7 +109,7 @@ pmat context --output deep_analysis.md
 ## Project Structure
 
 - **Total Files**: 5
-- **Total Functions**: 8
+- **Total Functions**: 1
 - **Median Cyclomatic**: 1.00
 - **Median Cognitive**: 0.00
 
@@ -138,16 +144,16 @@ pmat analyze graph-metrics
 
 ```
 📊 Analyzing graph metrics...
-✅ Built graph with 5 nodes and 3 edges
+✅ Built graph with 9 nodes and 3 edges
 Graph Metrics Analysis
 
 Graph Statistics
-  Total nodes: 5
+  Total nodes: 9
   Total edges: 3
-  Density: 0.300
-  Average degree: 1.20
-  Max degree: 3
-  Connected components: 2
+  Density: 0.083
+  Average degree: 0.67
+  Max degree: 2
+  Connected components: 7
 ```
 
 `--format summary` is the default. It stops at the aggregate. To see per-node
@@ -161,43 +167,62 @@ pmat analyze graph-metrics --metrics page-rank --format detailed
 
 ```
 📊 Analyzing graph metrics...
-✅ Built graph with 5 nodes and 3 edges
+✅ Built graph with 9 nodes and 3 edges
 Graph Metrics Analysis
 
 Graph Statistics
-  Total nodes: 5
+  Total nodes: 9
   Total edges: 3
-  Density: 0.300
-  Average degree: 1.20
-  Max degree: 3
-  Connected components: 2
+  Density: 0.083
+  Average degree: 0.67
+  Max degree: 2
+  Connected components: 7
 
 Top Nodes by Centrality
 
-  1. lib.rs
-     Degree: 0.750 (in: 0, out: 3)
+  1. src_utils
+     Degree: 0.250 (in: 2, out: 0)
      Betweenness: n/a
      Closeness: n/a
-     PageRank: 0.171
+     PageRank: 0.238
      Clustering: n/a
      Component: n/a
 
-  2. api.rs
-     Degree: 0.250 (in: 1, out: 0)
+  2. src_core
+     Degree: 0.250 (in: 1, out: 1)
      Betweenness: n/a
      Closeness: n/a
-     PageRank: 0.219
+     PageRank: 0.129
      Clustering: n/a
      Component: n/a
+
+  3. src_api
+     Degree: 0.250 (in: 0, out: 2)
+     Betweenness: n/a
+     Closeness: n/a
+     PageRank: 0.090
+     Clustering: n/a
+     Component: n/a
+
+Ranked by PageRank
+
+  1. src_utils 0.238
+  2. src_core 0.129
+  3. src_api 0.090
+
+Ranked by Betweenness
+  not computed — add it to --metrics (or use --metrics all)
+...
 ```
 
 The `n/a` entries are the point of Example 1's note: only `page-rank` was
-requested, so only PageRank and the always-present degree are filled in.
+requested, so only PageRank and the always-present degree are filled in. The
+`not computed` lines in the ranking section say the same thing.
 
-Notice that `lib.rs` has the *lowest* PageRank despite the highest degree.
-PageRank flows along incoming edges, and `lib.rs` has none — it declares three
-modules and nothing declares it. This is the correct answer for a dependency
-graph and the opposite of what the old chapter's invented table showed.
+Notice that `src_utils` has the *highest* PageRank: two files import it and it
+imports nothing. PageRank flows along incoming edges. `src_api` has the lowest,
+0.090, because it has two outgoing edges and none incoming. The six zero-degree
+nodes are absent from the table, which is why three rows appear for nine nodes.
 
 ### Example 4: Every metric at once
 
@@ -207,37 +232,47 @@ pmat analyze graph-metrics --metrics all --format detailed
 
 ```
 📊 Analyzing graph metrics...
-✅ Built graph with 5 nodes and 3 edges
+✅ Built graph with 9 nodes and 3 edges
 Graph Metrics Analysis
 
 Graph Statistics
-  Total nodes: 5
+  Total nodes: 9
   Total edges: 3
-  Density: 0.300
-  Average degree: 1.20
-  Max degree: 3
-  Connected components: 2
+  Density: 0.083
+  Average degree: 0.67
+  Max degree: 2
+  Connected components: 7
 
 Top Nodes by Centrality
 
-  1. lib.rs
-     Degree: 0.750 (in: 0, out: 3)
+  1. src_api
+     Degree: 0.250 (in: 0, out: 2)
      Betweenness: 0.000
-     Closeness: 0.750
-     PageRank: 0.171
-     Clustering: 0.000
+     Closeness: 0.250
+     PageRank: 0.090
+     Clustering: 1.000
      Component: 0
 
-  2. api.rs
-     Degree: 0.250 (in: 1, out: 0)
+  2. src_core
+     Degree: 0.250 (in: 1, out: 1)
+     Betweenness: 0.000
+     Closeness: 0.125
+     PageRank: 0.129
+     Clustering: 1.000
+     Component: 0
+
+  3. src_utils
+     Degree: 0.250 (in: 2, out: 0)
      Betweenness: 0.000
      Closeness: 0.000
-     PageRank: 0.219
-     Clustering: 0.000
+     PageRank: 0.238
+     Clustering: 1.000
      Component: 0
 ```
 
-Same graph, but every field now holds a number rather than `n/a`.
+Same graph, but every field now holds a number rather than `n/a`. The triangle
+nodes have clustering 1.000 because each of their neighbours is connected to the
+others; the six isolated nodes do not appear in the table at all.
 
 ### Example 5: Machine-readable output
 
@@ -251,28 +286,45 @@ pmat analyze graph-metrics --metrics page-rank --format json
 {
   "nodes": [
     {
-      "name": "lib.rs",
-      "degree_centrality": 0.75,
-      "betweenness_centrality": null,
-      "closeness_centrality": null,
-      "pagerank": 0.17096444130663302,
-      "clustering_coefficient": null,
-      "component_id": null,
-      "in_degree": 0,
-      "out_degree": 3
-    },
-    {
-      "name": "api.rs",
+      "name": "src_utils",
       "degree_centrality": 0.25,
       "betweenness_centrality": null,
       "closeness_centrality": null,
-      "pagerank": 0.21935703912891136,
+      "pagerank": 0.23838427543505797,
+      "clustering_coefficient": null,
+      "component_id": null,
+      "in_degree": 2,
+      "out_degree": 0
+    },
+    {
+      "name": "src_core",
+      "degree_centrality": 0.25,
+      "betweenness_centrality": null,
+      "closeness_centrality": null,
+      "pagerank": 0.12882207853904343,
       "clustering_coefficient": null,
       "component_id": null,
       "in_degree": 1,
-      "out_degree": 0
+      "out_degree": 1
+    },
+    {
+      "name": "src_api",
+      "degree_centrality": 0.25,
+      "betweenness_centrality": null,
+      "closeness_centrality": null,
+      "pagerank": 0.09039909228941408,
+      "clustering_coefficient": null,
+      "component_id": null,
+      "in_degree": 0,
+      "out_degree": 2
     }
-  ]
+  ],
+  "total_nodes": 9,
+  "total_edges": 3,
+  "density": 0.08333333333333333,
+  "average_degree": 0.6666666666666666,
+  "max_degree": 2,
+  "connected_components": 7
 }
 ```
 
@@ -284,12 +336,11 @@ pmat analyze graph-metrics --format csv
 
 ```
 📊 Analyzing graph metrics...
-✅ Built graph with 5 nodes and 3 edges
+✅ Built graph with 9 nodes and 3 edges
 name,degree_centrality,betweenness,closeness,pagerank,clustering,component_id,in_degree,out_degree
-lib.rs,0.750,0.000,0.750,0.171,0.000,0,0,3
-api.rs,0.250,0.000,0.000,0.219,0.000,0,1,0
-core.rs,0.250,0.000,0.000,0.219,0.000,0,1,0
-utils.rs,0.250,0.000,0.000,0.219,0.000,0,1,0
+src_api,0.250,0.000,0.250,0.090,1.000,0,0,2
+src_core,0.250,0.000,0.125,0.129,1.000,0,1,1
+src_utils,0.250,0.000,0.000,0.238,1.000,0,2,0
 ```
 
 Markdown, for a report:
@@ -305,31 +356,30 @@ pmat analyze graph-metrics --format markdown
 
 | Metric | Value |
 |--------|-------|
-| Total Nodes | 5 |
+| Total Nodes | 9 |
 | Total Edges | 3 |
-| Density | 0.300 |
-| Average Degree | 1.20 |
-| Max Degree | 3 |
-| Connected Components | 2 |
+| Density | 0.083 |
+| Average Degree | 0.67 |
+| Max Degree | 2 |
+| Connected Components | 7 |
 
 ## Top Nodes
 
 | Node | Degree | Betweenness | Closeness | PageRank | Clustering | Component |
 |------|--------|-------------|-----------|----------|------------|-----------|
-| lib.rs | 0.750 | 0.000 | 0.750 | 0.171 | 0.000 | 0 |
-| api.rs | 0.250 | 0.000 | 0.000 | 0.219 | 0.000 | 0 |
-| core.rs | 0.250 | 0.000 | 0.000 | 0.219 | 0.000 | 0 |
-| utils.rs | 0.250 | 0.000 | 0.000 | 0.219 | 0.000 | 0 |
+| src_api | 0.250 | 0.000 | 0.250 | 0.090 | 1.000 | 0 |
+| src_core | 0.250 | 0.000 | 0.125 | 0.129 | 1.000 | 0 |
+| src_utils | 0.250 | 0.000 | 0.000 | 0.238 | 1.000 | 0 |
 ```
 
 The CSV and Markdown writers emit every column regardless of `--metrics`; an
 unrequested metric is written as an empty field (CSV) or the default (Markdown).
 Only the text and JSON formats distinguish "not computed" honestly.
 
-Note also that all four output formats list **4 nodes for a 5-node graph**.
-`main.rs` has degree 0 and is dropped from the per-node table while still
-counting in `Total nodes`. Reconcile those two numbers before you build a
-dashboard on them.
+Note also that the per-node outputs list **3 nodes for a 9-node graph** in every
+format. The six zero-degree nodes count in `Total nodes` but are dropped from
+the per-node table. Reconcile those two numbers before you build a dashboard on
+them.
 
 ### Example 6: GraphML export for Gephi / Cytoscape
 
@@ -339,7 +389,7 @@ pmat analyze graph-metrics --export-graphml -o graph_export.graphml
 
 ```
 📊 Analyzing graph metrics...
-✅ Built graph with 5 nodes and 3 edges
+✅ Built graph with 9 nodes and 3 edges
 ✅ Results written to: graph_export.graphml
 ```
 
@@ -350,14 +400,18 @@ And the file, in full — this is the entire export, not an excerpt:
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns">
   <key id="d0" for="node" attr.name="label" attr.type="string"/>
   <graph id="G" edgedefault="directed">
-    <node id="n0"><data key="d0">utils.rs</data></node>
-    <node id="n1"><data key="d0">main.rs</data></node>
-    <node id="n2"><data key="d0">lib.rs</data></node>
-    <node id="n3"><data key="d0">core.rs</data></node>
-    <node id="n4"><data key="d0">api.rs</data></node>
-    <edge source="n2" target="n3" />
-    <edge source="n2" target="n4" />
-    <edge source="n2" target="n0" />
+    <node id="n0"><data key="d0">src_api</data></node>
+    <node id="n1"><data key="d0">src_core</data></node>
+    <node id="n2"><data key="d0">src_lib</data></node>
+    <node id="n3"><data key="d0">src_lib::api</data></node>
+    <node id="n4"><data key="d0">src_lib::core</data></node>
+    <node id="n5"><data key="d0">src_lib::utils</data></node>
+    <node id="n6"><data key="d0">src_main</data></node>
+    <node id="n7"><data key="d0">src_main::main</data></node>
+    <node id="n8"><data key="d0">src_utils</data></node>
+    <edge source="n0" target="n1" />
+    <edge source="n0" target="n8" />
+    <edge source="n1" target="n8" />
   </graph>
 </graphml>
 ```
@@ -365,7 +419,8 @@ And the file, in full — this is the entire export, not an excerpt:
 One data key: `label`. The scores are **not** exported. If you want PageRank in
 Gephi you have to join it in yourself from the CSV in Example 5. The old
 edition showed a GraphML file with `pagerank`, `community` and `complexity`
-keys; no version of `pmat` has written one.
+keys; no version of `pmat` has written one. The file does carry all nine nodes
+and the three edges, including the six isolated ones.
 
 Note `-o` takes the full filename including extension. Passing `-o graph_export`
 writes a file literally named `graph_export`.
@@ -378,22 +433,25 @@ numbers:
 
 ```bash
 pmat analyze graph-metrics --metrics page-rank --format csv
-pmat analyze graph-metrics --metrics page-rank --pagerank-seeds "lib.rs" --format csv
+pmat analyze graph-metrics --metrics page-rank --pagerank-seeds "src_api" --format csv
 pmat analyze graph-metrics --metrics page-rank --damping-factor 0.5 --format csv
 ```
 
-The `pagerank` column across those three runs:
+The `pagerank` column across those three runs (node names are the `src_*`
+names pmat prints, not file names):
 
-| Node | default | seeded on `lib.rs` | damping 0.5 |
-|------|---------|--------------------|-------------|
-| lib.rs | 0.171 | 0.172 | 0.182 |
-| api.rs | 0.219 | 0.221 | 0.212 |
-| core.rs | 0.219 | 0.221 | 0.212 |
-| utils.rs | 0.219 | 0.221 | 0.212 |
+| Node | default | seeded on `src_api` | damping 0.5 |
+|------|---------|---------------------|-------------|
+| src_utils | 0.238 | 0.240 | 0.185 |
+| src_core | 0.129 | 0.129 | 0.123 |
+| src_api | 0.090 | 0.091 | 0.099 |
 
-Seeding moves the scores by about 0.6% on a graph this small — a real effect,
-but a much weaker one than the old chapter's fabricated table implied. Lowering
-the damping factor flattens the distribution, as theory says it should.
+Seeding on a node name moves the scores in the third decimal place. Seeding on
+`lib.rs` is a no-op, because no node has that name, and its output is identical
+to the default run. Seeding on `src_lib` or `src_utils` gave the same numbers as
+`src_api`. Lowering the damping factor flattens the distribution, as theory says
+it should: the top score falls from 0.238 to 0.185 and the bottom one rises from
+0.090 to 0.099.
 
 `--max-iterations` (default 100) and `--convergence-threshold` (default 0.001)
 also parse and run. On this graph PageRank has already converged, so raising the
@@ -405,10 +463,13 @@ pmat analyze graph-metrics --metrics page-rank --max-iterations 200 \
 ```
 
 ```
-lib.rs,0.750,,,0.171,,,0,3
-api.rs,0.250,,,0.219,,,1,0
-core.rs,0.250,,,0.219,,,1,0
+name,degree_centrality,betweenness,closeness,pagerank,clustering,component_id,in_degree,out_degree
+src_utils,0.250,,,0.238,,,2,0
+src_core,0.250,,,0.129,,,1,1
+src_api,0.250,,,0.090,,,0,2
 ```
+
+The scores match the default run exactly.
 
 ### Example 8: Scoping the graph
 
@@ -433,10 +494,11 @@ pmat analyze graph-metrics --include src --exclude main
 ```
 
 ```
-✅ Built graph with 4 nodes and 3 edges
+✅ Built graph with 7 nodes and 3 edges
 ```
 
-Four nodes: `main.rs` was excluded because its path contains `main`. Credit to
+Seven nodes, down from nine: `src_main` and `src_main::main` were excluded
+because their paths contain `main`. The three edges are untouched. Credit to
 the command for failing loudly rather than reporting a confident zero — the
 error text says in so many words that this is not a clean result.
 
@@ -448,8 +510,14 @@ pmat analyze graph-metrics --top-k 2 --format csv
 pmat analyze graph-metrics --min-centrality 0.5 --format csv
 ```
 
-The first prints two rows; the second prints one, since only `lib.rs` clears a
-degree centrality of 0.5.
+```
+name,degree_centrality,betweenness,closeness,pagerank,clustering,component_id,in_degree,out_degree
+src_api,0.250,0.000,0.250,0.090,1.000,0,0,2
+src_core,0.250,0.000,0.125,0.129,1.000,0,1,1
+```
+
+The first prints two rows. The second prints only the header: no node reaches a
+degree centrality of 0.5, since the largest here is 0.250.
 
 `--perf` appends a timing line:
 
@@ -458,7 +526,7 @@ pmat analyze graph-metrics --metrics page-rank --perf
 ```
 
 ```
-⏱️  perf: analyze graph-metrics completed in 2.3 ms
+⏱️  perf: analyze graph-metrics completed in 1.4 ms
 ```
 
 ### Example 9: Louvain community detection — `pmat split`
@@ -472,26 +540,19 @@ pmat split src/api.rs
 ```
 
 ```
-Computing annotations for 8 functions...
+Computing annotations for 1 functions...
   Git churn: 0 files with commits (max=1)
   Clones: 0 functions with duplicates
-  Diversity: 5 files analyzed
+  Diversity: 1 files analyzed
   Faults: 0 functions with patterns
-  Applied: churn=0, clones=0, diversity=8, faults=0
-⚠  src/api.rs is 4 lines (under 500-line threshold). Showing plan anyway.
-Split Plan for: src/api.rs
-Total lines: ~4
-Modularity: 0.000
-Clusters: 0
-Unclustered items: 2
-
-Unclustered:
-  Function handle (L3-L3)
-  Function health (L4-L4)
-
-Impact 1 files import this module:
-  src/lib.rs
+  Applied: churn=0, clones=0, diversity=1, faults=0
+⚠  src/api.rs is 2 lines (under 500-line threshold). Showing plan anyway.
+✗  No functions found in src/api.rs (file may not be indexed)
 ```
+
+Exit code 1. On this crate `api.rs` contains only `use` lines, so there is no
+function to cluster. Point `pmat split` at a file that defines functions to see a
+plan with clusters and unclustered items.
 
 `--resolution` is the Louvain resolution parameter (higher gives more clusters),
 `--min-cluster-lines` (default 50) discards small clusters, and `--execute`
@@ -558,21 +619,28 @@ You requested one metric. `--metrics all` (the default) fills them all in.
 
 ### The node count and the table length disagree
 
-Zero-degree files count toward `Total nodes` but are omitted from the per-node
-table. See the note under Example 5.
+Zero-degree nodes count toward `Total nodes` but are omitted from the per-node
+table. On the worked example that is 9 versus 3 rows. See the note under
+Example 5.
 
-### PageRank ranks the entry point last
+### The crate root is missing from the table
 
-That is correct. PageRank rewards incoming edges; a crate root declares modules
-and is declared by none, so it sinks. Use degree centrality, not PageRank, if
-you want "how much does this file reach".
+`src_lib` and `src_main` have no edges, so they have degree zero and are not
+listed. That is expected, not a bug in your project.
+
+### PageRank ranks a heavily imported file first, not the file that imports the most
+
+That is correct. PageRank rewards incoming edges. `src_utils`, imported by two
+files, ranks first, while `src_api`, which imports two files and is imported by
+none, ranks last. Use degree centrality, not PageRank, if you want "how much
+does this file reach".
 
 ## Best Practices
 
 1. **Ask for the metric you need.** Unrequested metrics come back `n/a`, and in
    CSV that is an empty field, which a spreadsheet will read as zero.
 2. **Use substrings, not globs**, in `--include` / `--exclude`.
-3. **Check the edge count first.** Three edges over five files says the graph is
+3. **Check the edge count first.** Three edges over nine nodes says the graph is
    thin; centrality over a thin graph is noise.
 4. **Export CSV, not GraphML**, if you want scores — GraphML carries labels only.
 5. **Reach for `pmat split`** when the question is "where should this file be
@@ -583,8 +651,8 @@ you want "how much does this file reach".
 ## Summary
 
 `pmat analyze graph-metrics` computes six standard network measures over a
-project's module-declaration graph and emits them as text, JSON, CSV, Markdown
-or GraphML. It is a measurement tool, not an advisor: it has no quality
+project's file-dependency graph (for this crate, the `use crate::…` edges between
+files) and emits them as text, JSON, CSV, Markdown or GraphML. It is a measurement tool, not an advisor: it has no quality
 assessment, no trend analysis, no hotspot detection and no incremental mode,
 and every flag that claimed otherwise in the previous edition of this chapter
 was rejected by the argument parser.
