@@ -154,11 +154,11 @@ test-ch09:
 	@echo "✅ Chapter 9 tests passed"
 
 test-ch10:
-	@echo "🧪 Testing Chapter 10: Pre-commit Hooks..."
+	@echo "🧪 Testing Chapter 10: Auto-clippy Integration..."
 	@mkdir -p test-results/ch10
-	@chmod +x tests/ch10/test_precommit.sh
-	@echo "Running Chapter 10 pre-commit hooks tests..."
-	@tests/ch10/test_precommit.sh > test-results/ch10/test_precommit.log 2>&1 || { cat test-results/ch10/test_precommit.log; exit 1; }
+	@chmod +x tests/ch10/test_auto_clippy.sh
+	@echo "Running Chapter 10 auto-clippy tests..."
+	@tests/ch10/test_auto_clippy.sh > test-results/ch10/test_auto_clippy.log 2>&1 || { cat test-results/ch10/test_auto_clippy.log; exit 1; }
 	@echo "✅ Chapter 10 tests passed"
 
 test-ch11:
@@ -218,12 +218,12 @@ test-ch17:
 	@echo "✅ Chapter 17 tests passed"
 
 test-ch18:
-	@echo "🧪 Testing Chapter 18: Quality-Driven Development (QDD)..."
+	@echo "🧪 Testing Chapter 18: API Integration..."
 	@mkdir -p test-results/ch18
-	@chmod +x tests/ch14/test_qdd.sh
-	@echo "Running Chapter 18 QDD tests..."
-	@tests/ch14/test_qdd.sh > test-results/ch18/test_qdd.log 2>&1 || { cat test-results/ch18/test_qdd.log; exit 1; }
-	@echo "✅ Chapter 18 QDD tests passed"
+	@chmod +x tests/ch18/test_api.sh
+	@echo "Running Chapter 18 API tests..."
+	@tests/ch18/test_api.sh > test-results/ch18/test_api.log 2>&1 || { cat test-results/ch18/test_api.log; exit 1; }
+	@echo "✅ Chapter 18 tests passed"
 
 test-ch25:
 	@echo "🧪 Testing Chapter 25: Sub-Agents and Claude Code Integration..."
@@ -252,21 +252,24 @@ test-ch30:
 # Removed duplicate definitions - using ch17 and ch18 above
 
 test-ch19:
-	@echo "🧪 Testing Chapter 19: Plugin Development..."
+	@echo "🧪 Testing Chapter 19: Agent Daemon Management..."
 	@mkdir -p test-results/ch19
-	@tests/ch17/test_plugins.sh > test-results/ch19/test_plugins.log 2>&1 || { cat test-results/ch19/test_plugins.log; exit 1; }
+	@chmod +x tests/ch19/test_agent_daemon.sh
+	@tests/ch19/test_agent_daemon.sh > test-results/ch19/test_agent_daemon.log 2>&1 || { cat test-results/ch19/test_agent_daemon.log; exit 1; }
 	@echo "✅ Chapter 19 tests passed"
 
 test-ch20:
-	@echo "🧪 Testing Chapter 20: API Integration..."
+	@echo "🧪 Testing Chapter 20: AI-Powered Automated Refactoring..."
 	@mkdir -p test-results/ch20
-	@tests/ch18/test_api.sh > test-results/ch20/test_api.log 2>&1 || { cat test-results/ch20/test_api.log; exit 1; }
+	@chmod +x tests/ch20/test_refactor_auto.sh
+	@tests/ch20/test_refactor_auto.sh > test-results/ch20/test_refactor_auto.log 2>&1 || { cat test-results/ch20/test_refactor_auto.log; exit 1; }
 	@echo "✅ Chapter 20 tests passed"
 
 test-ch21:
-	@echo "🧪 Testing Chapter 21: AI Integration..."
+	@echo "🧪 Testing Chapter 21: Template Generation and Scaffolding..."
 	@mkdir -p test-results/ch21
-	@tests/ch19/test_ai.sh > test-results/ch21/test_ai.log 2>&1 || { cat test-results/ch21/test_ai.log; exit 1; }
+	@chmod +x tests/ch21/test_templates.sh
+	@tests/ch21/test_templates.sh > test-results/ch21/test_templates.log 2>&1 || { cat test-results/ch21/test_templates.log; exit 1; }
 	@echo "✅ Chapter 21 tests passed"
 
 test-all-chapters: test-ch01 test-ch02 test-ch03 test-ch04 test-ch05 test-ch06 test-ch07 test-ch08 test-ch09 test-ch10 test-ch11 test-ch12 test-ch13 test-ch14 test-ch15 test-ch16 test-ch17 test-ch18 test-ch25 test-ch26 test-ch30
