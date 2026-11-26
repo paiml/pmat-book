@@ -4,11 +4,19 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 2: pmat context Command ==="
 
 # Check if pmat is available
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then

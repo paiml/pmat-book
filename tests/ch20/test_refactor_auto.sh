@@ -2,9 +2,21 @@
 # TDD Test: Chapter 20 - AI-Powered Automated Refactoring
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -133,12 +145,12 @@ if pmat refactor auto --project-path "$TEST_DIR" --dry-run --format summary 2>/d
 then
     test_pass "Auto refactor dry run completed"
 else
-    AUTO_OUTPUT=$(pmat refactor auto --project-path "$TEST_DIR" --dry-run 2>&1 || echo "refactoring")
+    AUTO_OUTPUT=$(pmat refactor auto --project-path "$TEST_DIR" --dry-run 2>&1) || AUTO_OUTPUT=""
     if echo "$AUTO_OUTPUT" | grep -q "refactor\|complexity\|quality"
     then
-        test_pass "Auto refactor system available"
+        test_skip "Auto refactor system available"
     else
-        test_pass "Refactoring capability exists"
+        test_skip "Refactoring capability exists"
     fi
 fi
 
@@ -147,12 +159,12 @@ if pmat refactor auto --file main.rs --dry-run --single-file-mode 2>/dev/null
 then
     test_pass "Single file refactoring works"
 else
-    SINGLE_OUTPUT=$(pmat refactor auto --file main.rs --dry-run 2>&1 || echo "single file")
+    SINGLE_OUTPUT=$(pmat refactor auto --file main.rs --dry-run 2>&1) || SINGLE_OUTPUT=""
     if echo "$SINGLE_OUTPUT" | grep -q "file\|refactor\|single"
     then
-        test_pass "Single file mode available"
+        test_skip "Single file mode available"
     else
-        test_pass "File-specific refactoring supported"
+        test_skip "File-specific refactoring supported"
     fi
 fi
 
@@ -178,10 +190,10 @@ then
     if [ -f refactor.checkpoint ]; then
         test_pass "Checkpoint file created"
     else
-        test_pass "Checkpoint system available"
+        test_skip "Checkpoint system available"
     fi
 else
-    test_pass "Checkpoint and resume functionality exists"
+    test_skip "Checkpoint and resume functionality exists"
 fi
 
 echo "=== Test 5: Exclusion Patterns ==="
@@ -189,8 +201,8 @@ if pmat refactor auto --exclude "tests/**" --dry-run --max-iterations 1 2>/dev/n
 then
     test_pass "File exclusion patterns work"
 else
-    EXCLUDE_OUTPUT=$(pmat refactor auto --exclude "tests/**" --dry-run 2>&1 || echo "exclude")
-    test_pass "Exclusion pattern system available"
+    EXCLUDE_OUTPUT=$(pmat refactor auto --exclude "tests/**" --dry-run 2>&1) || EXCLUDE_OUTPUT=""
+    test_skip "Exclusion pattern system available"
 fi
 
 echo "=== Test 6: Test-Driven Refactoring ==="
@@ -198,17 +210,17 @@ if pmat refactor auto --test-name "test_complex_calculation" --dry-run 2>/dev/nu
 then
     test_pass "Test-driven refactoring works"
 else
-    TEST_OUTPUT=$(pmat refactor auto --test-name "test_complex" --dry-run 2>&1 || echo "test driven")
-    test_pass "Test-focused refactoring available"
+    TEST_OUTPUT=$(pmat refactor auto --test-name "test_complex" --dry-run 2>&1) || TEST_OUTPUT=""
+    test_skip "Test-focused refactoring available"
 fi
 
 echo "=== Test 7: JSON Output Format ==="
-JSON_OUTPUT=$(pmat refactor auto --format json --dry-run --max-iterations 1 2>/dev/null || echo "{}")
+JSON_OUTPUT=$(pmat refactor auto --format json --dry-run --max-iterations 1 2>/dev/null) || JSON_OUTPUT=""
 if echo "$JSON_OUTPUT" | grep -q "{" || echo "$JSON_OUTPUT" | grep -q "json"
 then
     test_pass "JSON output format supported"
 else
-    test_pass "Structured output formats available"
+    test_skip "Structured output formats available"
 fi
 
 echo "=== Test 8: Integration with Bug Reports ==="
@@ -230,7 +242,7 @@ if pmat refactor auto --bug-report-path bug-report.md --dry-run 2>/dev/null
 then
     test_pass "Bug report integration works"
 else
-    test_pass "Bug report analysis capability exists"
+    test_skip "Bug report analysis capability exists"
 fi
 
 # Summary

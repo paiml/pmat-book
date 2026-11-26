@@ -2,9 +2,21 @@
 # TDD Test: Chapter 19 - Continuous Quality Monitoring
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -115,8 +127,8 @@ if pmat agent monitor --project-path "$TEST_DIR/project-a" --project-id "proj-a"
 then
     test_pass "Single project monitoring configured"
 else
-    MONITOR_OUTPUT=$(pmat agent monitor --project-path "$TEST_DIR/project-a" 2>&1 || echo "monitoring")
-    test_pass "Project monitoring system available"
+    MONITOR_OUTPUT=$(pmat agent monitor --project-path "$TEST_DIR/project-a" 2>&1) || MONITOR_OUTPUT=""
+    test_skip "Project monitoring system available"
 fi
 
 echo "=== Test 2: Monitor Multiple Projects ==="
@@ -126,12 +138,12 @@ for proj in project-a project-b project-c; do
 done
 
 # Check if monitoring is active
-STATUS=$(pmat agent status 2>/dev/null || echo "status check")
+STATUS=$(pmat agent status 2>/dev/null) || STATUS=""
 if echo "$STATUS" | grep -q "monitor\|project\|running"
 then
     test_pass "Multiple project monitoring active"
 else
-    test_pass "Multi-project monitoring supported"
+    test_skip "Multi-project monitoring supported"
 fi
 
 echo "=== Test 3: Quality Thresholds Configuration ==="
@@ -154,7 +166,7 @@ if pmat agent monitor --project-path "$TEST_DIR/project-b" --thresholds quality-
 then
     test_pass "Quality thresholds configured"
 else
-    test_pass "Threshold configuration system exists"
+    test_skip "Threshold configuration system exists"
 fi
 
 echo "=== Test 4: Continuous Quality Monitoring ==="
@@ -175,15 +187,15 @@ then
         if grep -q -i "monitor\|analysis\|quality" monitoring.log 2>/dev/null; then
             test_pass "Quality analysis running continuously"
         else
-            test_pass "Background monitoring operational"
+            test_skip "Background monitoring operational"
         fi
         
         kill $MONITOR_PID 2>/dev/null || true
     else
-        test_pass "Monitoring process lifecycle managed"
+        test_skip "Monitoring process lifecycle managed"
     fi
 else
-    test_pass "Continuous monitoring capability exists"
+    test_skip "Continuous monitoring capability exists"
 fi
 
 echo "=== Test 5: Project Health Dashboard ==="
@@ -193,10 +205,10 @@ then
     if [ -s status.json ]; then
         test_pass "Agent status in JSON format"
     else
-        test_pass "Status reporting available"
+        test_skip "Status reporting available"
     fi
 else
-    test_pass "Dashboard data collection supported"
+    test_skip "Dashboard data collection supported"
 fi
 
 echo "=== Test 6: Auto-restart on Failure ==="
@@ -210,10 +222,10 @@ then
         test_pass "Agent runs with memory limits"
         kill $RESTART_PID 2>/dev/null || true
     else
-        test_pass "Memory monitoring configured"
+        test_skip "Memory monitoring configured"
     fi
 else
-    test_pass "Auto-restart configuration available"
+    test_skip "Auto-restart configuration available"
 fi
 
 echo "=== Test 7: Agent Reload Configuration ==="
@@ -222,12 +234,12 @@ if pmat agent reload 2>/dev/null
 then
     test_pass "Agent configuration reloaded"
 else
-    RELOAD_OUTPUT=$(pmat agent reload 2>&1 || echo "reload")
+    RELOAD_OUTPUT=$(pmat agent reload 2>&1) || RELOAD_OUTPUT=""
     if echo "$RELOAD_OUTPUT" | grep -q "reload\|config\|not running"
     then
-        test_pass "Configuration reload capability exists"
+        test_skip "Configuration reload capability exists"
     else
-        test_pass "Dynamic configuration management available"
+        test_skip "Dynamic configuration management available"
     fi
 fi
 
@@ -242,12 +254,12 @@ for proj in project-a project-b project-c; do
 done
 
 # Verify unmonitoring
-UNMONITOR_OUTPUT=$(pmat agent unmonitor --project-path "$TEST_DIR/project-a" 2>&1 || echo "unmonitored")
+UNMONITOR_OUTPUT=$(pmat agent unmonitor --project-path "$TEST_DIR/project-a" 2>&1) || UNMONITOR_OUTPUT=""
 if echo "$UNMONITOR_OUTPUT" | grep -q "unmonitor\|removed\|not found"
 then
     test_pass "Project unmonitoring system works"
 else
-    test_pass "Monitoring lifecycle management exists"
+    test_skip "Monitoring lifecycle management exists"
 fi
 
 # Summary

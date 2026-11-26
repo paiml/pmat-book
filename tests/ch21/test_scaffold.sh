@@ -2,9 +2,21 @@
 # TDD Test: Chapter 21 - Project and Agent Scaffolding
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -35,15 +47,15 @@ then
     if [ -f Cargo.toml ] || [ -f src/main.rs ] || [ -f README.md ]; then
         test_pass "Project scaffolding created structure"
     else
-        test_pass "Project scaffolding completed"
+        test_skip "Project scaffolding completed"
     fi
 else
-    PROJECT_OUTPUT=$(pmat scaffold project 2>&1 || echo "project")
+    PROJECT_OUTPUT=$(pmat scaffold project 2>&1) || PROJECT_OUTPUT=""
     if echo "$PROJECT_OUTPUT" | grep -q "scaffold\|project\|template"
     then
-        test_pass "Project scaffolding available"
+        test_skip "Project scaffolding available"
     else
-        test_pass "Scaffolding system exists"
+        test_skip "Scaffolding system exists"
     fi
 fi
 
@@ -53,25 +65,25 @@ then
     if [ -d agent-dir ]; then
         test_pass "Agent scaffolding created directory"
     else
-        test_pass "Agent scaffolding completed"
+        test_skip "Agent scaffolding completed"
     fi
 else
-    AGENT_OUTPUT=$(pmat scaffold agent 2>&1 || echo "agent")
+    AGENT_OUTPUT=$(pmat scaffold agent 2>&1) || AGENT_OUTPUT=""
     if echo "$AGENT_OUTPUT" | grep -q "agent\|mcp\|scaffold"
     then
-        test_pass "Agent scaffolding available"
+        test_skip "Agent scaffolding available"
     else
-        test_pass "Agent template system exists"
+        test_skip "Agent template system exists"
     fi
 fi
 
 echo "=== Test 3: List Agent Templates ==="
-AGENT_TEMPLATES=$(pmat scaffold list-templates 2>/dev/null || echo "")
+AGENT_TEMPLATES=$(pmat scaffold list-templates 2>/dev/null) || AGENT_TEMPLATES=""
 if echo "$AGENT_TEMPLATES" | grep -q "template\|agent\|deterministic\|tool"
 then
     test_pass "Agent template listing works"
 else
-    test_pass "Agent template listing available"
+    test_skip "Agent template listing available"
 fi
 
 echo "=== Test 4: Validate Agent Template ==="
@@ -93,12 +105,12 @@ if pmat scaffold validate-template test-agent.yaml 2>/dev/null
 then
     test_pass "Agent template validation works"
 else
-    VALIDATE_OUTPUT=$(pmat scaffold validate-template test-agent.yaml 2>&1 || echo "validate")
+    VALIDATE_OUTPUT=$(pmat scaffold validate-template test-agent.yaml 2>&1) || VALIDATE_OUTPUT=""
     if echo "$VALIDATE_OUTPUT" | grep -q "valid\|template\|agent"
     then
-        test_pass "Template validation available"
+        test_skip "Template validation available"
     else
-        test_pass "Validation system exists"
+        test_skip "Validation system exists"
     fi
 fi
 
@@ -124,10 +136,10 @@ then
     if [ -d custom-project ]; then
         test_pass "Custom configuration scaffolding works"
     else
-        test_pass "Configuration-based scaffolding completed"
+        test_skip "Configuration-based scaffolding completed"
     fi
 else
-    test_pass "Configuration support available"
+    test_skip "Configuration support available"
 fi
 
 echo "=== Test 6: Interactive Scaffolding ==="
@@ -137,7 +149,7 @@ echo -e "test-interactive\n0.1.0\nTest Description" | pmat scaffold project rust
 if [ -d interactive-project ]; then
     test_pass "Interactive scaffolding works"
 else
-    test_pass "Interactive mode available"
+    test_skip "Interactive mode available"
 fi
 
 echo "=== Test 7: Scaffold with Git Initialization ==="
@@ -146,10 +158,10 @@ then
     if [ -d git-project/.git ]; then
         test_pass "Git initialization with scaffolding works"
     else
-        test_pass "Project created (git optional)"
+        test_skip "Project created (git optional)"
     fi
 else
-    test_pass "Git integration available"
+    test_skip "Git integration available"
 fi
 
 echo "=== Test 8: Multi-Language Project Scaffolding ==="
@@ -158,15 +170,15 @@ then
     if [ -d multi-lang ]; then
         test_pass "Multi-language scaffolding works"
     else
-        test_pass "Multi-language project created"
+        test_skip "Multi-language project created"
     fi
 else
     # Try individual language scaffolding
     if pmat scaffold project python-api --name py-api --path py-project 2>/dev/null
     then
-        test_pass "Python project scaffolding available"
+        test_skip "Python project scaffolding available"
     else
-        test_pass "Language-specific scaffolding exists"
+        test_skip "Language-specific scaffolding exists"
     fi
 fi
 

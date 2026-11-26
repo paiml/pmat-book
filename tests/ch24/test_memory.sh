@@ -2,9 +2,21 @@
 # TDD Test: Chapter 24 - Memory Management
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -61,18 +73,18 @@ lto = true
 EOF
 
 echo "=== Test 1: Memory Statistics ==="
-STATS_OUTPUT=$(pmat memory stats 2>/dev/null || echo "")
+STATS_OUTPUT=$(pmat memory stats 2>/dev/null) || STATS_OUTPUT=""
 if echo "$STATS_OUTPUT" | grep -q "memory\|heap\|usage\|MB\|allocated"
 then
     test_pass "Memory statistics displayed"
 else
     # Try verbose mode
-    STATS_VERBOSE=$(pmat memory stats --verbose 2>&1 || echo "stats")
+    STATS_VERBOSE=$(pmat memory stats --verbose 2>&1) || STATS_VERBOSE=""
     if echo "$STATS_VERBOSE" | grep -q "memory\|stats\|usage"
     then
-        test_pass "Memory stats available"
+        test_skip "Memory stats available"
     else
-        test_pass "Memory monitoring exists"
+        test_skip "Memory monitoring exists"
     fi
 fi
 
@@ -81,12 +93,12 @@ if pmat memory cleanup 2>/dev/null
 then
     test_pass "Memory cleanup executed"
 else
-    CLEANUP_OUTPUT=$(pmat memory cleanup 2>&1 || echo "cleanup")
+    CLEANUP_OUTPUT=$(pmat memory cleanup 2>&1) || CLEANUP_OUTPUT=""
     if echo "$CLEANUP_OUTPUT" | grep -q "cleanup\|freed\|memory"
     then
-        test_pass "Memory cleanup available"
+        test_skip "Memory cleanup available"
     else
-        test_pass "Cleanup functionality exists"
+        test_skip "Cleanup functionality exists"
     fi
 fi
 
@@ -95,40 +107,40 @@ if pmat memory configure --max-heap 500 2>/dev/null
 then
     test_pass "Memory limits configured"
 else
-    CONFIG_OUTPUT=$(pmat memory configure 2>&1 || echo "configure")
+    CONFIG_OUTPUT=$(pmat memory configure 2>&1) || CONFIG_OUTPUT=""
     if echo "$CONFIG_OUTPUT" | grep -q "config\|limit\|memory"
     then
-        test_pass "Memory configuration available"
+        test_skip "Memory configuration available"
     else
-        test_pass "Configuration system exists"
+        test_skip "Configuration system exists"
     fi
 fi
 
 echo "=== Test 4: Memory Pools ==="
-POOLS_OUTPUT=$(pmat memory pools 2>/dev/null || echo "")
+POOLS_OUTPUT=$(pmat memory pools 2>/dev/null) || POOLS_OUTPUT=""
 if echo "$POOLS_OUTPUT" | grep -q "pool\|buffer\|allocat"
 then
     test_pass "Memory pool statistics shown"
 else
-    test_pass "Pool management available"
+    test_skip "Pool management available"
 fi
 
 echo "=== Test 5: Memory Pressure ==="
-PRESSURE_OUTPUT=$(pmat memory pressure 2>/dev/null || echo "")
+PRESSURE_OUTPUT=$(pmat memory pressure 2>/dev/null) || PRESSURE_OUTPUT=""
 if echo "$PRESSURE_OUTPUT" | grep -q "pressure\|low\|medium\|high\|memory"
 then
     test_pass "Memory pressure detected"
 else
-    test_pass "Pressure monitoring available"
+    test_skip "Pressure monitoring available"
 fi
 
 echo "=== Test 6: Memory with Verbose ==="
-VERBOSE_MEM=$(pmat memory stats --verbose 2>&1 || echo "")
+VERBOSE_MEM=$(pmat memory stats --verbose 2>&1) || VERBOSE_MEM=""
 if echo "$VERBOSE_MEM" | grep -q "heap\|stack\|resident\|virtual"
 then
     test_pass "Detailed memory stats work"
 else
-    test_pass "Verbose memory info available"
+    test_skip "Verbose memory info available"
 fi
 
 echo "=== Test 7: Force Garbage Collection ==="
@@ -136,8 +148,8 @@ if pmat memory cleanup --force-gc 2>/dev/null
 then
     test_pass "Garbage collection forced"
 else
-    GC_OUTPUT=$(pmat memory cleanup --gc 2>&1 || echo "gc")
-    test_pass "GC triggering available"
+    GC_OUTPUT=$(pmat memory cleanup --gc 2>&1) || GC_OUTPUT=""
+    test_skip "GC triggering available"
 fi
 
 echo "=== Test 8: Memory Limits Check ==="
@@ -145,8 +157,8 @@ if pmat memory configure --check-limits 2>/dev/null
 then
     test_pass "Memory limits verified"
 else
-    LIMITS_OUTPUT=$(pmat memory stats 2>&1 | grep -i "limit\|max" || echo "limits")
-    test_pass "Memory limit checking available"
+    LIMITS_OUTPUT=$(pmat memory stats 2>&1 | grep -i "limit\|max") || LIMITS_OUTPUT=""
+    test_skip "Memory limit checking available"
 fi
 
 # Summary

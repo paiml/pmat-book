@@ -3,8 +3,20 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -64,7 +76,7 @@ fi
 if grep -qE "^#+ .*(Performance Profiling|Formal Verification)" src/ch17-00-wasm-analysis.md; then
     test_fail "A 'Performance Profiling' or 'Formal Verification' heading is back; pmat has neither"
 else
-    test_pass "No profiling or formal-verification section"
+    test_skip "No profiling or formal-verification section"
 fi
 
 echo ""

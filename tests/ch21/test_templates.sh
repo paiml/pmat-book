@@ -2,9 +2,21 @@
 # TDD Test: Chapter 21 - Template Generation and Scaffolding
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -29,18 +41,18 @@ trap cleanup EXIT
 cd "$TEST_DIR"
 
 echo "=== Test 1: List Available Templates ==="
-TEMPLATES=$(pmat list 2>/dev/null || echo "")
+TEMPLATES=$(pmat list 2>/dev/null) || TEMPLATES=""
 if echo "$TEMPLATES" | grep -q "template\|project\|agent\|rust\|python"
 then
     test_pass "Template listing works"
 else
     # Try with format flag
-    TEMPLATES=$(pmat list --format json 2>/dev/null || echo "{}")
+    TEMPLATES=$(pmat list --format json 2>/dev/null) || TEMPLATES=""
     if echo "$TEMPLATES" | grep -q "{" || echo "$TEMPLATES" | grep -q "template"
     then
-        test_pass "Template listing available"
+        test_skip "Template listing available"
     else
-        test_pass "Template system exists"
+        test_skip "Template system exists"
     fi
 fi
 
@@ -49,12 +61,12 @@ if pmat search "rust" 2>/dev/null | grep -q "rust\|cli\|web\|api"
 then
     test_pass "Template search works for 'rust'"
 else
-    SEARCH_OUTPUT=$(pmat search "web" 2>/dev/null || echo "search")
+    SEARCH_OUTPUT=$(pmat search "web" 2>/dev/null) || SEARCH_OUTPUT=""
     if echo "$SEARCH_OUTPUT" | grep -q "web\|api\|server\|search"
     then
-        test_pass "Template search functionality available"
+        test_skip "Template search functionality available"
     else
-        test_pass "Search capability exists"
+        test_skip "Search capability exists"
     fi
 fi
 
@@ -65,15 +77,15 @@ then
     if [ -f main.rs ]; then
         test_pass "Single template generated successfully"
     else
-        test_pass "Template generation completed"
+        test_skip "Template generation completed"
     fi
 else
     # Try alternative syntax
     if pmat gen rust cli -p name=test-cli -o main.rs 2>/dev/null
     then
-        test_pass "Template generation with short flags works"
+        test_skip "Template generation with short flags works"
     else
-        test_pass "Template generation system available"
+        test_skip "Template generation system available"
     fi
 fi
 
@@ -82,12 +94,12 @@ if pmat validate rust cli --param name=test-project 2>/dev/null
 then
     test_pass "Template parameter validation works"
 else
-    VALIDATE_OUTPUT=$(pmat validate rust cli 2>&1 || echo "validation")
+    VALIDATE_OUTPUT=$(pmat validate rust cli 2>&1) || VALIDATE_OUTPUT=""
     if echo "$VALIDATE_OUTPUT" | grep -q "valid\|param\|require"
     then
-        test_pass "Parameter validation available"
+        test_skip "Parameter validation available"
     else
-        test_pass "Validation system exists"
+        test_skip "Validation system exists"
     fi
 fi
 
@@ -99,9 +111,9 @@ else
     # Try toolchain filter
     if pmat list --toolchain rust 2>/dev/null
     then
-        test_pass "Toolchain filtering available"
+        test_skip "Toolchain filtering available"
     else
-        test_pass "Template filtering capability exists"
+        test_skip "Template filtering capability exists"
     fi
 fi
 
@@ -111,19 +123,19 @@ then
     if [ -f deep/nested/app.rs ]; then
         test_pass "Directory creation with template works"
     else
-        test_pass "Directory structure created"
+        test_skip "Directory structure created"
     fi
 else
-    test_pass "Directory creation option available"
+    test_skip "Directory creation option available"
 fi
 
 echo "=== Test 7: JSON Format Output ==="
-JSON_TEMPLATES=$(pmat list --format json 2>/dev/null || echo "[]")
+JSON_TEMPLATES=$(pmat list --format json 2>/dev/null) || JSON_TEMPLATES=""
 if echo "$JSON_TEMPLATES" | grep -q '\[' || echo "$JSON_TEMPLATES" | grep -q '{'
 then
     test_pass "JSON format output works"
 else
-    test_pass "Structured output formats available"
+    test_skip "Structured output formats available"
 fi
 
 echo "=== Test 8: Template Search with Limit ==="
@@ -131,8 +143,8 @@ if pmat search "project" --limit 5 2>/dev/null
 then
     test_pass "Search with result limit works"
 else
-    LIMIT_OUTPUT=$(pmat search "test" --limit 3 2>&1 || echo "limited")
-    test_pass "Search limiting capability available"
+    LIMIT_OUTPUT=$(pmat search "test" --limit 3 2>&1) || LIMIT_OUTPUT=""
+    test_skip "Search limiting capability available"
 fi
 
 # Summary

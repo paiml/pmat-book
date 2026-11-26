@@ -4,6 +4,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 7: pmat quality-gate Command ==="
 
 # Check if pmat is available.
@@ -22,7 +30,7 @@ echo "=== Testing Chapter 7: pmat quality-gate Command ==="
 # deliberately BROKEN pmat, because it was never calling pmat either way.
 MOCK_MODE=false
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
@@ -189,7 +197,7 @@ if [ "$MOCK_MODE" = false ]; then
     else
         # Quality gate might fail - this is expected with our test code
         if grep -q "Quality.*Gate\|checks\|violations" quality_output.txt; then
-            test_pass "Quality gate ran and detected issues (expected)"
+            test_skip "Quality gate ran and detected issues (expected)"
         else
             test_fail "Quality gate failed unexpectedly"
         fi
@@ -366,7 +374,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1; then
         test_fail "Quality gate should have failed with strict thresholds"
     else
-        test_pass "Quality gate correctly failed with strict enforcement"
+        test_skip "Quality gate correctly failed with strict enforcement"
     fi
 else
     cat > strict.txt << 'EOF'
@@ -398,7 +406,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2>&1; then
         test_pass "Single file analysis completed"
     else
-        test_pass "Single file analysis completed with expected issues"
+        test_skip "Single file analysis completed with expected issues"
     fi
 else
     cat > single_file.json << 'EOF'

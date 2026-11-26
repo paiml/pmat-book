@@ -2,9 +2,21 @@
 # TDD Test: Chapter 19 - Agent Daemon Management
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -72,12 +84,12 @@ edition = "2021"
 EOF
 
 echo "=== Test 1: Agent Status Check ==="
-STATUS=$(pmat agent status 2>/dev/null || echo "not running")
+STATUS=$(pmat agent status 2>/dev/null) || STATUS=""
 if echo "$STATUS" | grep -q "running\|stopped\|not running"
 then
     test_pass "Agent status command responds"
 else
-    test_pass "Agent status available"
+    test_skip "Agent status available"
 fi
 
 echo "=== Test 2: Start Agent Daemon ==="
@@ -94,19 +106,19 @@ then
         kill $AGENT_PID 2>/dev/null || true
         wait $AGENT_PID 2>/dev/null || true
     else
-        test_pass "Agent process lifecycle managed"
+        test_skip "Agent process lifecycle managed"
     fi
 else
-    test_pass "Agent start command available"
+    test_skip "Agent start command available"
 fi
 
 echo "=== Test 3: Agent Health Check ==="
-HEALTH=$(pmat agent health 2>/dev/null || echo "health check")
+HEALTH=$(pmat agent health 2>/dev/null) || HEALTH=""
 if echo "$HEALTH" | grep -q "healthy\|running\|check"
 then
     test_pass "Agent health check responds"
 else
-    test_pass "Health monitoring available"
+    test_skip "Health monitoring available"
 fi
 
 echo "=== Test 4: Project Monitoring ==="
@@ -114,12 +126,12 @@ if pmat agent monitor --project-path "$TEST_DIR" --project-id "test-project" 2>/
 then
     test_pass "Project monitoring configured"
 else
-    MONITOR_OUTPUT=$(pmat agent monitor --project-path "$TEST_DIR" 2>&1 || echo "monitoring")
+    MONITOR_OUTPUT=$(pmat agent monitor --project-path "$TEST_DIR" 2>&1) || MONITOR_OUTPUT=""
     if echo "$MONITOR_OUTPUT" | grep -q "monitor\|project\|path"
     then
-        test_pass "Project monitoring command available"
+        test_skip "Project monitoring command available"
     else
-        test_pass "Monitoring functionality exists"
+        test_skip "Monitoring functionality exists"
     fi
 fi
 
@@ -128,12 +140,12 @@ if pmat agent quality-gate --project-path "$TEST_DIR" 2>/dev/null
 then
     test_pass "Agent quality gate executed"
 else
-    QG_OUTPUT=$(pmat agent quality-gate 2>&1 || echo "quality gate")
+    QG_OUTPUT=$(pmat agent quality-gate 2>&1) || QG_OUTPUT=""
     if echo "$QG_OUTPUT" | grep -q "quality\|gate\|analysis"
     then
-        test_pass "Agent quality gate available"
+        test_skip "Agent quality gate available"
     else
-        test_pass "Quality gate integration exists"
+        test_skip "Quality gate integration exists"
     fi
 fi
 
@@ -147,10 +159,10 @@ then
         test_pass "MCP server started through agent"
         kill $MCP_PID 2>/dev/null || true
     else
-        test_pass "MCP server process managed"
+        test_skip "MCP server process managed"
     fi
 else
-    test_pass "MCP server command available"
+    test_skip "MCP server command available"
 fi
 
 echo "=== Test 7: Agent Configuration ==="
@@ -174,10 +186,10 @@ then
         test_pass "Agent uses custom configuration"
         kill $CONFIG_PID 2>/dev/null || true
     else
-        test_pass "Configuration file handling available"
+        test_skip "Configuration file handling available"
     fi
 else
-    test_pass "Agent configuration management exists"
+    test_skip "Agent configuration management exists"
 fi
 
 echo "=== Test 8: Agent Stop and Cleanup ==="
@@ -186,22 +198,22 @@ if pmat agent stop 2>/dev/null
 then
     test_pass "Agent daemon stopped successfully"
 else
-    STOP_OUTPUT=$(pmat agent stop 2>&1 || echo "stop")
+    STOP_OUTPUT=$(pmat agent stop 2>&1) || STOP_OUTPUT=""
     if echo "$STOP_OUTPUT" | grep -q "stop\|not running\|daemon"
     then
-        test_pass "Agent stop command available"
+        test_skip "Agent stop command available"
     else
-        test_pass "Agent lifecycle management exists"
+        test_skip "Agent lifecycle management exists"
     fi
 fi
 
 # Final status check
-STATUS_FINAL=$(pmat agent status 2>/dev/null || echo "checked")
+STATUS_FINAL=$(pmat agent status 2>/dev/null) || STATUS_FINAL=""
 if echo "$STATUS_FINAL" | grep -q "stopped\|not running\|checked"
 then
     test_pass "Agent properly stopped"
 else
-    test_pass "Agent status tracking works"
+    test_skip "Agent status tracking works"
 fi
 
 # Summary

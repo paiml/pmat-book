@@ -2,9 +2,21 @@
 # TDD Test: Chapter 22 - Health Monitoring and System Verification
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -30,12 +42,12 @@ cd "$TEST_DIR"
 
 echo "=== Test 1: System Health Check ==="
 # Run a comprehensive health check
-HEALTH_OUTPUT=$(pmat diagnose 2>&1 || echo "health check")
+HEALTH_OUTPUT=$(pmat diagnose 2>&1) || HEALTH_OUTPUT=""
 if echo "$HEALTH_OUTPUT" | grep -q "health\|system\|status\|ok"
 then
     test_pass "System health check runs"
 else
-    test_pass "Health monitoring system available"
+    test_skip "Health monitoring system available"
 fi
 
 echo "=== Test 2: Component Status Verification ==="
@@ -54,7 +66,7 @@ if pmat diagnose --verbose 2>&1 | grep -q "time\|ms\|performance\|latency"
 then
     test_pass "Performance metrics collected"
 else
-    test_pass "Performance monitoring available"
+    test_skip "Performance monitoring available"
 fi
 
 echo "=== Test 4: Dependency Verification ==="
@@ -63,7 +75,7 @@ if pmat diagnose 2>&1 | grep -q "depend\|version\|require\|cargo\|rust"
 then
     test_pass "Dependency verification works"
 else
-    test_pass "Dependency checking available"
+    test_skip "Dependency checking available"
 fi
 
 echo "=== Test 5: Configuration Validation ==="
@@ -85,7 +97,7 @@ if PMAT_CONFIG=pmat-config.toml pmat diagnose 2>/dev/null
 then
     test_pass "Configuration validation works"
 else
-    test_pass "Config validation capability exists"
+    test_skip "Config validation capability exists"
 fi
 
 echo "=== Test 6: Error Detection and Reporting ==="
@@ -98,12 +110,12 @@ fn broken_syntax {
 }
 EOF
 
-ERROR_OUTPUT=$(pmat diagnose 2>&1 || echo "error detected")
+ERROR_OUTPUT=$(pmat diagnose 2>&1) || ERROR_OUTPUT=""
 if echo "$ERROR_OUTPUT" | grep -q "error\|fail\|issue\|problem"
 then
     test_pass "Error detection works"
 else
-    test_pass "Error reporting system available"
+    test_skip "Error reporting system available"
 fi
 cd ..
 
@@ -112,7 +124,7 @@ if pmat diagnose --verbose 2>&1 | grep -q "memory\|cpu\|disk\|resource"
 then
     test_pass "Resource monitoring works"
 else
-    test_pass "Resource tracking available"
+    test_skip "Resource tracking available"
 fi
 
 echo "=== Test 8: Diagnostic Report Generation ==="
@@ -121,10 +133,10 @@ then
     if [ -s diagnostic-report.json ]; then
         test_pass "Diagnostic report generated"
     else
-        test_pass "Report generation completed"
+        test_skip "Report generation completed"
     fi
 else
-    test_pass "Diagnostic reporting available"
+    test_skip "Diagnostic reporting available"
 fi
 
 # Summary

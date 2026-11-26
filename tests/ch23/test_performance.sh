@@ -2,9 +2,21 @@
 # TDD Test: Chapter 23 - Performance Testing Suite
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -84,12 +96,12 @@ if timeout 30 pmat test performance 2>/dev/null | grep -q "performance\|test\|co
 then
     test_pass "Basic performance test runs"
 else
-    PERF_OUTPUT=$(timeout 30 pmat test 2>&1 || echo "performance")
+    PERF_OUTPUT=$(timeout 30 pmat test 2>&1) || PERF_OUTPUT=""
     if echo "$PERF_OUTPUT" | grep -q "test\|performance\|benchmark"
     then
-        test_pass "Performance testing available"
+        test_skip "Performance testing available"
     else
-        test_pass "Test suite exists"
+        test_skip "Test suite exists"
     fi
 fi
 
@@ -98,12 +110,12 @@ if timeout 30 pmat test property 2>/dev/null
 then
     test_pass "Property-based testing works"
 else
-    PROPERTY_OUTPUT=$(timeout 30 pmat test property 2>&1 || echo "property")
+    PROPERTY_OUTPUT=$(timeout 30 pmat test property 2>&1) || PROPERTY_OUTPUT=""
     if echo "$PROPERTY_OUTPUT" | grep -q "property\|test\|check"
     then
-        test_pass "Property testing available"
+        test_skip "Property testing available"
     else
-        test_pass "Property test suite exists"
+        test_skip "Property test suite exists"
     fi
 fi
 
@@ -115,9 +127,9 @@ else
     # Try with flag
     if timeout 30 pmat test --memory 2>/dev/null
     then
-        test_pass "Memory testing with flag works"
+        test_skip "Memory testing with flag works"
     else
-        test_pass "Memory validation available"
+        test_skip "Memory validation available"
     fi
 fi
 
@@ -129,9 +141,9 @@ else
     # Try with flag
     if timeout 30 pmat test --throughput 2>/dev/null
     then
-        test_pass "Throughput testing with flag works"
+        test_skip "Throughput testing with flag works"
     else
-        test_pass "Throughput validation available"
+        test_skip "Throughput validation available"
     fi
 fi
 
@@ -143,9 +155,9 @@ else
     # Try with flag
     if timeout 30 pmat test --regression --iterations 2 2>/dev/null
     then
-        test_pass "Regression testing with flag works"
+        test_skip "Regression testing with flag works"
     else
-        test_pass "Regression detection available"
+        test_skip "Regression detection available"
     fi
 fi
 
@@ -154,8 +166,8 @@ if timeout 30 pmat test integration 2>/dev/null
 then
     test_pass "Integration testing works"
 else
-    INTEGRATION_OUTPUT=$(timeout 30 pmat test integration 2>&1 || echo "integration")
-    test_pass "Integration test suite available"
+    INTEGRATION_OUTPUT=$(timeout 30 pmat test integration 2>&1) || INTEGRATION_OUTPUT=""
+    test_skip "Integration test suite available"
 fi
 
 echo "=== Test 7: All Test Suites ==="
@@ -166,9 +178,9 @@ else
     # Try with shorter timeout
     if timeout 30 pmat test all --timeout 20 2>/dev/null
     then
-        test_pass "All suites with timeout work"
+        test_skip "All suites with timeout work"
     else
-        test_pass "Complete test suite available"
+        test_skip "Complete test suite available"
     fi
 fi
 
@@ -178,10 +190,10 @@ then
     if [ -f results.json ]; then
         test_pass "Test results saved to file"
     else
-        test_pass "Output file generation completed"
+        test_skip "Output file generation completed"
     fi
 else
-    test_pass "Test output formatting available"
+    test_skip "Test output formatting available"
 fi
 
 # Summary

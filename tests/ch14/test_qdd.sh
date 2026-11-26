@@ -4,6 +4,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 14: Quality-Driven Development (QDD) ==="
 
 # EVERY `pmat qdd` CALL IN THIS FILE USED THE WRONG SIGNATURE, and the mock
@@ -29,7 +37,7 @@ echo "=== Testing Chapter 14: Quality-Driven Development (QDD) ==="
 # way.
 MOCK_MODE=false
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
@@ -125,7 +133,7 @@ def complex_payment_processor(user_data, payment_info, config):
     return result
 EOF
 
-test_pass "Test files created"
+test_skip "Test files created"
 
 # Test 2: QDD Create command
 echo ""
@@ -133,10 +141,10 @@ echo "Test 2: QDD Create operation"
 
 if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN qdd create --code-type function --name add_numbers --purpose "Add two numbers" --profile standard --input int:a --input int:b --output int > qdd_create.txt 2>&1; then
-        test_pass "QDD create command completed"
+        test_skip "QDD create command completed"
         
         if grep -q "Generated Code:" qdd_create.txt || grep -q "function" qdd_create.txt || grep -q "Quality" qdd_create.txt; then
-            test_pass "QDD create output contains expected elements"
+            test_skip "QDD create output contains expected elements"
         else
             test_fail "QDD create output missing expected elements"
         fi
@@ -198,10 +206,10 @@ echo "Test 3: QDD Refactor operation"
 
 if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN qdd refactor -f complex_function.py --profile standard --dry-run > qdd_refactor.txt 2>&1; then
-        test_pass "QDD refactor dry-run completed"
+        test_skip "QDD refactor dry-run completed"
         
         if grep -q "DRY RUN" qdd_refactor.txt || grep -q "refactor" qdd_refactor.txt || grep -q "complexity" qdd_refactor.txt; then
-            test_pass "QDD refactor output contains expected elements"
+            test_skip "QDD refactor output contains expected elements"
         else
             test_fail "QDD refactor output missing expected elements"
         fi
@@ -232,10 +240,10 @@ echo "Test 4: QDD Validate operation"
 
 if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN qdd validate -p . --profile standard --format summary > qdd_validate.txt 2>&1; then
-        test_pass "QDD validate command completed"
+        test_skip "QDD validate command completed"
         
         if grep -q "Validation" qdd_validate.txt || grep -q "Quality" qdd_validate.txt || grep -q "PASSED\|FAILED" qdd_validate.txt; then
-            test_pass "QDD validate output contains expected elements"
+            test_skip "QDD validate output contains expected elements"
         else
             test_fail "QDD validate output missing expected elements"
         fi
@@ -275,7 +283,7 @@ profiles=("extreme" "standard" "relaxed")
 for profile in "${profiles[@]}"; do
     if [ "$MOCK_MODE" = false ]; then
         if $PMAT_BIN qdd validate -p . --profile "$profile" --format summary > "qdd_profile_${profile}.txt" 2>&1; then
-            test_pass "QDD $profile profile validation completed"
+            test_skip "QDD $profile profile validation completed"
         else
             test_fail "QDD $profile profile validation failed"
         fi
@@ -298,7 +306,7 @@ formats=("summary" "detailed" "json" "markdown")
 for format in "${formats[@]}"; do
     if [ "$MOCK_MODE" = false ]; then
         if $PMAT_BIN qdd validate -p . --format "$format" > "qdd_format_${format}.txt" 2>&1; then
-            test_pass "QDD $format format completed"
+            test_skip "QDD $format format completed"
         else
             test_fail "QDD $format format failed"
         fi
@@ -353,7 +361,7 @@ echo "Test 7: QDD Code Generation with Different Profiles"
 if [ "$MOCK_MODE" = false ]; then
     # Test extreme profile generation
     if $PMAT_BIN qdd create --code-type function --name validate_email --purpose "Validate email address" --profile extreme --input str:email --output bool > qdd_extreme.txt 2>&1; then
-        test_pass "QDD extreme profile generation completed"
+        test_skip "QDD extreme profile generation completed"
     else
         test_fail "QDD extreme profile generation failed"
     fi
@@ -421,7 +429,7 @@ cat > mcp_qdd_request.json << 'EOF'
 EOF
 
 if [ -f mcp_qdd_request.json ]; then
-    test_pass "MCP QDD request format validated"
+    test_skip "MCP QDD request format validated"
 else
     test_fail "Failed to create MCP QDD request"
 fi
@@ -467,7 +475,7 @@ pattern = "print\\("
 EOF
 
 if [ -f qdd-config.toml ]; then
-    test_pass "QDD configuration created"
+    test_skip "QDD configuration created"
 else
     test_fail "Failed to create QDD configuration"
 fi
@@ -507,7 +515,7 @@ def add(a, b):
 EOF
 
 if [ -f toyota_way_examples.py ]; then
-    test_pass "Toyota Way examples created"
+    test_skip "Toyota Way examples created"
 else
     test_fail "Failed to create Toyota Way examples"
 fi

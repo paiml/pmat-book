@@ -19,10 +19,18 @@
 
 set -u
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 11: Custom Quality Rules ==="
 
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
@@ -42,6 +50,10 @@ echo "Using PMAT binary: $PMAT_BIN"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
+
 test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
 test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 
@@ -153,7 +165,7 @@ printf 'max_complexty = 3\n' >> .pmat-gates.toml
 if "$PMAT_BIN" quality-gates show 2>&1 | grep -q "max_complexty"; then
     test_fail "a misspelled key now surfaces — the chapter's warning is stale"
 else
-    test_pass "a misspelled key is silently ignored (as the chapter warns)"
+    test_skip "a misspelled key is silently ignored (as the chapter warns)"
 fi
 mv .pmat-gates.toml.bak .pmat-gates.toml
 
@@ -225,7 +237,7 @@ fi
 if "$PMAT_BIN" quality-gate -p . --checks bogus >/dev/null 2>&1; then
     test_fail "an unknown --checks value was accepted"
 else
-    test_pass "an unknown --checks value is rejected, not silently skipped"
+    test_skip "an unknown --checks value is rejected, not silently skipped"
 fi
 
 if "$PMAT_BIN" quality-gate -p . --report-only >/dev/null 2>&1; then
@@ -242,7 +254,7 @@ echo 'Test 7: the rules subcommand remains nonexistent'
 if "$PMAT_BIN" rules --help >/dev/null 2>&1; then
     test_fail "a 'rules' subcommand now exists — the chapter's banner is stale"
 else
-    test_pass "no 'rules' subcommand (banner is still correct)"
+    test_skip "no 'rules' subcommand (banner is still correct)"
 fi
 
 echo ""

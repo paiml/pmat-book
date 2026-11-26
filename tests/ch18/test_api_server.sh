@@ -2,9 +2,21 @@
 # TDD Test: Chapter 18 - API Server and WebSocket Support
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -98,7 +110,7 @@ else
     # Try alternative response format
     HEALTH_RESPONSE=$(curl -s -m 10 http://localhost:9090/health)
     if [ ! -z "$HEALTH_RESPONSE" ]; then
-        test_pass "Health endpoint returns: $HEALTH_RESPONSE"
+        test_skip "Health endpoint returns: $HEALTH_RESPONSE"
     else
         test_fail "Health check endpoint not responding"
     fi
@@ -114,7 +126,7 @@ if [ ! -z "$ANALYZE_RESPONSE" ]; then
     then
         test_pass "Analyze endpoint responds with data"
     else
-        test_pass "Analyze endpoint responds (format varies)"
+        test_skip "Analyze endpoint responds (format varies)"
     fi
 else
     test_fail "Analyze endpoint not responding"
@@ -144,9 +156,9 @@ else
     
     if echo "$WS_CHECK" | grep -q "101\|Upgrade\|websocket"
     then
-        test_pass "WebSocket upgrade headers supported"
+        test_skip "WebSocket upgrade headers supported"
     else
-        test_pass "WebSocket feature available (not active in test)"
+        test_skip "WebSocket feature available (not active in test)"
     fi
 fi
 
@@ -158,7 +170,7 @@ if [ ! -z "$VERSION_RESPONSE" ]; then
     test_pass "Version endpoint responds"
 else
     # Version might be in health or status
-    test_pass "Version info available through API"
+    test_skip "Version info available through API"
 fi
 
 echo "=== Test 7: Concurrent Request Handling ==="
@@ -186,7 +198,7 @@ if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
     if ps -o stat= -g "$GPID" 2>/dev/null | grep -qv "^Z"; then
         test_fail "Server survived shutdown"
     else
-        test_pass "Server shut down"
+        test_skip "Server shut down"
     fi
 else
     test_fail "Server was not running at shutdown"

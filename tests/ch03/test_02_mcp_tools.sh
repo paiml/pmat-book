@@ -4,6 +4,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 3: MCP Tools Examples ==="
 
 # Test utilities
@@ -397,7 +405,7 @@ fi
 
 # Test 8: Test that PMAT can analyze our test project
 echo "Test 8: Test actual PMAT analysis on test project"
-if command -v pmat >/dev/null 2>&1; then
+if type -P pmat >/dev/null 2>&1; then
     if pmat analyze . --format json > analysis_result.json 2>/dev/null; then
         test_pass "PMAT successfully analyzed test project"
         

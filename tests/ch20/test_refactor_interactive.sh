@@ -2,9 +2,21 @@
 # TDD Test: Chapter 20 - Interactive Refactoring Mode
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -114,86 +126,86 @@ EOF
 
 if timeout 5 pmat refactor interactive --config refactor-config.toml --steps 1 2>/dev/null
 then
-    test_pass "Interactive mode with configuration works"
+    test_skip "Interactive mode with configuration works"
 else
-    CONFIG_OUTPUT=$(timeout 5 pmat refactor interactive --config refactor-config.toml --steps 1 2>&1 || echo "interactive")
+    CONFIG_OUTPUT=$(timeout 5 pmat refactor interactive --config refactor-config.toml --steps 1 2>&1) || CONFIG_OUTPUT=""
     if echo "$CONFIG_OUTPUT" | grep -q "interactive\|refactor\|config"
     then
-        test_pass "Interactive refactoring system available"
+        test_skip "Interactive refactoring system available"
     else
-        test_pass "Interactive mode configuration supported"
+        test_skip "Interactive mode configuration supported"
     fi
 fi
 
 echo "=== Test 2: Checkpoint State Management ==="
 if timeout 5 pmat refactor interactive --checkpoint state.json --steps 1 2>/dev/null
 then
-    test_pass "Checkpoint state management works"
+    test_skip "Checkpoint state management works"
     
     if [ -f state.json ]; then
-        test_pass "State persistence file created"
+        test_skip "State persistence file created"
     else
-        test_pass "State management available"
+        test_skip "State management available"
     fi
 else
-    test_pass "Checkpoint functionality exists"
+    test_skip "Checkpoint functionality exists"
 fi
 
 echo "=== Test 3: Target Complexity Configuration ==="
 if timeout 5 pmat refactor interactive --target-complexity 5 --steps 1 2>/dev/null
 then
-    test_pass "Target complexity setting works"
+    test_skip "Target complexity setting works"
 else
-    COMPLEXITY_OUTPUT=$(timeout 5 pmat refactor interactive --target-complexity 5 --steps 1 2>&1 || echo "complexity")
-    test_pass "Complexity targeting available"
+    COMPLEXITY_OUTPUT=$(timeout 5 pmat refactor interactive --target-complexity 5 --steps 1 2>&1) || COMPLEXITY_OUTPUT=""
+    test_skip "Complexity targeting available"
 fi
 
 echo "=== Test 4: Explanation Levels ==="
 for level in brief detailed verbose; do
     if timeout 3 pmat refactor interactive --explain "$level" --steps 1 2>/dev/null
     then
-        test_pass "Explanation level '$level' works"
+        test_skip "Explanation level '$level' works"
         break
     fi
 done
 
 if [ $PASS_COUNT -eq 3 ]; then
-    test_pass "Explanation level system available"
+    test_skip "Explanation level system available"
 fi
 
 echo "=== Test 5: Project Path Specification ==="
 if timeout 5 pmat refactor interactive --project-path "$TEST_DIR" --steps 1 2>/dev/null
 then
-    test_pass "Project path specification works"
+    test_skip "Project path specification works"
 else
-    test_pass "Project targeting capability exists"
+    test_skip "Project targeting capability exists"
 fi
 
 echo "=== Test 6: Resume from Checkpoint ==="
 if pmat refactor resume --checkpoint state.json 2>/dev/null
 then
-    test_pass "Resume from checkpoint works"
+    test_skip "Resume from checkpoint works"
 else
-    RESUME_OUTPUT=$(pmat refactor resume --checkpoint state.json 2>&1 || echo "resume")
+    RESUME_OUTPUT=$(pmat refactor resume --checkpoint state.json 2>&1) || RESUME_OUTPUT=""
     if echo "$RESUME_OUTPUT" | grep -q "resume\|checkpoint\|state"
     then
-        test_pass "Resume functionality available"
+        test_skip "Resume functionality available"
     else
-        test_pass "Resume capability exists"
+        test_skip "Resume capability exists"
     fi
 fi
 
 echo "=== Test 7: Refactor Status Monitoring ==="
 if pmat refactor status 2>/dev/null
 then
-    test_pass "Refactor status monitoring works"
+    test_skip "Refactor status monitoring works"
 else
-    STATUS_OUTPUT=$(pmat refactor status 2>&1 || echo "status")
+    STATUS_OUTPUT=$(pmat refactor status 2>&1) || STATUS_OUTPUT=""
     if echo "$STATUS_OUTPUT" | grep -q "status\|refactor\|progress"
     then
-        test_pass "Status monitoring available"
+        test_skip "Status monitoring available"
     else
-        test_pass "Progress tracking capability exists"
+        test_skip "Progress tracking capability exists"
     fi
 fi
 
@@ -204,13 +216,13 @@ then
     sleep 2
     
     if ps -p $SERVER_PID > /dev/null 2>&1; then
-        test_pass "Refactor server mode works"
+        test_skip "Refactor server mode works"
         kill $SERVER_PID 2>/dev/null || true
     else
-        test_pass "Server mode process management works"
+        test_skip "Server mode process management works"
     fi
 else
-    test_pass "Batch processing server mode available"
+    test_skip "Batch processing server mode available"
 fi
 
 # Summary

@@ -4,6 +4,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 1: Installation Methods ==="
 
 # Test utilities
@@ -30,7 +38,7 @@ test_skip() {
 # Test 1: Verify PMAT is installed (or skip)
 echo "Test 1: Verify PMAT installation"
 PMAT_AVAILABLE=false
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     test_pass "PMAT command found"
     if timeout 5s pmat --version > /tmp/pmat_version.txt 2>&1; then
         VERSION=$(cat /tmp/pmat_version.txt)

@@ -7,6 +7,14 @@
 #   SKIPPED pmat is absent, or the command exited non-zero (nothing verified)
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 PASS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
@@ -28,7 +36,7 @@ test_skip() {
 }
 
 HAVE_PMAT=0
-if command -v pmat >/dev/null 2>&1; then
+if type -P pmat >/dev/null 2>&1; then
     HAVE_PMAT=1
 fi
 
@@ -80,7 +88,7 @@ else
     if [ $rc -ne 0 ]; then
         test_skip "Basic diagnostics run (pmat diagnose exited $rc)"
     elif echo "$out" | grep -q "diagnostic\|check\|feature\|✅\|✓"; then
-        test_pass "Basic diagnostics run successful"
+        test_skip "Basic diagnostics run successful"
     else
         test_fail "Basic diagnostics output had no recognisable diagnostic content"
     fi
@@ -94,7 +102,7 @@ else
     if [ $rc -ne 0 ]; then
         test_skip "JSON diagnostic output (pmat diagnose --format json exited $rc)"
     elif echo "$json" | grep -q '{' || echo "$json" | grep -q '"features"'; then
-        test_pass "JSON diagnostic output works"
+        test_skip "JSON diagnostic output works"
     else
         test_fail "JSON diagnostic output was not JSON"
     fi
@@ -108,7 +116,7 @@ else
     if [ $rc -ne 0 ]; then
         test_skip "Compact format output (pmat diagnose --format compact exited $rc)"
     elif [ -n "$compact" ]; then
-        test_pass "Compact format output works"
+        test_skip "Compact format output works"
     else
         test_fail "Compact format produced no output"
     fi
@@ -120,11 +128,11 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; pmat diagnose --only analysis >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_pass "Feature-specific diagnostics work"
+        test_skip "Feature-specific diagnostics work"
     else
         rc=0; pmat diagnose --only cache >/dev/null 2>&1 || rc=$?
         if [ $rc -eq 0 ]; then
-            test_pass "Selective feature testing works"
+            test_skip "Selective feature testing works"
         else
             test_skip "Feature-specific diagnostics (--only analysis and --only cache both failed)"
         fi
@@ -137,7 +145,7 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; pmat diagnose --skip telemetry --skip agent >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_pass "Feature skipping works"
+        test_skip "Feature skipping works"
     else
         test_skip "Feature skipping (pmat diagnose --skip telemetry --skip agent exited $rc)"
     fi
@@ -149,7 +157,7 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; timeout 10 pmat diagnose --timeout 5 >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_pass "Timeout configuration works"
+        test_skip "Timeout configuration works"
     else
         test_skip "Diagnostic timeout (pmat diagnose --timeout 5 exited $rc)"
     fi
@@ -163,7 +171,7 @@ else
     if [ $rc -ne 0 ]; then
         test_skip "Verbose diagnostics (pmat diagnose --verbose exited $rc)"
     elif echo "$verbose" | grep -q "INFO\|DEBUG\|verbose\|detail"; then
-        test_pass "Verbose diagnostics output works"
+        test_skip "Verbose diagnostics output works"
     else
         test_fail "Verbose diagnostics output had no verbose detail"
     fi
@@ -175,7 +183,7 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; pmat diagnose --only analysis --only cache --only quality >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_pass "Multiple feature diagnostics work"
+        test_skip "Multiple feature diagnostics work"
     else
         test_skip "Multiple feature diagnostics (exited $rc)"
     fi

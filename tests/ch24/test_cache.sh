@@ -2,9 +2,21 @@
 # TDD Test: Chapter 24 - Cache Management
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -89,28 +101,28 @@ lru = "0.12"
 EOF
 
 echo "=== Test 1: Cache Statistics ==="
-CACHE_STATS=$(pmat cache stats 2>/dev/null || echo "")
+CACHE_STATS=$(pmat cache stats 2>/dev/null) || CACHE_STATS=""
 if echo "$CACHE_STATS" | grep -q "cache\|hit\|miss\|size\|rate"
 then
     test_pass "Cache statistics displayed"
 else
     # Try verbose
-    CACHE_VERBOSE=$(pmat cache stats --verbose 2>&1 || echo "cache")
+    CACHE_VERBOSE=$(pmat cache stats --verbose 2>&1) || CACHE_VERBOSE=""
     if echo "$CACHE_VERBOSE" | grep -q "cache\|stats"
     then
-        test_pass "Cache stats available"
+        test_skip "Cache stats available"
     else
-        test_pass "Cache monitoring exists"
+        test_skip "Cache monitoring exists"
     fi
 fi
 
 echo "=== Test 2: Cache Hit Rate ==="
-CACHE_OUTPUT=$(pmat cache stats 2>&1 || echo "")
+CACHE_OUTPUT=$(pmat cache stats 2>&1) || CACHE_OUTPUT=""
 if echo "$CACHE_OUTPUT" | grep -q "hit.*rate\|hits\|misses"
 then
     test_pass "Cache hit rate tracked"
 else
-    test_pass "Hit rate monitoring available"
+    test_skip "Hit rate monitoring available"
 fi
 
 echo "=== Test 3: Cache Size Information ==="
@@ -118,7 +130,7 @@ if pmat cache stats 2>&1 | grep -q "size\|MB\|entries\|capacity"
 then
     test_pass "Cache size information shown"
 else
-    test_pass "Size tracking available"
+    test_skip "Size tracking available"
 fi
 
 echo "=== Test 4: Cache Clear Operation ==="
@@ -126,12 +138,12 @@ if pmat cache clear 2>/dev/null
 then
     test_pass "Cache cleared successfully"
 else
-    CLEAR_OUTPUT=$(pmat cache clear 2>&1 || echo "clear")
+    CLEAR_OUTPUT=$(pmat cache clear 2>&1) || CLEAR_OUTPUT=""
     if echo "$CLEAR_OUTPUT" | grep -q "clear\|flush\|empty"
     then
-        test_pass "Cache clearing available"
+        test_skip "Cache clearing available"
     else
-        test_pass "Cache management exists"
+        test_skip "Cache management exists"
     fi
 fi
 
@@ -140,22 +152,22 @@ if pmat cache optimize 2>/dev/null
 then
     test_pass "Cache optimization executed"
 else
-    OPTIMIZE_OUTPUT=$(pmat cache optimize 2>&1 || echo "optimize")
+    OPTIMIZE_OUTPUT=$(pmat cache optimize 2>&1) || OPTIMIZE_OUTPUT=""
     if echo "$OPTIMIZE_OUTPUT" | grep -q "optim\|compact\|defrag"
     then
-        test_pass "Cache optimization available"
+        test_skip "Cache optimization available"
     else
-        test_pass "Optimization capability exists"
+        test_skip "Optimization capability exists"
     fi
 fi
 
 echo "=== Test 6: Cache Performance Metrics ==="
-PERF_OUTPUT=$(pmat cache stats --perf 2>&1 || echo "")
+PERF_OUTPUT=$(pmat cache stats --perf 2>&1) || PERF_OUTPUT=""
 if echo "$PERF_OUTPUT" | grep -q "latency\|throughput\|ops"
 then
     test_pass "Cache performance metrics shown"
 else
-    test_pass "Performance tracking available"
+    test_skip "Performance tracking available"
 fi
 
 echo "=== Test 7: Cache Eviction Policy ==="
@@ -163,8 +175,8 @@ if pmat cache configure --eviction lru 2>/dev/null
 then
     test_pass "Eviction policy configured"
 else
-    EVICTION_OUTPUT=$(pmat cache stats 2>&1 | grep -i "evict\|lru\|lfu" || echo "eviction")
-    test_pass "Eviction management available"
+    EVICTION_OUTPUT=$(pmat cache stats 2>&1 | grep -i "evict\|lru\|lfu") || EVICTION_OUTPUT=""
+    test_skip "Eviction management available"
 fi
 
 echo "=== Test 8: Cache Warmup ==="
@@ -172,12 +184,12 @@ if pmat cache warmup 2>/dev/null
 then
     test_pass "Cache warmup executed"
 else
-    WARMUP_OUTPUT=$(pmat cache warmup 2>&1 || echo "warmup")
+    WARMUP_OUTPUT=$(pmat cache warmup 2>&1) || WARMUP_OUTPUT=""
     if echo "$WARMUP_OUTPUT" | grep -q "warm\|preload\|init"
     then
-        test_pass "Cache warmup available"
+        test_skip "Cache warmup available"
     else
-        test_pass "Warmup capability exists"
+        test_skip "Warmup capability exists"
     fi
 fi
 
