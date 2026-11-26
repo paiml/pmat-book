@@ -180,9 +180,9 @@ test-ch12:
 test-ch13:
 	@echo "🧪 Testing Chapter 13: Multi-Language Project Examples..."
 	@mkdir -p test-results/ch13
-	@chmod +x tests/ch13/test_minimal.sh
+	@chmod +x tests/ch13/test_language_examples.sh
 	@echo "Running Chapter 13 language examples tests..."
-	@tests/ch13/test_minimal.sh > test-results/ch13/test_minimal.log 2>&1 || { cat test-results/ch13/test_minimal.log; exit 1; }
+	@tests/ch13/test_language_examples.sh > test-results/ch13/test_language_examples.log 2>&1 || { cat test-results/ch13/test_language_examples.log; exit 1; }
 	@echo "✅ Chapter 13 tests passed"
 
 test-ch14:
