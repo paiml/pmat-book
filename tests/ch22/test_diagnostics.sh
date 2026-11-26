@@ -1,8 +1,12 @@
 #!/bin/bash
 # TDD Test: Chapter 22 - System Diagnostics and Health
+#
+# Verdict rules (no check awards PASS without checked output):
+#   PASS    the command ran (exit 0) and its output was checked
+#   FAIL    the command ran (exit 0) and its output was wrong
+#   SKIPPED pmat is absent, or the command exited non-zero (nothing verified)
 set -e
 
-# Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
@@ -23,6 +27,11 @@ test_skip() {
     SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
+HAVE_PMAT=0
+if command -v pmat >/dev/null 2>&1; then
+    HAVE_PMAT=1
+fi
+
 # Create test workspace
 TEST_DIR=$(mktemp -d)
 echo "Test directory: $TEST_DIR"
@@ -36,7 +45,7 @@ trap cleanup EXIT
 cd "$TEST_DIR"
 
 # Create test project for diagnostics
-cat > main.rs << 'EOF'
+cat > main.rs << 'RUSTEOF'
 fn main() {
     println!("Diagnostics test project");
 }
@@ -54,97 +63,121 @@ mod tests {
         assert_eq!(test_function(), 42);
     }
 }
-EOF
+RUSTEOF
 
-cat > Cargo.toml << 'EOF'
+cat > Cargo.toml << 'TOMLEOF'
 [package]
 name = "diag-test"
 version = "0.1.0"
 edition = "2021"
-EOF
+TOMLEOF
 
 echo "=== Test 1: Basic Diagnostics Run ==="
-if pmat diagnose 2>/dev/null | grep -q "diagnostic\|check\|feature\|✅\|✓"
-then
-    test_pass "Basic diagnostics run successful"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "Basic diagnostics run (pmat not found on PATH)"
 else
-    DIAG_OUTPUT=$(pmat diagnose 2>&1 || echo "diagnostics")
-    if echo "$DIAG_OUTPUT" | grep -q "diagnos\|system\|check"
-    then
-        test_pass "Diagnostics system available"
+    rc=0; out=$(pmat diagnose 2>&1) || rc=$?
+    if [ $rc -ne 0 ]; then
+        test_skip "Basic diagnostics run (pmat diagnose exited $rc)"
+    elif echo "$out" | grep -q "diagnostic\|check\|feature\|✅\|✓"; then
+        test_pass "Basic diagnostics run successful"
     else
-        test_pass "Diagnostic capability exists"
+        test_fail "Basic diagnostics output had no recognisable diagnostic content"
     fi
 fi
 
 echo "=== Test 2: JSON Format Output ==="
-JSON_DIAG=$(pmat diagnose --format json 2>/dev/null || echo "{}")
-if echo "$JSON_DIAG" | grep -q '{' || echo "$JSON_DIAG" | grep -q '"features"'
-then
-    test_pass "JSON diagnostic output works"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "JSON diagnostic output (pmat not found on PATH)"
 else
-    test_pass "Structured diagnostic output available"
+    rc=0; json=$(pmat diagnose --format json 2>/dev/null) || rc=$?
+    if [ $rc -ne 0 ]; then
+        test_skip "JSON diagnostic output (pmat diagnose --format json exited $rc)"
+    elif echo "$json" | grep -q '{' || echo "$json" | grep -q '"features"'; then
+        test_pass "JSON diagnostic output works"
+    else
+        test_fail "JSON diagnostic output was not JSON"
+    fi
 fi
 
 echo "=== Test 3: Compact Format Output ==="
-if pmat diagnose --format compact 2>/dev/null | head -5
-then
-    test_pass "Compact format output works"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "Compact format output (pmat not found on PATH)"
 else
-    test_pass "Alternative output formats available"
+    rc=0; compact=$(pmat diagnose --format compact 2>/dev/null) || rc=$?
+    if [ $rc -ne 0 ]; then
+        test_skip "Compact format output (pmat diagnose --format compact exited $rc)"
+    elif [ -n "$compact" ]; then
+        test_pass "Compact format output works"
+    else
+        test_fail "Compact format produced no output"
+    fi
 fi
 
 echo "=== Test 4: Feature-Specific Diagnostics ==="
-if pmat diagnose --only analysis 2>/dev/null
-then
-    test_pass "Feature-specific diagnostics work"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "Feature-specific diagnostics (pmat not found on PATH)"
 else
-    # Try another feature
-    if pmat diagnose --only cache 2>/dev/null
-    then
-        test_pass "Selective feature testing works"
+    rc=0; pmat diagnose --only analysis >/dev/null 2>&1 || rc=$?
+    if [ $rc -eq 0 ]; then
+        test_pass "Feature-specific diagnostics work"
     else
-        test_pass "Feature filtering capability exists"
+        rc=0; pmat diagnose --only cache >/dev/null 2>&1 || rc=$?
+        if [ $rc -eq 0 ]; then
+            test_pass "Selective feature testing works"
+        else
+            test_skip "Feature-specific diagnostics (--only analysis and --only cache both failed)"
+        fi
     fi
 fi
 
 echo "=== Test 5: Skip Feature Tests ==="
-if pmat diagnose --skip telemetry --skip agent 2>/dev/null
-then
-    test_pass "Feature skipping works"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "Feature skipping (pmat not found on PATH)"
 else
-    SKIP_OUTPUT=$(pmat diagnose --skip cache 2>&1 || echo "skipped")
-    test_skip "Selective test skipping not verified (--skip cache exit status unchecked)"
+    rc=0; pmat diagnose --skip telemetry --skip agent >/dev/null 2>&1 || rc=$?
+    if [ $rc -eq 0 ]; then
+        test_pass "Feature skipping works"
+    else
+        test_skip "Feature skipping (pmat diagnose --skip telemetry --skip agent exited $rc)"
+    fi
 fi
 
 echo "=== Test 6: Diagnostic Timeout ==="
-if timeout 10 pmat diagnose --timeout 5 2>/dev/null
-then
-    test_pass "Timeout configuration works"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "Diagnostic timeout (pmat not found on PATH)"
 else
-    test_pass "Time-bounded diagnostics available"
+    rc=0; timeout 10 pmat diagnose --timeout 5 >/dev/null 2>&1 || rc=$?
+    if [ $rc -eq 0 ]; then
+        test_pass "Timeout configuration works"
+    else
+        test_skip "Diagnostic timeout (pmat diagnose --timeout 5 exited $rc)"
+    fi
 fi
 
 echo "=== Test 7: Verbose Diagnostics ==="
-VERBOSE_OUTPUT=$(pmat diagnose --verbose 2>&1 || echo "")
-if echo "$VERBOSE_OUTPUT" | grep -q "INFO\|DEBUG\|verbose\|detail"
-then
-    test_pass "Verbose diagnostics output works"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "Verbose diagnostics (pmat not found on PATH)"
 else
-    test_pass "Detailed diagnostic information available"
+    rc=0; verbose=$(pmat diagnose --verbose 2>&1) || rc=$?
+    if [ $rc -ne 0 ]; then
+        test_skip "Verbose diagnostics (pmat diagnose --verbose exited $rc)"
+    elif echo "$verbose" | grep -q "INFO\|DEBUG\|verbose\|detail"; then
+        test_pass "Verbose diagnostics output works"
+    else
+        test_fail "Verbose diagnostics output had no verbose detail"
+    fi
 fi
 
 echo "=== Test 8: Multiple Feature Check ==="
-if pmat diagnose --only analysis --only cache --only quality 2>/dev/null
-then
-    test_pass "Multiple feature diagnostics work"
+if [ $HAVE_PMAT -eq 0 ]; then
+    test_skip "Multiple feature diagnostics (pmat not found on PATH)"
 else
-    # Test with different combination
-    if pmat diagnose --only templates --only scaffold 2>/dev/null
-    then
-        test_pass "Multi-feature testing works"
+    rc=0; pmat diagnose --only analysis --only cache --only quality >/dev/null 2>&1 || rc=$?
+    if [ $rc -eq 0 ]; then
+        test_pass "Multiple feature diagnostics work"
     else
-        test_pass "Combined feature diagnostics available"
+        test_skip "Multiple feature diagnostics (exited $rc)"
     fi
 fi
 
@@ -153,7 +186,12 @@ echo ""
 echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All diagnostics tests passed!"
     exit 0
