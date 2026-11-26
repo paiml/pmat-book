@@ -9,7 +9,7 @@ Before the unified architecture, PMAT suffered from a common issue: documentatio
 ```
 User: I'm trying to connect PMAT as an MCP tool using `pmat mcp` but it doesn't work.
        The README says to use this command.
-Support: `pmat mcp` is the command for this. Run `pmat mcp connect` to print how to connect pmat to an MCP client, and `pmat mcp token` to mint a bearer token.
+Support: `pmat mcp` is the command for this. Run `pmat mcp connect` to print the MCP connection options, and `pmat mcp token` to mint a bearer token.
 ```
 
 This type of documentation drift causes:
