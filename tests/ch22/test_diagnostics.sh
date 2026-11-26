@@ -5,6 +5,7 @@ set -e
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -14,6 +15,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Create test workspace
@@ -107,7 +114,7 @@ then
     test_pass "Feature skipping works"
 else
     SKIP_OUTPUT=$(pmat diagnose --skip cache 2>&1 || echo "skipped")
-    test_pass "Selective test skipping available"
+    test_skip "Selective test skipping not verified (--skip cache exit status unchecked)"
 fi
 
 echo "=== Test 6: Diagnostic Timeout ==="

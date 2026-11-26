@@ -37,7 +37,7 @@ EOF
 if command -v docker-compose >/dev/null 2>&1; then
     docker-compose -f test-docker-compose.yml config >/dev/null 2>&1 && echo "✅ PASS: Docker Compose valid" || echo "⚠️  Docker Compose validation failed (acceptable)"
 else
-    echo "✅ PASS: Docker Compose validation skipped (not installed)"
+    echo "⚠️  SKIPPED: Docker Compose validation not run (not installed)"
 fi
 
 # Test 4: Claude config JSON validation

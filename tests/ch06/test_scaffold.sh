@@ -33,6 +33,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -42,6 +43,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: List available agent templates
@@ -72,7 +79,7 @@ else
 
 Total: 5 templates available
 EOF
-    test_pass "Mock list templates completed"
+    test_skip "Mock list templates completed"
 fi
 
 # Test 2: Scaffold a basic project
@@ -128,7 +135,7 @@ EOF
 ✅ Generated: README.md
 📦 Project scaffolded successfully with 2 templates
 EOF
-    test_pass "Mock project scaffolding completed"
+    test_skip "Mock project scaffolding completed"
 fi
 
 cd ..
@@ -168,7 +175,7 @@ Files that would be generated:
 
 Total: 7 files, 997 lines
 EOF
-    test_pass "Mock agent dry-run completed"
+    test_skip "Mock agent dry-run completed"
 fi
 
 # Test 4: Scaffold actual MCP agent
@@ -218,7 +225,7 @@ EOF
 ✅ Generated: calculator-agent/Cargo.toml
 🤖 MCP agent 'calculator-agent' scaffolded successfully
 EOF
-    test_pass "Mock agent scaffolding completed"
+    test_skip "Mock agent scaffolding completed"
 fi
 
 # Test 5: Interactive scaffolding (simulated)
@@ -227,7 +234,7 @@ echo "Test 5: Interactive scaffolding simulation"
 
 if [ "$MOCK_MODE" = false ]; then
     # We can't easily test interactive mode, so skip for real tests
-    test_pass "Interactive mode testing skipped (requires user input)"
+    test_skip "Interactive mode testing not run (requires user input)"
 else
     cat > interactive.log << 'EOF'
 🎯 Interactive Agent Scaffolding
@@ -241,7 +248,7 @@ Output directory: ./my-interactive-agent
 Preview generated, continue? (y/n): y
 ✅ Agent scaffolded successfully!
 EOF
-    test_pass "Mock interactive scaffolding completed"
+    test_skip "Mock interactive scaffolding completed"
 fi
 
 # Test 6: Validate agent template
@@ -274,7 +281,7 @@ Format: Valid JSON
 Required fields: Present
 File structure: Valid
 EOF
-    test_pass "Mock template validation completed"
+    test_skip "Mock template validation completed"
 fi
 
 # Test 7: Hybrid agent scaffolding
@@ -305,7 +312,7 @@ Components:
 Files: 15 files, 2,456 lines
 Quality Gates: All enabled
 EOF
-    test_pass "Mock hybrid agent scaffolding completed"
+    test_skip "Mock hybrid agent scaffolding completed"
 fi
 
 # Test 8: Project scaffolding with multiple toolchains
@@ -327,7 +334,7 @@ else
 Author: Test Author
 Templates: 3/3 successful
 EOF
-    test_pass "Mock multi-toolchain scaffolding completed"
+    test_skip "Mock multi-toolchain scaffolding completed"
 fi
 
 # Cleanup
@@ -338,7 +345,12 @@ echo ""
 echo "=== Chapter 6 Scaffold Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All scaffold tests passed!"
     exit 0

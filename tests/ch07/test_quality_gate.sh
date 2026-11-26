@@ -46,6 +46,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -55,6 +56,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test project for quality gate testing
@@ -226,7 +233,7 @@ Time: 2.3s
 Overall Status: ❌ FAILED
 Quality Score: 50/100
 EOF
-    test_pass "Mock quality gate completed"
+    test_skip "Mock quality gate completed"
 fi
 
 # Test 3: Specific checks only
@@ -240,10 +247,10 @@ if [ "$MOCK_MODE" = false ]; then
         if command -v jq &> /dev/null && jq empty specific_checks.json 2>/dev/null; then
             test_pass "JSON output is valid"
         else
-            test_pass "Specific checks completed (JSON not validated)"
+            test_skip "Specific checks output not validated: JSON validity not verified"
         fi
     else
-        test_pass "Specific checks completed with expected failures"
+        test_skip "Specific checks exited non-zero: result not verified"
     fi
 else
     cat > specific_checks.json << 'EOF'
@@ -294,10 +301,10 @@ else
   }
 }
 EOF
-    test_pass "Mock specific checks completed"
+    test_skip "Mock specific checks completed"
     
     if command -v jq &> /dev/null && jq empty specific_checks.json 2>/dev/null; then
-        test_pass "Mock JSON is valid"
+        test_skip "Mock JSON is valid"
     fi
 fi
 
@@ -309,7 +316,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human > thresholds.txt 2>&1; then
         test_pass "Quality gate with custom thresholds completed"
     else
-        test_pass "Quality gate with thresholds completed with expected failures"
+        test_skip "Quality gate exited non-zero: result not verified (thresholds)"
     fi
 else
     cat > thresholds.txt << 'EOF'
@@ -347,7 +354,7 @@ Recommendations:
 2. Remove unused_function
 3. Address technical debt markers
 EOF
-    test_pass "Mock quality gate with thresholds completed"
+    test_skip "Mock quality gate with thresholds completed"
 fi
 
 # Test 5: Quality gate with strict enforcement
@@ -380,7 +387,7 @@ Results:
 
 Exit Code: 1 (Quality gate violation)
 EOF
-    test_pass "Mock strict quality gate completed"
+    test_skip "Mock strict quality gate completed"
 fi
 
 # Test 6: Single file analysis
@@ -425,7 +432,7 @@ else
   }
 }
 EOF
-    test_pass "Mock single file analysis completed"
+    test_skip "Mock single file analysis completed"
 fi
 
 # Test 7: Quality gate with output to file
@@ -440,7 +447,7 @@ if [ "$MOCK_MODE" = false ]; then
             test_fail "Quality gate report file not created"
         fi
     else
-        test_pass "Quality gate with output completed with expected failures"
+        test_skip "Quality gate exited non-zero: result not verified (output)"
     fi
 else
     cat > quality-report.json << 'EOF'
@@ -460,7 +467,7 @@ EOF
 ✅ Quality gate analysis complete
 📄 Report saved to: quality-report.json
 EOF
-    test_pass "Mock quality gate with file output completed"
+    test_skip "Mock quality gate with file output completed"
 fi
 
 # Test 8: Quality gate with performance metrics
@@ -477,7 +484,7 @@ if [ "$MOCK_MODE" = false ]; then
             test_fail "Performance metrics not found in output"
         fi
     else
-        test_pass "Quality gate with performance completed with expected failures"
+        test_skip "Quality gate exited non-zero: result not verified (performance)"
     fi
 else
     cat > perf.txt << 'EOF'
@@ -509,8 +516,8 @@ Start Time: 2025-09-09 10:30:00
    CPU Utilization: 23%
    I/O Operations: 15 reads, 3 writes
 EOF
-    test_pass "Mock performance metrics completed"
-    test_pass "Performance metrics included in mock output"
+    test_skip "Mock performance metrics completed"
+    test_skip "Performance metrics included in mock output"
 fi
 
 # Cleanup
@@ -521,7 +528,12 @@ echo ""
 echo "=== Chapter 7 Quality Gate Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All quality gate tests passed!"
     exit 0

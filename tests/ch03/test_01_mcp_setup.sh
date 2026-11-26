@@ -9,6 +9,7 @@ echo "=== Testing Chapter 3: MCP Setup Examples ==="
 # Test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 TEST_DIR=$(mktemp -d)
 MCP_PORT=3334  # Use non-standard port for testing
 
@@ -20,6 +21,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 cleanup() {
@@ -76,7 +83,7 @@ if pmat mcp validate-config mcp-config.yaml 2>/dev/null; then
 elif pmat mcp --help 2>&1 | grep -q "validate"; then
     test_fail "MCP configuration validation failed"
 else
-    test_pass "MCP configuration validation not implemented (expected)"
+    test_skip "MCP configuration validation not implemented: not verified"
 fi
 
 # Test 4: Test MCP tools listing
@@ -92,7 +99,7 @@ if pmat mcp list-tools 2>/dev/null | grep -q "analyze"; then
         test_fail "No MCP tools found"
     fi
 else
-    test_pass "MCP tools listing not implemented (expected)"
+    test_skip "MCP tools listing not implemented: not verified"
 fi
 
 # Test 5: Test MCP server health check endpoint
@@ -177,7 +184,7 @@ if [ -f docker-compose.test.yml ]; then
             test_fail "Docker Compose config validation failed"
         fi
     else
-        test_pass "Docker Compose validation skipped (not installed)"
+        test_skip "Docker Compose validation not run (not installed)"
     fi
 else
     test_fail "Failed to create Docker Compose config"

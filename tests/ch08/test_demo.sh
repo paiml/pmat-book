@@ -33,6 +33,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -42,6 +43,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test project for demo
@@ -238,7 +245,7 @@ Languages: Rust (100%)
 
 ✅ Demo Complete - Project analyzed successfully!
 EOF
-    test_pass "Mock CLI demo completed"
+    test_skip "Mock CLI demo completed"
 fi
 
 # Test 3: Demo with JSON output format
@@ -252,7 +259,7 @@ if [ "$MOCK_MODE" = false ]; then
         if command -v jq &> /dev/null && jq empty demo.json 2>/dev/null; then
             test_pass "JSON output is valid"
         else
-            test_pass "JSON demo completed (JSON not validated)"
+            test_skip "JSON demo output not validated: JSON validity not verified"
         fi
     else
         test_fail "JSON demo failed"
@@ -331,10 +338,10 @@ else
   ]
 }
 EOF
-    test_pass "Mock JSON demo completed"
+    test_skip "Mock JSON demo completed"
     
     if command -v jq &> /dev/null && jq empty demo.json 2>/dev/null; then
-        test_pass "Mock JSON is valid"
+        test_skip "Mock JSON is valid"
     fi
 fi
 
@@ -393,8 +400,8 @@ EOF
   }
 }
 EOF
-    test_pass "Mock debug demo completed"
-    test_pass "Mock debug report file created"
+    test_skip "Mock debug demo completed"
+    test_skip "Mock debug report file created"
 fi
 
 # Test 5: Demo with HTTP protocol (simulated)
@@ -408,7 +415,7 @@ if [ "$MOCK_MODE" = false ]; then
     if grep -q "Server\|HTTP\|Web\|localhost\|port" web_demo.txt; then
         test_pass "Web demo server started"
     else
-        test_pass "Web demo attempted (may need longer timeout)"
+        test_skip "Web demo not verified: server start not observed"
     fi
 else
     cat > web_demo.txt << 'EOF'
@@ -437,7 +444,7 @@ Press Ctrl+C to stop server
    
 ✅ Demo server ready - Open browser to explore!
 EOF
-    test_pass "Mock web demo server started"
+    test_skip "Mock web demo server started"
 fi
 
 # Test 6: Demo with repository URL (GitHub)
@@ -450,7 +457,7 @@ if [ "$MOCK_MODE" = false ]; then
         test_pass "Repository demo command parsed"
     else
         # The command might not support --help in this context
-        test_pass "Repository demo command attempted"
+        test_skip "Repository demo not verified: command failed"
     fi
 else
     cat > repo_demo.txt << 'EOF'
@@ -485,7 +492,7 @@ Project Structure:
    
 Quality Grade: A- (Excellent for learning)
 EOF
-    test_pass "Mock repository demo completed"
+    test_skip "Mock repository demo completed"
 fi
 
 # Test 7: Demo with MCP protocol
@@ -497,7 +504,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN demo . --protocol=mcp --cli > mcp_demo.txt 2>&1; then
         test_pass "MCP protocol demo completed"
     else
-        test_pass "MCP protocol demo attempted (may require MCP setup)"
+        test_skip "MCP protocol demo not verified: command failed"
     fi
 else
     cat > mcp_demo.txt << 'EOF'
@@ -536,7 +543,7 @@ Transport: stdio
 
 ✅ MCP Demo Complete - Tools working correctly!
 EOF
-    test_pass "Mock MCP protocol demo completed"
+    test_skip "Mock MCP protocol demo completed"
 fi
 
 # Test 8: Demo with performance metrics and visualization
@@ -594,8 +601,8 @@ Target Nodes: 10 (complexity reduction enabled)
 
 ✅ Performance demo complete - System optimized!
 EOF
-    test_pass "Mock performance demo completed"
-    test_pass "Performance metrics included"
+    test_skip "Mock performance demo completed"
+    test_skip "Performance metrics included"
 fi
 
 # Cleanup
@@ -606,7 +613,12 @@ echo ""
 echo "=== Chapter 8 Demo Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All demo tests passed!"
     exit 0

@@ -53,6 +53,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -62,6 +63,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test files for QDD operations
@@ -182,7 +189,7 @@ Adds two integers with proper type checking and error handling.
 - Coverage: 85% (Good)
 - TDG Score: 2 (Acceptable)
 EOF
-    test_pass "Mock QDD create completed"
+    test_skip "Mock QDD create completed"
 fi
 
 # Test 3: QDD Refactor command
@@ -216,7 +223,7 @@ Analysis Results:
 - Estimated refactor time: 15 minutes
 - Quality improvement: B- → A
 EOF
-    test_pass "Mock QDD refactor completed"
+    test_skip "Mock QDD refactor completed"
 fi
 
 # Test 4: QDD Validate command
@@ -250,7 +257,7 @@ else
 📋 Validation Summary:
 Status: ✅ PASSED
 EOF
-    test_pass "Mock QDD validate completed"
+    test_skip "Mock QDD validate completed"
 fi
 
 # Test 5: QDD Quality Profiles
@@ -278,7 +285,7 @@ for profile in "${profiles[@]}"; do
 🔍 QDD Quality Validation - ${profile} Profile
 Status: ✅ PASSED
 EOF
-        test_pass "Mock QDD $profile profile completed"
+        test_skip "Mock QDD $profile profile completed"
     fi
 done
 
@@ -335,7 +342,7 @@ Status: ✅ PASSED
 EOF
                 ;;
         esac
-        test_pass "Mock QDD $format format completed"
+        test_skip "Mock QDD $format format completed"
     fi
 done
 
@@ -386,7 +393,7 @@ def validate_email(email: str) -> bool:
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 EOF
-    test_pass "Mock QDD extreme profile completed"
+    test_skip "Mock QDD extreme profile completed"
 fi
 
 # Test 8: QDD MCP Integration Format
@@ -513,7 +520,12 @@ echo ""
 echo "=== Chapter 14 QDD Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All QDD tests passed!"
     exit 0

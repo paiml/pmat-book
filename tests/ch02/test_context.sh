@@ -33,6 +33,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -42,6 +43,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test project structure
@@ -183,7 +190,7 @@ Configuration loading from JSON or environment
 ### README.md
 Project documentation with features and installation
 EOF
-    test_pass "Mock context generation completed"
+    test_skip "Mock context generation completed"
 fi
 
 # Test 3: Context with filters
@@ -205,7 +212,7 @@ if [ "$MOCK_MODE" = false ]; then
         test_fail "Context without tests failed"
     fi
 else
-    test_pass "Mock filtered context completed"
+    test_skip "Mock filtered context completed"
 fi
 
 # Test 4: Context output formats
@@ -253,9 +260,9 @@ else
   }
 }
 EOF
-    test_pass "Mock JSON context generated"
+    test_skip "Mock JSON context generated"
     if jq empty context.json 2>/dev/null; then
-        test_pass "Mock JSON is valid"
+        test_skip "Mock JSON is valid"
     fi
 fi
 
@@ -294,7 +301,7 @@ else
 2. Add error handling in main()
 3. Consider type hints throughout
 EOF
-    test_pass "Mock context with analysis completed"
+    test_skip "Mock context with analysis completed"
 fi
 
 # Test 6: Context size limits
@@ -316,7 +323,7 @@ if [ "$MOCK_MODE" = false ]; then
         test_fail "File-limited context failed"
     fi
 else
-    test_pass "Mock size-limited context completed"
+    test_skip "Mock size-limited context completed"
 fi
 
 # Test 7: Context for AI/LLM
@@ -351,7 +358,7 @@ README.md - Documentation
 </code_style>
 </repository>
 EOF
-    test_pass "Mock AI-optimized context completed"
+    test_skip "Mock AI-optimized context completed"
 fi
 
 # Test 8: Context caching
@@ -380,7 +387,7 @@ if [ "$MOCK_MODE" = false ]; then
         test_fail "Cache clear failed"
     fi
 else
-    test_pass "Mock context caching completed"
+    test_skip "Mock context caching completed"
 fi
 
 # Cleanup
@@ -391,7 +398,12 @@ echo ""
 echo "=== Chapter 2 Context Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All context tests passed!"
     exit 0

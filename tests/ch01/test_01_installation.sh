@@ -9,6 +9,7 @@ echo "=== Testing Chapter 1: Installation Methods ==="
 # Test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -20,7 +21,13 @@ test_fail() {
     FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
-# Test 1: Verify PMAT is installed (or skip gracefully)
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
+}
+
+# Test 1: Verify PMAT is installed (or skip)
 echo "Test 1: Verify PMAT installation"
 PMAT_AVAILABLE=false
 if command -v pmat &> /dev/null; then
@@ -34,9 +41,7 @@ if command -v pmat &> /dev/null; then
         PMAT_AVAILABLE=false
     fi
 else
-    echo "⚠️  PMAT command not found - this is expected in book development"
-    echo "⚠️  Tests will validate example structures without executing PMAT"
-    test_pass "PMAT not required for book development tests"
+    test_skip "PMAT not installed: this run verified NOTHING about pmat"
 fi
 
 # Test 2: Test basic help command
@@ -48,7 +53,7 @@ if [ "$PMAT_AVAILABLE" = true ]; then
         test_fail "Help command failed"
     fi
 else
-    test_pass "Help command test skipped (PMAT not available)"
+    test_skip "Help command not checked: PMAT not available"
 fi
 
 # Test 3: Test version output format
@@ -61,13 +66,7 @@ if [ "$PMAT_AVAILABLE" = true ]; then
         test_fail "Version format incorrect: $VERSION_OUTPUT"
     fi
 else
-    # Test expected format without actually running PMAT
-    EXPECTED_FORMAT="pmat 2.63.0"
-    if [[ "$EXPECTED_FORMAT" =~ ^pmat[[:space:]][0-9]+\.[0-9]+\.[0-9]+ ]]; then
-        test_pass "Version format pattern validated: $EXPECTED_FORMAT"
-    else
-        test_fail "Version format pattern invalid"
-    fi
+    test_skip "Version format not checked: PMAT not available (no installed version to read)"
 fi
 
 # Test 4: Create test file for analysis
@@ -83,7 +82,12 @@ if __name__ == "__main__":
 EOF
 
 if [ -f "$TEST_FILE" ]; then
-    test_pass "Test file created: $TEST_FILE"
+    if [ "$PMAT_AVAILABLE" = true ]; then
+        test_pass "Test file created: $TEST_FILE"
+    else
+        # Fixture for the PMAT checks below; it is not an assertion.
+        echo "  fixture written: $TEST_FILE (not an assertion)"
+    fi
 else
     test_fail "Failed to create test file"
 fi
@@ -97,7 +101,7 @@ if [ "$PMAT_AVAILABLE" = true ]; then
         test_fail "Basic analysis command failed"
     fi
 else
-    test_pass "Basic analysis test skipped (PMAT not available)"
+    test_skip "Basic analysis not run: PMAT not available"
 fi
 
 # Test 6: Test JSON output format
@@ -110,22 +114,19 @@ if [ "$PMAT_AVAILABLE" = true ]; then
         test_fail "JSON output is invalid"
     fi
 else
-    # Test expected JSON structure without PMAT
-    EXPECTED_OUTPUT='{"files":[],"summary":{"total_files":0}}'
-    if echo "$EXPECTED_OUTPUT" | jq empty 2>/dev/null; then
-        test_pass "Expected JSON output structure is valid"
-        OUTPUT="$EXPECTED_OUTPUT"
-    else
-        test_fail "Expected JSON output structure is invalid"
-    fi
+    test_skip "JSON output not produced: PMAT not available"
 fi
 
 # Test 7: Test analysis contains expected fields
 echo "Test 7: Test analysis structure"
-if echo "$OUTPUT" | jq -e '.summary' &> /dev/null || echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
-    test_pass "Analysis contains expected fields"
+if [ "$PMAT_AVAILABLE" = true ]; then
+    if echo "$OUTPUT" | jq -e '.summary' &> /dev/null || echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
+        test_pass "Analysis contains expected fields"
+    else
+        test_fail "Analysis missing expected fields"
+    fi
 else
-    test_fail "Analysis missing expected fields"
+    test_skip "Analysis structure not checked: PMAT not available"
 fi
 
 # Cleanup
@@ -136,7 +137,12 @@ echo ""
 echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All tests passed!"
     exit 0
