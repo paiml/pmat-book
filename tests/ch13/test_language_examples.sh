@@ -562,8 +562,8 @@ echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
 if [ "$PASS_COUNT" -eq 0 ] && [ "$FAIL_COUNT" -eq 0 ]; then
-    echo "⚠️  SKIPPED: this run verified NOTHING"
-    exit 0
+    echo "❌ FAIL: this run verified NOTHING"
+    exit 1
 fi
 
 if [ $FAIL_COUNT -eq 0 ] && [ "$PASS_COUNT" -gt 0 ]; then

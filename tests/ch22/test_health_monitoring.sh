@@ -60,7 +60,7 @@ echo "=== Test 2: Component Status Verification ==="
 # 3.44.0 feature-test names (exact; anything else exits 1)
 COMPONENTS="ast.rust analysis.complexity cache.subsystem"
 for component in $COMPONENTS; do
-    if pmat diagnose --only "$component" --format compact 2>/dev/null | grep -q '"ok":true'
+    if out=$(pmat diagnose --only "$component" --format compact 2>/dev/null) && grep -q '"ok":true' <<<"$out"
     then
         test_pass "Component '$component' verified"
     else
@@ -69,7 +69,7 @@ for component in $COMPONENTS; do
 done
 
 echo "=== Test 3: Performance Metrics Collection ==="
-if pmat diagnose --verbose 2>&1 | grep -q "time\|ms\|performance\|latency"
+if out=$(pmat diagnose --verbose 2>&1) && grep -q "time\|ms\|performance\|latency" <<<"$out"
 then
     test_pass "Performance metrics collected"
 else
@@ -78,7 +78,7 @@ fi
 
 echo "=== Test 4: Dependency Verification ==="
 # Check system dependencies
-if pmat diagnose 2>&1 | grep -q "depend\|version\|require\|cargo\|rust"
+if out=$(pmat diagnose 2>&1) && grep -q "depend\|version\|require\|cargo\|rust" <<<"$out"
 then
     test_pass "Dependency verification works"
 else
@@ -131,7 +131,7 @@ cd ..
 echo "=== Test 7: Resource Usage Monitoring ==="
 # The only resource field diagnose reports is cache.subsystem.memory_pressure in
 # the JSON report. It is in-process (same as pmat memory), not a project measurement.
-if pmat diagnose --format json 2>/dev/null | grep -q '"memory_pressure"'
+if out=$(pmat diagnose --format json 2>/dev/null) && grep -q '"memory_pressure"' <<<"$out"
 then
     test_pass "Resource field reported in JSON (cache.subsystem.memory_pressure, in-process)"
 else
