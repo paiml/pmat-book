@@ -1,0 +1,10 @@
+[package]
+name = "gen-appendix-b"
+version = "0.1.0"
+edition = "2021"
+description = "Generates src/appendix-b-commands.md from the pmat binary's own --help output"
+publish = false
+
+[workspace]
+
+[dependencies]
