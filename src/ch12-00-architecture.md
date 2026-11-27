@@ -424,10 +424,11 @@ Graph Statistics
   Connected components: 4
 ```
 
-**Zero edges** — on the same tree where `pmat analyze dag` found four. That was
-reproduced on every tree tried, including real source directories, and it is
-the failure mode described earlier: a graph with no edges makes every
-centrality measure trivially zero and every node its own component. The
+**Zero edges on this repository.** The three-module fixture above now resolves
+its four edges with pmat 3.44.0 and 3.47.0, but the book's own tree still
+reports `0 edges` for 23 nodes on both releases. That is the failure mode
+described earlier: a graph with no edges makes every centrality measure
+trivially zero and every node its own component. The
 "✅ Built graph" line is not a verdict on whether the graph is usable.
 
 Until that resolves, take structural centrality from `pmat analyze dag`'s edge

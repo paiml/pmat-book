@@ -283,17 +283,19 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Test 8: graph-metrics — the chapter warns it reports zero edges. Keep that
-# warning honest: if this ever starts resolving edges, the chapter is stale.
+# Test 8: graph-metrics on the three-module fixture. It resolved 0 edges on
+# earlier pmat releases; the pinned 3.44.0 and 3.47.0 both report the fixture's
+# 4 edges now. The chapter also says this repository's own tree still reports 0
+# edges, which this fixture test does not cover.
 # ---------------------------------------------------------------------------
 echo ""
-echo "Test 8: analyze graph-metrics (chapter documents a zero-edge defect)"
+echo "Test 8: analyze graph-metrics resolves the fixture's edges"
 GM_OUT=$("$PMAT_BIN" analyze graph-metrics -p . 2>&1)
 GM_EDGES=$(echo "$GM_OUT" | sed -nE 's/.*Total edges: ([0-9]+).*/\1/p' | head -1)
-if [ "${GM_EDGES:-x}" = "0" ]; then
-    test_pass "graph-metrics still reports 0 edges (chapter's warning is current)"
+if [ "${GM_EDGES:-0}" -eq 4 ]; then
+    test_pass "graph-metrics reports the fixture's 4 edges"
 else
-    test_fail "graph-metrics now reports $GM_EDGES edges — remove the warning from the chapter"
+    test_fail "graph-metrics reports ${GM_EDGES:-no} edges on the fixture (expected 4)"
 fi
 
 # ---------------------------------------------------------------------------

@@ -66,6 +66,8 @@ elif ! type -P pmat >/dev/null 2>&1; then
     echo "Passed: $PASS_COUNT"
     echo "Failed: $FAIL_COUNT"
     echo "⚠️  SKIPPED: this run verified NOTHING about MCP"
+    # A FAIL recorded earlier in this run must still fail the run.
+    [ "$FAIL_COUNT" -eq 0 ] || exit 1
     exit 0
 else
     test_fail "MCP help command failed"
