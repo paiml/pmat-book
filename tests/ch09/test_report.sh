@@ -363,10 +363,12 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN report . --format=json > report.json 2>&1; then
         test_pass "JSON report generation completed"
         
-        if command -v jq &> /dev/null && jq empty report.json 2>/dev/null; then
+        if ! command -v jq &> /dev/null; then
+            test_skip "JSON report validity not verified: jq not available"
+        elif jq empty report.json 2>/dev/null; then
             test_pass "Generated JSON report is valid"
         else
-            test_skip "JSON report generated but not validated: validity not verified"
+            test_fail "Generated JSON report is not valid JSON"
         fi
     else
         test_fail "JSON report generation failed"
@@ -761,7 +763,7 @@ EOF
     
     if command -v jq &> /dev/null; then
         if jq -e '.detailed_analysis | has("complexity") and has("dead_code")' specific_analysis.json >/dev/null 2>&1; then
-            test_skip "Report contains requested analysis types"
+            test_fail "Report does not contain the requested analysis types"
         fi
     else
         test_skip "Report generated (jq not available for validation)"
@@ -779,7 +781,7 @@ if [ "$MOCK_MODE" = false ]; then
         if grep -q "confidence.*80\|high_confidence" high_confidence.json; then
             test_pass "Report applied confidence filtering"
         else
-            test_skip "High confidence report: filtering not verified"
+            test_fail "High confidence report does not show confidence filtering"
         fi
     else
         test_fail "High confidence report failed"
@@ -831,7 +833,7 @@ if [ "$MOCK_MODE" = false ]; then
         if grep -q "visualization\|chart\|graph" visual_report.json; then
             test_pass "Report includes visualization data"
         else
-            test_skip "Visualization report completed (no visualization data found)"
+            test_fail "Visualization report has no visualization data"
         fi
     else
         test_fail "Visualization report failed"
