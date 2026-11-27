@@ -86,9 +86,9 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; out=$(pmat diagnose 2>&1) || rc=$?
     if [ $rc -ne 0 ]; then
-        test_skip "Basic diagnostics run (pmat diagnose exited $rc)"
+        test_fail "Basic diagnostics run (pmat diagnose exited $rc)"
     elif echo "$out" | grep -q "diagnostic\|check\|feature\|✅\|✓"; then
-        test_skip "Basic diagnostics run successful"
+        test_pass "Basic diagnostics run successful"
     else
         test_fail "Basic diagnostics output had no recognisable diagnostic content"
     fi
@@ -100,9 +100,9 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; json=$(pmat diagnose --format json 2>/dev/null) || rc=$?
     if [ $rc -ne 0 ]; then
-        test_skip "JSON diagnostic output (pmat diagnose --format json exited $rc)"
+        test_fail "JSON diagnostic output (pmat diagnose --format json exited $rc)"
     elif echo "$json" | grep -q '{' || echo "$json" | grep -q '"features"'; then
-        test_skip "JSON diagnostic output works"
+        test_pass "JSON diagnostic output works"
     else
         test_fail "JSON diagnostic output was not JSON"
     fi
@@ -114,9 +114,9 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; compact=$(pmat diagnose --format compact 2>/dev/null) || rc=$?
     if [ $rc -ne 0 ]; then
-        test_skip "Compact format output (pmat diagnose --format compact exited $rc)"
+        test_fail "Compact format output (pmat diagnose --format compact exited $rc)"
     elif [ -n "$compact" ]; then
-        test_skip "Compact format output works"
+        test_pass "Compact format output works"
     else
         test_fail "Compact format produced no output"
     fi
@@ -128,13 +128,13 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; pmat diagnose --only analysis >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_skip "Feature-specific diagnostics work"
+        test_pass "Feature-specific diagnostics work"
     else
         rc=0; pmat diagnose --only cache >/dev/null 2>&1 || rc=$?
         if [ $rc -eq 0 ]; then
-            test_skip "Selective feature testing works"
+            test_pass "Selective feature testing works"
         else
-            test_skip "Feature-specific diagnostics (--only analysis and --only cache both failed)"
+            test_fail "Feature-specific diagnostics (--only analysis and --only cache both failed)"
         fi
     fi
 fi
@@ -145,9 +145,9 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; pmat diagnose --skip telemetry --skip agent >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_skip "Feature skipping works"
+        test_pass "Feature skipping works"
     else
-        test_skip "Feature skipping (pmat diagnose --skip telemetry --skip agent exited $rc)"
+        test_fail "Feature skipping (pmat diagnose --skip telemetry --skip agent exited $rc)"
     fi
 fi
 
@@ -157,9 +157,9 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; timeout 10 pmat diagnose --timeout 5 >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_skip "Timeout configuration works"
+        test_pass "Timeout configuration works"
     else
-        test_skip "Diagnostic timeout (pmat diagnose --timeout 5 exited $rc)"
+        test_fail "Diagnostic timeout (pmat diagnose --timeout 5 exited $rc)"
     fi
 fi
 
@@ -169,9 +169,9 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; verbose=$(pmat diagnose --verbose 2>&1) || rc=$?
     if [ $rc -ne 0 ]; then
-        test_skip "Verbose diagnostics (pmat diagnose --verbose exited $rc)"
+        test_fail "Verbose diagnostics (pmat diagnose --verbose exited $rc)"
     elif echo "$verbose" | grep -q "INFO\|DEBUG\|verbose\|detail"; then
-        test_skip "Verbose diagnostics output works"
+        test_pass "Verbose diagnostics output works"
     else
         test_fail "Verbose diagnostics output had no verbose detail"
     fi
@@ -183,9 +183,9 @@ if [ $HAVE_PMAT -eq 0 ]; then
 else
     rc=0; pmat diagnose --only analysis --only cache --only quality >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
-        test_skip "Multiple feature diagnostics work"
+        test_pass "Multiple feature diagnostics work"
     else
-        test_skip "Multiple feature diagnostics (exited $rc)"
+        test_fail "Multiple feature diagnostics (exited $rc)"
     fi
 fi
 

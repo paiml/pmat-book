@@ -18,6 +18,7 @@ echo "=== Testing Chapter 6: pmat scaffold Command ==="
 PMAT_BIN=""
 if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
+    MOCK_MODE=false
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"

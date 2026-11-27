@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -47,15 +52,15 @@ then
     if [ -f Cargo.toml ] || [ -f src/main.rs ] || [ -f README.md ]; then
         test_pass "Project scaffolding created structure"
     else
-        test_skip "Project scaffolding completed"
+        pmat_fail "Project scaffolding completed"
     fi
 else
     PROJECT_OUTPUT=$(pmat scaffold project 2>&1) || PROJECT_OUTPUT=""
     if echo "$PROJECT_OUTPUT" | grep -q "scaffold\|project\|template"
     then
-        test_skip "Project scaffolding available"
+        test_pass "Project scaffolding available"
     else
-        test_skip "Scaffolding system exists"
+        pmat_fail "Scaffolding system exists"
     fi
 fi
 
@@ -65,15 +70,15 @@ then
     if [ -d agent-dir ]; then
         test_pass "Agent scaffolding created directory"
     else
-        test_skip "Agent scaffolding completed"
+        pmat_fail "Agent scaffolding completed"
     fi
 else
     AGENT_OUTPUT=$(pmat scaffold agent 2>&1) || AGENT_OUTPUT=""
     if echo "$AGENT_OUTPUT" | grep -q "agent\|mcp\|scaffold"
     then
-        test_skip "Agent scaffolding available"
+        test_pass "Agent scaffolding available"
     else
-        test_skip "Agent template system exists"
+        pmat_fail "Agent template system exists"
     fi
 fi
 
@@ -83,7 +88,7 @@ if echo "$AGENT_TEMPLATES" | grep -q "template\|agent\|deterministic\|tool"
 then
     test_pass "Agent template listing works"
 else
-    test_skip "Agent template listing available"
+    pmat_fail "Agent template listing available"
 fi
 
 echo "=== Test 4: Validate Agent Template ==="
@@ -108,9 +113,9 @@ else
     VALIDATE_OUTPUT=$(pmat scaffold validate-template test-agent.yaml 2>&1) || VALIDATE_OUTPUT=""
     if echo "$VALIDATE_OUTPUT" | grep -q "valid\|template\|agent"
     then
-        test_skip "Template validation available"
+        test_pass "Template validation available"
     else
-        test_skip "Validation system exists"
+        pmat_fail "Validation system exists"
     fi
 fi
 
@@ -136,10 +141,10 @@ then
     if [ -d custom-project ]; then
         test_pass "Custom configuration scaffolding works"
     else
-        test_skip "Configuration-based scaffolding completed"
+        pmat_fail "Configuration-based scaffolding completed"
     fi
 else
-    test_skip "Configuration support available"
+    pmat_fail "Configuration support available"
 fi
 
 echo "=== Test 6: Interactive Scaffolding ==="
@@ -149,7 +154,7 @@ echo -e "test-interactive\n0.1.0\nTest Description" | pmat scaffold project rust
 if [ -d interactive-project ]; then
     test_pass "Interactive scaffolding works"
 else
-    test_skip "Interactive mode available"
+    pmat_fail "Interactive mode available"
 fi
 
 echo "=== Test 7: Scaffold with Git Initialization ==="
@@ -158,10 +163,10 @@ then
     if [ -d git-project/.git ]; then
         test_pass "Git initialization with scaffolding works"
     else
-        test_skip "Project created (git optional)"
+        pmat_fail "Project created (git optional)"
     fi
 else
-    test_skip "Git integration available"
+    pmat_fail "Git integration available"
 fi
 
 echo "=== Test 8: Multi-Language Project Scaffolding ==="
@@ -170,15 +175,15 @@ then
     if [ -d multi-lang ]; then
         test_pass "Multi-language scaffolding works"
     else
-        test_skip "Multi-language project created"
+        pmat_fail "Multi-language project created"
     fi
 else
     # Try individual language scaffolding
     if pmat scaffold project python-api --name py-api --path py-project 2>/dev/null
     then
-        test_skip "Python project scaffolding available"
+        test_pass "Python project scaffolding available"
     else
-        test_skip "Language-specific scaffolding exists"
+        pmat_fail "Language-specific scaffolding exists"
     fi
 fi
 

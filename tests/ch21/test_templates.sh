@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -50,9 +55,9 @@ else
     TEMPLATES=$(pmat list --format json 2>/dev/null) || TEMPLATES=""
     if echo "$TEMPLATES" | grep -q "{" || echo "$TEMPLATES" | grep -q "template"
     then
-        test_skip "Template listing available"
+        test_pass "Template listing available"
     else
-        test_skip "Template system exists"
+        pmat_fail "Template system exists"
     fi
 fi
 
@@ -64,9 +69,9 @@ else
     SEARCH_OUTPUT=$(pmat search "web" 2>/dev/null) || SEARCH_OUTPUT=""
     if echo "$SEARCH_OUTPUT" | grep -q "web\|api\|server\|search"
     then
-        test_skip "Template search functionality available"
+        test_pass "Template search functionality available"
     else
-        test_skip "Search capability exists"
+        pmat_fail "Search capability exists"
     fi
 fi
 
@@ -77,15 +82,15 @@ then
     if [ -f main.rs ]; then
         test_pass "Single template generated successfully"
     else
-        test_skip "Template generation completed"
+        pmat_fail "Template generation completed"
     fi
 else
     # Try alternative syntax
     if pmat gen rust cli -p name=test-cli -o main.rs 2>/dev/null
     then
-        test_skip "Template generation with short flags works"
+        test_pass "Template generation with short flags works"
     else
-        test_skip "Template generation system available"
+        pmat_fail "Template generation system available"
     fi
 fi
 
@@ -97,9 +102,9 @@ else
     VALIDATE_OUTPUT=$(pmat validate rust cli 2>&1) || VALIDATE_OUTPUT=""
     if echo "$VALIDATE_OUTPUT" | grep -q "valid\|param\|require"
     then
-        test_skip "Parameter validation available"
+        test_pass "Parameter validation available"
     else
-        test_skip "Validation system exists"
+        pmat_fail "Validation system exists"
     fi
 fi
 
@@ -111,9 +116,9 @@ else
     # Try toolchain filter
     if pmat list --toolchain rust 2>/dev/null
     then
-        test_skip "Toolchain filtering available"
+        test_pass "Toolchain filtering available"
     else
-        test_skip "Template filtering capability exists"
+        pmat_fail "Template filtering capability exists"
     fi
 fi
 
@@ -123,10 +128,10 @@ then
     if [ -f deep/nested/app.rs ]; then
         test_pass "Directory creation with template works"
     else
-        test_skip "Directory structure created"
+        pmat_fail "Directory structure created"
     fi
 else
-    test_skip "Directory creation option available"
+    pmat_fail "Directory creation option available"
 fi
 
 echo "=== Test 7: JSON Format Output ==="
@@ -135,7 +140,7 @@ if echo "$JSON_TEMPLATES" | grep -q '\[' || echo "$JSON_TEMPLATES" | grep -q '{'
 then
     test_pass "JSON format output works"
 else
-    test_skip "Structured output formats available"
+    pmat_fail "Structured output formats available"
 fi
 
 echo "=== Test 8: Template Search with Limit ==="

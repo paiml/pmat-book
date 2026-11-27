@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -82,9 +87,9 @@ else
     STATS_VERBOSE=$(pmat memory stats --verbose 2>&1) || STATS_VERBOSE=""
     if echo "$STATS_VERBOSE" | grep -q "memory\|stats\|usage"
     then
-        test_skip "Memory stats available"
+        test_pass "Memory stats available"
     else
-        test_skip "Memory monitoring exists"
+        pmat_fail "Memory monitoring exists"
     fi
 fi
 
@@ -96,9 +101,9 @@ else
     CLEANUP_OUTPUT=$(pmat memory cleanup 2>&1) || CLEANUP_OUTPUT=""
     if echo "$CLEANUP_OUTPUT" | grep -q "cleanup\|freed\|memory"
     then
-        test_skip "Memory cleanup available"
+        test_pass "Memory cleanup available"
     else
-        test_skip "Cleanup functionality exists"
+        pmat_fail "Cleanup functionality exists"
     fi
 fi
 
@@ -110,9 +115,9 @@ else
     CONFIG_OUTPUT=$(pmat memory configure 2>&1) || CONFIG_OUTPUT=""
     if echo "$CONFIG_OUTPUT" | grep -q "config\|limit\|memory"
     then
-        test_skip "Memory configuration available"
+        test_pass "Memory configuration available"
     else
-        test_skip "Configuration system exists"
+        pmat_fail "Configuration system exists"
     fi
 fi
 
@@ -122,7 +127,7 @@ if echo "$POOLS_OUTPUT" | grep -q "pool\|buffer\|allocat"
 then
     test_pass "Memory pool statistics shown"
 else
-    test_skip "Pool management available"
+    pmat_fail "Pool management available"
 fi
 
 echo "=== Test 5: Memory Pressure ==="
@@ -131,7 +136,7 @@ if echo "$PRESSURE_OUTPUT" | grep -q "pressure\|low\|medium\|high\|memory"
 then
     test_pass "Memory pressure detected"
 else
-    test_skip "Pressure monitoring available"
+    pmat_fail "Pressure monitoring available"
 fi
 
 echo "=== Test 6: Memory with Verbose ==="
@@ -140,7 +145,7 @@ if echo "$VERBOSE_MEM" | grep -q "heap\|stack\|resident\|virtual"
 then
     test_pass "Detailed memory stats work"
 else
-    test_skip "Verbose memory info available"
+    pmat_fail "Verbose memory info available"
 fi
 
 echo "=== Test 7: Force Garbage Collection ==="

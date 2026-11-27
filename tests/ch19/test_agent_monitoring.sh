@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -143,7 +148,7 @@ if echo "$STATUS" | grep -q "monitor\|project\|running"
 then
     test_pass "Multiple project monitoring active"
 else
-    test_skip "Multi-project monitoring supported"
+    pmat_fail "Multi-project monitoring supported"
 fi
 
 echo "=== Test 3: Quality Thresholds Configuration ==="
@@ -166,7 +171,7 @@ if pmat agent monitor --project-path "$TEST_DIR/project-b" --thresholds quality-
 then
     test_pass "Quality thresholds configured"
 else
-    test_skip "Threshold configuration system exists"
+    pmat_fail "Threshold configuration system exists"
 fi
 
 echo "=== Test 4: Continuous Quality Monitoring ==="
@@ -187,15 +192,15 @@ then
         if grep -q -i "monitor\|analysis\|quality" monitoring.log 2>/dev/null; then
             test_pass "Quality analysis running continuously"
         else
-            test_skip "Background monitoring operational"
+            pmat_fail "Background monitoring operational"
         fi
         
         kill $MONITOR_PID 2>/dev/null || true
     else
-        test_skip "Monitoring process lifecycle managed"
+        pmat_fail "Monitoring process lifecycle managed"
     fi
 else
-    test_skip "Continuous monitoring capability exists"
+    pmat_fail "Continuous monitoring capability exists"
 fi
 
 echo "=== Test 5: Project Health Dashboard ==="
@@ -205,10 +210,10 @@ then
     if [ -s status.json ]; then
         test_pass "Agent status in JSON format"
     else
-        test_skip "Status reporting available"
+        pmat_fail "Status reporting available"
     fi
 else
-    test_skip "Dashboard data collection supported"
+    pmat_fail "Dashboard data collection supported"
 fi
 
 echo "=== Test 6: Auto-restart on Failure ==="
@@ -222,10 +227,10 @@ then
         test_pass "Agent runs with memory limits"
         kill $RESTART_PID 2>/dev/null || true
     else
-        test_skip "Memory monitoring configured"
+        pmat_fail "Memory monitoring configured"
     fi
 else
-    test_skip "Auto-restart configuration available"
+    pmat_fail "Auto-restart configuration available"
 fi
 
 echo "=== Test 7: Agent Reload Configuration ==="
@@ -237,9 +242,9 @@ else
     RELOAD_OUTPUT=$(pmat agent reload 2>&1) || RELOAD_OUTPUT=""
     if echo "$RELOAD_OUTPUT" | grep -q "reload\|config\|not running"
     then
-        test_skip "Configuration reload capability exists"
+        test_pass "Configuration reload capability exists"
     else
-        test_skip "Dynamic configuration management available"
+        pmat_fail "Dynamic configuration management available"
     fi
 fi
 
@@ -259,7 +264,7 @@ if echo "$UNMONITOR_OUTPUT" | grep -q "unmonitor\|removed\|not found"
 then
     test_pass "Project unmonitoring system works"
 else
-    test_skip "Monitoring lifecycle management exists"
+    pmat_fail "Monitoring lifecycle management exists"
 fi
 
 # Summary

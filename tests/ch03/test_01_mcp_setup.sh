@@ -66,8 +66,8 @@ else
     echo "=== Test Summary ==="
     echo "Passed: $PASS_COUNT"
     echo "Failed: $FAIL_COUNT"
-    echo "⚠️  MCP tests skipped - feature may not be implemented yet"
-    exit 0
+    echo "❌ MCP tests not run: MCP help check failed (see FAIL above)"
+    exit 1
 fi
 
 # Test 3: Test MCP server startup (mock/dry-run)

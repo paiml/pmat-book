@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -110,9 +115,9 @@ else
     CACHE_VERBOSE=$(pmat cache stats --verbose 2>&1) || CACHE_VERBOSE=""
     if echo "$CACHE_VERBOSE" | grep -q "cache\|stats"
     then
-        test_skip "Cache stats available"
+        test_pass "Cache stats available"
     else
-        test_skip "Cache monitoring exists"
+        pmat_fail "Cache monitoring exists"
     fi
 fi
 
@@ -122,7 +127,7 @@ if echo "$CACHE_OUTPUT" | grep -q "hit.*rate\|hits\|misses"
 then
     test_pass "Cache hit rate tracked"
 else
-    test_skip "Hit rate monitoring available"
+    pmat_fail "Hit rate monitoring available"
 fi
 
 echo "=== Test 3: Cache Size Information ==="
@@ -130,7 +135,7 @@ if pmat cache stats 2>&1 | grep -q "size\|MB\|entries\|capacity"
 then
     test_pass "Cache size information shown"
 else
-    test_skip "Size tracking available"
+    pmat_fail "Size tracking available"
 fi
 
 echo "=== Test 4: Cache Clear Operation ==="
@@ -141,9 +146,9 @@ else
     CLEAR_OUTPUT=$(pmat cache clear 2>&1) || CLEAR_OUTPUT=""
     if echo "$CLEAR_OUTPUT" | grep -q "clear\|flush\|empty"
     then
-        test_skip "Cache clearing available"
+        test_pass "Cache clearing available"
     else
-        test_skip "Cache management exists"
+        pmat_fail "Cache management exists"
     fi
 fi
 
@@ -155,9 +160,9 @@ else
     OPTIMIZE_OUTPUT=$(pmat cache optimize 2>&1) || OPTIMIZE_OUTPUT=""
     if echo "$OPTIMIZE_OUTPUT" | grep -q "optim\|compact\|defrag"
     then
-        test_skip "Cache optimization available"
+        test_pass "Cache optimization available"
     else
-        test_skip "Optimization capability exists"
+        pmat_fail "Optimization capability exists"
     fi
 fi
 
@@ -167,7 +172,7 @@ if echo "$PERF_OUTPUT" | grep -q "latency\|throughput\|ops"
 then
     test_pass "Cache performance metrics shown"
 else
-    test_skip "Performance tracking available"
+    pmat_fail "Performance tracking available"
 fi
 
 echo "=== Test 7: Cache Eviction Policy ==="
@@ -187,9 +192,9 @@ else
     WARMUP_OUTPUT=$(pmat cache warmup 2>&1) || WARMUP_OUTPUT=""
     if echo "$WARMUP_OUTPUT" | grep -q "warm\|preload\|init"
     then
-        test_skip "Cache warmup available"
+        test_pass "Cache warmup available"
     else
-        test_skip "Warmup capability exists"
+        pmat_fail "Warmup capability exists"
     fi
 fi
 

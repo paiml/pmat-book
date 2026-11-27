@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -47,7 +52,7 @@ if echo "$HEALTH_OUTPUT" | grep -q "health\|system\|status\|ok"
 then
     test_pass "System health check runs"
 else
-    test_skip "Health monitoring system available"
+    pmat_fail "Health monitoring system available"
 fi
 
 echo "=== Test 2: Component Status Verification ==="
@@ -66,7 +71,7 @@ if pmat diagnose --verbose 2>&1 | grep -q "time\|ms\|performance\|latency"
 then
     test_pass "Performance metrics collected"
 else
-    test_skip "Performance monitoring available"
+    pmat_fail "Performance monitoring available"
 fi
 
 echo "=== Test 4: Dependency Verification ==="
@@ -75,7 +80,7 @@ if pmat diagnose 2>&1 | grep -q "depend\|version\|require\|cargo\|rust"
 then
     test_pass "Dependency verification works"
 else
-    test_skip "Dependency checking available"
+    pmat_fail "Dependency checking available"
 fi
 
 echo "=== Test 5: Configuration Validation ==="
@@ -97,7 +102,7 @@ if PMAT_CONFIG=pmat-config.toml pmat diagnose 2>/dev/null
 then
     test_pass "Configuration validation works"
 else
-    test_skip "Config validation capability exists"
+    pmat_fail "Config validation capability exists"
 fi
 
 echo "=== Test 6: Error Detection and Reporting ==="
@@ -115,7 +120,7 @@ if echo "$ERROR_OUTPUT" | grep -q "error\|fail\|issue\|problem"
 then
     test_pass "Error detection works"
 else
-    test_skip "Error reporting system available"
+    pmat_fail "Error reporting system available"
 fi
 cd ..
 
@@ -124,7 +129,7 @@ if pmat diagnose --verbose 2>&1 | grep -q "memory\|cpu\|disk\|resource"
 then
     test_pass "Resource monitoring works"
 else
-    test_skip "Resource tracking available"
+    pmat_fail "Resource tracking available"
 fi
 
 echo "=== Test 8: Diagnostic Report Generation ==="
@@ -133,10 +138,10 @@ then
     if [ -s diagnostic-report.json ]; then
         test_pass "Diagnostic report generated"
     else
-        test_skip "Report generation completed"
+        pmat_fail "Report generation completed"
     fi
 else
-    test_skip "Diagnostic reporting available"
+    pmat_fail "Diagnostic reporting available"
 fi
 
 # Summary

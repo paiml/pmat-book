@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -89,7 +94,7 @@ if echo "$STATUS" | grep -q "running\|stopped\|not running"
 then
     test_pass "Agent status command responds"
 else
-    test_skip "Agent status available"
+    pmat_fail "Agent status available"
 fi
 
 echo "=== Test 2: Start Agent Daemon ==="
@@ -106,10 +111,10 @@ then
         kill $AGENT_PID 2>/dev/null || true
         wait $AGENT_PID 2>/dev/null || true
     else
-        test_skip "Agent process lifecycle managed"
+        pmat_fail "Agent process lifecycle managed"
     fi
 else
-    test_skip "Agent start command available"
+    pmat_fail "Agent start command available"
 fi
 
 echo "=== Test 3: Agent Health Check ==="
@@ -118,7 +123,7 @@ if echo "$HEALTH" | grep -q "healthy\|running\|check"
 then
     test_pass "Agent health check responds"
 else
-    test_skip "Health monitoring available"
+    pmat_fail "Health monitoring available"
 fi
 
 echo "=== Test 4: Project Monitoring ==="
@@ -129,9 +134,9 @@ else
     MONITOR_OUTPUT=$(pmat agent monitor --project-path "$TEST_DIR" 2>&1) || MONITOR_OUTPUT=""
     if echo "$MONITOR_OUTPUT" | grep -q "monitor\|project\|path"
     then
-        test_skip "Project monitoring command available"
+        test_pass "Project monitoring command available"
     else
-        test_skip "Monitoring functionality exists"
+        pmat_fail "Monitoring functionality exists"
     fi
 fi
 
@@ -143,9 +148,9 @@ else
     QG_OUTPUT=$(pmat agent quality-gate 2>&1) || QG_OUTPUT=""
     if echo "$QG_OUTPUT" | grep -q "quality\|gate\|analysis"
     then
-        test_skip "Agent quality gate available"
+        test_pass "Agent quality gate available"
     else
-        test_skip "Quality gate integration exists"
+        pmat_fail "Quality gate integration exists"
     fi
 fi
 
@@ -159,10 +164,10 @@ then
         test_pass "MCP server started through agent"
         kill $MCP_PID 2>/dev/null || true
     else
-        test_skip "MCP server process managed"
+        pmat_fail "MCP server process managed"
     fi
 else
-    test_skip "MCP server command available"
+    pmat_fail "MCP server command available"
 fi
 
 echo "=== Test 7: Agent Configuration ==="
@@ -186,10 +191,10 @@ then
         test_pass "Agent uses custom configuration"
         kill $CONFIG_PID 2>/dev/null || true
     else
-        test_skip "Configuration file handling available"
+        pmat_fail "Configuration file handling available"
     fi
 else
-    test_skip "Agent configuration management exists"
+    pmat_fail "Agent configuration management exists"
 fi
 
 echo "=== Test 8: Agent Stop and Cleanup ==="
@@ -201,9 +206,9 @@ else
     STOP_OUTPUT=$(pmat agent stop 2>&1) || STOP_OUTPUT=""
     if echo "$STOP_OUTPUT" | grep -q "stop\|not running\|daemon"
     then
-        test_skip "Agent stop command available"
+        test_pass "Agent stop command available"
     else
-        test_skip "Agent lifecycle management exists"
+        pmat_fail "Agent lifecycle management exists"
     fi
 fi
 
@@ -213,7 +218,7 @@ if echo "$STATUS_FINAL" | grep -q "stopped\|not running\|checked"
 then
     test_pass "Agent properly stopped"
 else
-    test_skip "Agent status tracking works"
+    pmat_fail "Agent status tracking works"
 fi
 
 # Summary

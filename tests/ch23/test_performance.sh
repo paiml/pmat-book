@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -99,9 +104,9 @@ else
     PERF_OUTPUT=$(timeout 30 pmat test 2>&1) || PERF_OUTPUT=""
     if echo "$PERF_OUTPUT" | grep -q "test\|performance\|benchmark"
     then
-        test_skip "Performance testing available"
+        test_pass "Performance testing available"
     else
-        test_skip "Test suite exists"
+        pmat_fail "Test suite exists"
     fi
 fi
 
@@ -113,9 +118,9 @@ else
     PROPERTY_OUTPUT=$(timeout 30 pmat test property 2>&1) || PROPERTY_OUTPUT=""
     if echo "$PROPERTY_OUTPUT" | grep -q "property\|test\|check"
     then
-        test_skip "Property testing available"
+        test_pass "Property testing available"
     else
-        test_skip "Property test suite exists"
+        pmat_fail "Property test suite exists"
     fi
 fi
 
@@ -127,9 +132,9 @@ else
     # Try with flag
     if timeout 30 pmat test --memory 2>/dev/null
     then
-        test_skip "Memory testing with flag works"
+        test_pass "Memory testing with flag works"
     else
-        test_skip "Memory validation available"
+        pmat_fail "Memory validation available"
     fi
 fi
 
@@ -141,9 +146,9 @@ else
     # Try with flag
     if timeout 30 pmat test --throughput 2>/dev/null
     then
-        test_skip "Throughput testing with flag works"
+        test_pass "Throughput testing with flag works"
     else
-        test_skip "Throughput validation available"
+        pmat_fail "Throughput validation available"
     fi
 fi
 
@@ -155,9 +160,9 @@ else
     # Try with flag
     if timeout 30 pmat test --regression --iterations 2 2>/dev/null
     then
-        test_skip "Regression testing with flag works"
+        test_pass "Regression testing with flag works"
     else
-        test_skip "Regression detection available"
+        pmat_fail "Regression detection available"
     fi
 fi
 
@@ -178,9 +183,9 @@ else
     # Try with shorter timeout
     if timeout 30 pmat test all --timeout 20 2>/dev/null
     then
-        test_skip "All suites with timeout work"
+        test_pass "All suites with timeout work"
     else
-        test_skip "Complete test suite available"
+        pmat_fail "Complete test suite available"
     fi
 fi
 
@@ -190,10 +195,10 @@ then
     if [ -f results.json ]; then
         test_pass "Test results saved to file"
     else
-        test_skip "Output file generation completed"
+        pmat_fail "Output file generation completed"
     fi
 else
-    test_skip "Test output formatting available"
+    pmat_fail "Test output formatting available"
 fi
 
 # Summary

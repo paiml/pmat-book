@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -148,9 +153,9 @@ else
     AUTO_OUTPUT=$(pmat refactor auto --project-path "$TEST_DIR" --dry-run 2>&1) || AUTO_OUTPUT=""
     if echo "$AUTO_OUTPUT" | grep -q "refactor\|complexity\|quality"
     then
-        test_skip "Auto refactor system available"
+        test_pass "Auto refactor system available"
     else
-        test_skip "Refactoring capability exists"
+        pmat_fail "Refactoring capability exists"
     fi
 fi
 
@@ -162,23 +167,27 @@ else
     SINGLE_OUTPUT=$(pmat refactor auto --file main.rs --dry-run 2>&1) || SINGLE_OUTPUT=""
     if echo "$SINGLE_OUTPUT" | grep -q "file\|refactor\|single"
     then
-        test_skip "Single file mode available"
+        test_pass "Single file mode available"
     else
-        test_skip "File-specific refactoring supported"
+        pmat_fail "File-specific refactoring supported"
     fi
 fi
 
 echo "=== Test 3: Quality Profile Configuration ==="
+PROFILE_OK=false
 for profile in standard strict extreme; do
     if pmat refactor auto --quality-profile "$profile" --dry-run --max-iterations 1 2>/dev/null
     then
         test_pass "Quality profile '$profile' configured"
+        PROFILE_OK=true
         break
     fi
 done
 
-if [ $PASS_COUNT -eq 2 ]; then
+if [ "$PROFILE_OK" = true ]; then
     test_pass "Quality profile system available"
+else
+    pmat_fail "No quality profile accepted by 'pmat refactor auto'"
 fi
 
 echo "=== Test 4: Checkpoint and Resume ==="
@@ -190,10 +199,10 @@ then
     if [ -f refactor.checkpoint ]; then
         test_pass "Checkpoint file created"
     else
-        test_skip "Checkpoint system available"
+        pmat_fail "Checkpoint system available"
     fi
 else
-    test_skip "Checkpoint and resume functionality exists"
+    pmat_fail "Checkpoint and resume functionality exists"
 fi
 
 echo "=== Test 5: Exclusion Patterns ==="
@@ -220,7 +229,7 @@ if echo "$JSON_OUTPUT" | grep -q "{" || echo "$JSON_OUTPUT" | grep -q "json"
 then
     test_pass "JSON output format supported"
 else
-    test_skip "Structured output formats available"
+    pmat_fail "Structured output formats available"
 fi
 
 echo "=== Test 8: Integration with Bug Reports ==="
@@ -242,7 +251,7 @@ if pmat refactor auto --bug-report-path bug-report.md --dry-run 2>/dev/null
 then
     test_pass "Bug report integration works"
 else
-    test_skip "Bug report analysis capability exists"
+    pmat_fail "Bug report analysis capability exists"
 fi
 
 # Summary

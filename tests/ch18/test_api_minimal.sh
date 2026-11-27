@@ -18,6 +18,11 @@ test_skip() {
     echo "⚠️  SKIPPED: $1"
 }
 
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -66,9 +71,9 @@ else
     # Try without flags
     if echo -e "v1.0.0\nComplete core features" | pmat roadmap init 2>/dev/null
     then
-        test_skip "Sprint initialized with prompts"
+        test_pass "Sprint initialized with prompts"
     else
-        test_skip "Roadmap init command available"
+        pmat_fail "Roadmap init command available"
     fi
 fi
 
@@ -78,7 +83,7 @@ if echo "$OUTPUT" | grep -q "todo\|task\|generated"
 then
     test_pass "PDMT todos generated from roadmap"
 else
-    test_skip "Todos generation command available"
+    pmat_fail "Todos generation command available"
 fi
 
 echo "=== Test 3: Start a Task ==="
@@ -89,9 +94,9 @@ else
     # Try without task ID
     if pmat roadmap start 2>/dev/null
     then
-        test_skip "Task start command available"
+        test_pass "Task start command available"
     else
-        test_skip "Task management available"
+        pmat_fail "Task management available"
     fi
 fi
 
@@ -103,9 +108,9 @@ else
     # Try without quality check flag
     if pmat roadmap complete "PMAT-001" 2>/dev/null
     then
-        test_skip "Task completion available"
+        test_pass "Task completion available"
     else
-        test_skip "Quality validation on completion"
+        pmat_fail "Quality validation on completion"
     fi
 fi
 
@@ -115,7 +120,7 @@ if echo "$STATUS" | grep -q "sprint\|progress\|status\|complete"
 then
     test_pass "Sprint status retrieved"
 else
-    test_skip "Status command available"
+    pmat_fail "Status command available"
 fi
 
 echo "=== Test 6: Run Quality Checks ==="
@@ -126,9 +131,9 @@ else
     # Try general quality check
     if pmat roadmap quality-check 2>/dev/null
     then
-        test_skip "Quality check command available"
+        test_pass "Quality check command available"
     else
-        test_skip "Quality validation integrated"
+        pmat_fail "Quality validation integrated"
     fi
 fi
 
@@ -140,9 +145,9 @@ else
     VALIDATE_OUTPUT=$(pmat roadmap validate 2>&1) || VALIDATE_OUTPUT=""
     if echo "$VALIDATE_OUTPUT" | grep -q "valid\|ready\|release"
     then
-        test_skip "Sprint validation available"
+        test_pass "Sprint validation available"
     else
-        test_skip "Release readiness check available"
+        pmat_fail "Release readiness check available"
     fi
 fi
 
@@ -153,15 +158,15 @@ then
     if [ -s roadmap.json ]; then
         test_pass "Roadmap report generated in JSON"
     else
-        test_skip "Roadmap export capability available"
+        pmat_fail "Roadmap export capability available"
     fi
 else
     # Try alternative command
     if pmat analyze . --output roadmap.json 2>/dev/null
     then
-        test_skip "Analysis-based roadmap generated"
+        test_pass "Analysis-based roadmap generated"
     else
-        test_skip "Roadmap generation feature available"
+        pmat_fail "Roadmap generation feature available"
     fi
 fi
 

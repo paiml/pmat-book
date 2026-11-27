@@ -18,6 +18,7 @@ echo "=== Testing Chapter 8: pmat demo Command ==="
 PMAT_BIN=""
 if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
+    MOCK_MODE=false
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
@@ -200,7 +201,7 @@ cargo test
 ```
 EOF
 
-test_pass "Demo test project created"
+echo "fixture: Demo test project created"
 
 # Test 2: Basic demo command (CLI mode)
 echo ""
@@ -623,6 +624,11 @@ echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 echo "Skipped: $SKIP_COUNT"
 
+# pmat on PATH but nothing verified: that is a failure, not a skip.
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ] && type -P pmat >/dev/null 2>&1; then
+    echo "❌ pmat is on PATH but no check passed: nothing verified"
+    exit 1
+fi
 if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
     echo "⚠️  SKIPPED: this run verified NOTHING"
     exit 0

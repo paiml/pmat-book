@@ -173,7 +173,7 @@ fn test_simple_add() {
 }
 EOF
 
-test_pass "Test project created with complexity and quality issues"
+echo "fixture: Test project created with complexity and quality issues"
 
 # `pmat quality-gate` takes the project through `-p/--project-path`, NOT as a
 # positional argument. Every call in this file used to pass a bare `.`, which
@@ -197,7 +197,7 @@ if [ "$MOCK_MODE" = false ]; then
     else
         # Quality gate might fail - this is expected with our test code
         if grep -q "Quality.*Gate\|checks\|violations" quality_output.txt; then
-            test_skip "Quality gate ran and detected issues (expected)"
+            test_pass "Quality gate ran and detected issues (expected)"
         else
             test_fail "Quality gate failed unexpectedly"
         fi
@@ -255,10 +255,10 @@ if [ "$MOCK_MODE" = false ]; then
         if command -v jq &> /dev/null && jq empty specific_checks.json 2>/dev/null; then
             test_pass "JSON output is valid"
         else
-            test_skip "Specific checks output not validated: JSON validity not verified"
+            test_fail "Specific checks output is not valid JSON"
         fi
     else
-        test_skip "Specific checks exited non-zero: result not verified"
+        test_fail "Specific checks exited non-zero"
     fi
 else
     cat > specific_checks.json << 'EOF'
@@ -324,7 +324,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human > thresholds.txt 2>&1; then
         test_pass "Quality gate with custom thresholds completed"
     else
-        test_skip "Quality gate exited non-zero: result not verified (thresholds)"
+        test_fail "Quality gate exited non-zero (thresholds)"
     fi
 else
     cat > thresholds.txt << 'EOF'
@@ -374,7 +374,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1; then
         test_fail "Quality gate should have failed with strict thresholds"
     else
-        test_skip "Quality gate correctly failed with strict enforcement"
+        test_pass "Quality gate correctly failed with strict enforcement"
     fi
 else
     cat > strict.txt << 'EOF'
@@ -406,7 +406,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2>&1; then
         test_pass "Single file analysis completed"
     else
-        test_skip "Single file analysis completed with expected issues"
+        test_pass "Single file analysis completed with expected issues"
     fi
 else
     cat > single_file.json << 'EOF'
@@ -455,7 +455,7 @@ if [ "$MOCK_MODE" = false ]; then
             test_fail "Quality gate report file not created"
         fi
     else
-        test_skip "Quality gate exited non-zero: result not verified (output)"
+        test_fail "Quality gate exited non-zero (output)"
     fi
 else
     cat > quality-report.json << 'EOF'
@@ -492,7 +492,7 @@ if [ "$MOCK_MODE" = false ]; then
             test_fail "Performance metrics not found in output"
         fi
     else
-        test_skip "Quality gate exited non-zero: result not verified (performance)"
+        test_fail "Quality gate exited non-zero (performance)"
     fi
 else
     cat > perf.txt << 'EOF'

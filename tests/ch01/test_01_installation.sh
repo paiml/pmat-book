@@ -39,13 +39,13 @@ test_skip() {
 echo "Test 1: Verify PMAT installation"
 PMAT_AVAILABLE=false
 if type -P pmat &> /dev/null; then
-    test_pass "PMAT command found"
     if timeout 5s pmat --version > /tmp/pmat_version.txt 2>&1; then
+        test_pass "PMAT command found"
         VERSION=$(cat /tmp/pmat_version.txt)
         echo "  Version: $VERSION"
         PMAT_AVAILABLE=true
     else
-        echo "  Warning: pmat --version timed out or failed"
+        test_fail "pmat is on PATH but 'pmat --version' timed out or failed"
         PMAT_AVAILABLE=false
     fi
 else
