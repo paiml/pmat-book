@@ -10,8 +10,8 @@
 | ❌ Broken | 0 | — |
 | 📋 Planned | 0 | — |
 
-*Last updated: 2026-08-25*
-*PMAT version: pmat 3.32.0*
+*Last updated: 2026-11-27*
+*PMAT version: pmat 3.44.0 (default build; the `demo` feature is not compiled in)*
 <!-- DOC_STATUS_END -->
 
 > **⚠️ Historical, as of pmat 3.32.0 (2026-08-25). `pmat demo` does not run in

@@ -99,7 +99,9 @@ mkdir -p test-project
 cd test-project
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold project rust --templates=makefile,readme --param name=test-project > scaffold.log 2>&1; then
+    # 3.44.0 writes <cwd>/<project_name>/ and takes -p project_name=...
+    # (--param name= is not a recognised key), so generate from the parent dir.
+    if (cd .. && $PMAT_BIN scaffold project rust --templates=makefile,readme -p project_name=test-project -p description="Test project" > test-project/scaffold.log 2>&1); then
         test_pass "Project scaffolding completed"
         
         if [ -f "Makefile" ] && [ -f "README.md" ]; then
@@ -154,10 +156,12 @@ echo ""
 echo "Test 3: Scaffold MCP agent (dry-run)"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold agent --name test-agent --template mcp-server --features logging,monitoring --dry-run > agent-dry-run.txt 2>&1; then
+    # Agent names take underscores, not hyphens; 'logging' is not a feature in
+    # 3.44.0 (it is skipped with a warning), so use 'monitoring,tracing'.
+    if $PMAT_BIN scaffold agent --name test_agent --template mcp-server --features monitoring,tracing --dry-run > agent-dry-run.txt 2>&1; then
         test_pass "Agent dry-run completed"
-        
-        if grep -q "Would generate\|dry-run\|preview" agent-dry-run.txt; then
+
+        if grep -q "Dry run mode\|would generate" agent-dry-run.txt; then
             test_pass "Dry-run output contains expected preview"
         else
             test_fail "Dry-run output missing expected preview"
@@ -192,7 +196,7 @@ echo ""
 echo "Test 4: Scaffold actual MCP agent"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold agent --name calculator-agent --template calculator --output calculator-agent --force > agent.log 2>&1; then
+    if $PMAT_BIN scaffold agent --name calculator_agent --template calculator --output calculator-agent --force > agent.log 2>&1; then
         test_pass "Agent scaffolding completed"
         
         if [ -d "calculator-agent" ] && [ -f "calculator-agent/src/main.rs" ]; then
@@ -298,7 +302,9 @@ echo ""
 echo "Test 7: Hybrid agent scaffolding"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold agent --name hybrid-agent --template hybrid --deterministic-core state-machine --quality extreme --dry-run > hybrid.log 2>&1; then
+    # 3.44.0 requires both halves of a hybrid agent: a deterministic core and a
+    # probabilistic wrapper (either alone is rejected with exit 1).
+    if $PMAT_BIN scaffold agent --name hybrid_agent --template hybrid --deterministic-core state-machine --probabilistic-wrapper llm --quality extreme --dry-run > hybrid.log 2>&1; then
         test_pass "Hybrid agent scaffolding (dry-run) completed"
     else
         test_fail "Hybrid agent scaffolding failed"
@@ -329,8 +335,15 @@ echo ""
 echo "Test 8: Multi-toolchain project scaffolding"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold project python-uv --templates=makefile,readme,gitignore --param name=ml-project --param author="Test Author" > multi-toolchain.log 2>&1; then
+    # 3.44.0 ignores --param name= (it writes to ./project/ and exits 0), so
+    # pass project_name with -p and check the files that must exist.
+    if $PMAT_BIN scaffold project python-uv --templates=makefile,readme,gitignore -p project_name=ml-project -p description="ML project" -p author="Test Author" > multi-toolchain.log 2>&1; then
         test_pass "Multi-toolchain scaffolding completed"
+        if [ -f ml-project/Makefile ] && [ -f ml-project/README.md ] && [ -f ml-project/.gitignore ]; then
+            test_pass "Multi-toolchain project files created"
+        else
+            test_fail "Multi-toolchain project files not found"
+        fi
     else
         test_fail "Multi-toolchain scaffolding failed"
     fi

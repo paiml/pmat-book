@@ -60,6 +60,20 @@ test_skip() {
     SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
+# A flag that pmat 3.44.0 does not have must be rejected by the argument
+# parser: exit 2 and clap's "unexpected argument '<flag>'" message.
+# Usage: test_absent_flag "<label>" "<flag>" <command...>
+test_absent_flag() {
+    local label="$1" flag="$2" rc=0
+    shift 2
+    "$@" > absent_flag.txt 2>&1 || rc=$?
+    if [ "$rc" -eq 2 ] && grep -q "unexpected argument '$flag'" absent_flag.txt; then
+        test_pass "$label: $flag is not in pmat 3.44.0 (rejected, exit 2)"
+    else
+        test_fail "$label: expected $flag rejected with exit 2, got rc=$rc"
+    fi
+}
+
 # Test 1: Create test project structure
 echo ""
 echo "Test 1: Creating test project for context generation"
@@ -153,10 +167,13 @@ if [ "$MOCK_MODE" = false ]; then
             test_fail "Context missing source files"
         fi
         
-        if grep -q "README.md\|Test Project" context_output.txt; then
-            test_pass "Context includes documentation"
+        # 3.44.0 context is an AST inventory of source files: it has no
+        # documentation section (README.md is not listed). Assert the real
+        # report header instead.
+        if grep -q "^# Project Context" context_output.txt && grep -q "Project Structure" context_output.txt; then
+            test_pass "Context includes project summary"
         else
-            test_fail "Context missing documentation"
+            test_fail "Context missing project summary"
         fi
     else
         test_fail "Context generation failed"
@@ -207,19 +224,19 @@ echo ""
 echo "Test 3: Context generation with filters"
 
 if [ "$MOCK_MODE" = false ]; then
-    # Include only Python files
-    if $PMAT_BIN context --include="*.py" > context_python.txt 2>&1; then
-        test_pass "Python-only context generated"
+    # Python-only: 3.44.0 narrows by language (--language), not by glob
+    if $PMAT_BIN context --language python > context_python.txt 2>&1; then
+        if grep -q "^\*\*Language\*\*: python" context_python.txt; then
+            test_pass "Python-only context generated"
+        else
+            test_fail "Python-only context missing Language: python"
+        fi
     else
         test_fail "Python-only context failed"
     fi
-    
-    # Exclude tests
-    if $PMAT_BIN context --exclude="tests/*" > context_no_tests.txt 2>&1; then
-        test_pass "Context without tests generated"
-    else
-        test_fail "Context without tests failed"
-    fi
+
+    # Exclude tests: 3.44.0 has no --exclude glob, so assert the real rejection
+    test_absent_flag "Context without tests" "--exclude" $PMAT_BIN context --exclude="tests/*"
 else
     test_skip "Mock filtered context completed"
 fi
@@ -230,7 +247,8 @@ echo "Test 4: Context output formats"
 
 if [ "$MOCK_MODE" = false ]; then
     # JSON format
-    if $PMAT_BIN context --format json > context.json 2>&1; then
+    # Progress lines go to stderr in 3.44.0; keep them out of the JSON document
+    if $PMAT_BIN context --format json > context.json 2>context_json.err; then
         test_pass "JSON context generated"
         if jq empty context.json 2>/dev/null; then
             test_pass "JSON context is valid"
@@ -280,10 +298,13 @@ echo ""
 echo "Test 5: Context with embedded analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN context --with-analysis > context_analyzed.txt 2>&1; then
-        test_pass "Context with analysis generated"
+    # 3.44.0 has no --with-analysis: complexity, SATD and churn are in the
+    # default report. Assert the flag is rejected and the default report has them.
+    test_absent_flag "Context with analysis" "--with-analysis" $PMAT_BIN context --with-analysis
+    if $PMAT_BIN context > context_analyzed.txt 2>/dev/null && grep -q "\[complexity: " context_analyzed.txt; then
+        test_pass "Default context includes complexity metrics"
     else
-        test_fail "Context with analysis failed"
+        test_fail "Default context missing complexity metrics"
     fi
 else
     cat > context_analyzed.txt << 'EOF'
@@ -318,19 +339,9 @@ echo ""
 echo "Test 6: Context size management"
 
 if [ "$MOCK_MODE" = false ]; then
-    # Max tokens limit
-    if $PMAT_BIN context --max-tokens 1000 > context_limited.txt 2>&1; then
-        test_pass "Token-limited context generated"
-    else
-        test_fail "Token-limited context failed"
-    fi
-    
-    # Max files limit
-    if $PMAT_BIN context --max-files 3 > context_files_limited.txt 2>&1; then
-        test_pass "File-limited context generated"
-    else
-        test_fail "File-limited context failed"
-    fi
+    # 3.44.0 has no token or file caps; the levers are -p and --language.
+    test_absent_flag "Token-limited context" "--max-tokens" $PMAT_BIN context --max-tokens 1000
+    test_absent_flag "File-limited context" "--max-files" $PMAT_BIN context --max-files 3
 else
     test_skip "Mock size-limited context completed"
 fi
@@ -340,10 +351,12 @@ echo ""
 echo "Test 7: AI-optimized context generation"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN context --ai-format > context_ai.txt 2>&1; then
-        test_pass "AI-optimized context generated"
+    # 3.44.0 has no --ai-format; its LLM output is --format llm-optimized
+    test_absent_flag "AI-optimized context" "--ai-format" $PMAT_BIN context --ai-format
+    if $PMAT_BIN context --format llm-optimized > context_ai.txt 2>&1; then
+        test_pass "LLM-optimized context generated (--format llm-optimized)"
     else
-        test_fail "AI-optimized context failed"
+        test_fail "LLM-optimized context failed"
     fi
 else
     cat > context_ai.txt << 'EOF'
@@ -375,26 +388,11 @@ echo ""
 echo "Test 8: Context caching behavior"
 
 if [ "$MOCK_MODE" = false ]; then
-    # First run (cache miss)
-    if $PMAT_BIN context --cache > context_cached1.txt 2>&1; then
-        test_pass "First context generation (cache miss)"
-    else
-        test_fail "First context generation failed"
-    fi
-    
-    # Second run (cache hit)
-    if $PMAT_BIN context --cache > context_cached2.txt 2>&1; then
-        test_pass "Second context generation (cache hit)"
-    else
-        test_fail "Second context generation failed"
-    fi
-    
-    # Clear cache
-    if $PMAT_BIN context --clear-cache 2>&1; then
-        test_pass "Context cache cleared"
-    else
-        test_fail "Cache clear failed"
-    fi
+    # 3.44.0 has no context cache flags (pmat cache stats is a different
+    # command), so both the cache write and the cache clear are rejected.
+    test_absent_flag "First context generation (cache miss)" "--cache" $PMAT_BIN context --cache
+    test_absent_flag "Second context generation (cache hit)" "--cache" $PMAT_BIN context --cache
+    test_absent_flag "Context cache cleared" "--clear-cache" $PMAT_BIN context --clear-cache
 else
     test_skip "Mock context caching completed"
 fi

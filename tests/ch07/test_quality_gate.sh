@@ -249,7 +249,7 @@ echo ""
 echo "Test 3: Running specific quality checks"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --checks=complexity,dead_code --format=json > specific_checks.json 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --checks=complexity,dead-code --format=json --report-only > specific_checks.json 2> specific_checks.err; then
         test_pass "Specific checks completed"
         
         if command -v jq &> /dev/null && jq empty specific_checks.json 2>/dev/null; then
@@ -321,7 +321,7 @@ echo ""
 echo "Test 4: Quality gate with custom thresholds"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human > thresholds.txt 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human --report-only > thresholds.txt 2>&1; then
         test_pass "Quality gate with custom thresholds completed"
     else
         test_fail "Quality gate exited non-zero (thresholds)"
@@ -405,7 +405,7 @@ echo ""
 echo "Test 6: Single file quality analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2> single_file.err; then
         test_pass "Single file analysis completed"
     elif [ -s single_file.json ] && jq empty single_file.json 2>/dev/null; then
         # quality-gate exits non-zero when it reports issues; a valid report is the check.
@@ -453,7 +453,7 @@ echo ""
 echo "Test 7: Quality gate with output to file"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --output=quality-report.json --format=json > file_output.log 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --output=quality-report.json --format=json --report-only > file_output.log 2>&1; then
         if [ -f "quality-report.json" ]; then
             test_pass "Quality gate report saved to file"
         else
@@ -488,7 +488,7 @@ echo ""
 echo "Test 8: Quality gate with performance metrics"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --performance --format=human > perf.txt 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --perf --format=human --report-only > perf.txt 2>&1; then
         test_pass "Quality gate with performance metrics completed"
         
         if grep -q "Performance\|time\|ms\|seconds" perf.txt; then

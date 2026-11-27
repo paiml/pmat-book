@@ -60,6 +60,25 @@ test_skip() {
     SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
+# pmat demo is behind the non-default `demo` Cargo feature. In the default
+# pmat 3.44.0 build every demo mode exits 1 with DEMO_GATE_MSG (the documented
+# feature-gate message; ch08 says the same). A check passes only when both hold:
+# a non-zero exit AND that exact message. Run with the flags the chapter lists
+# (`-p`, not a positional path).
+DEMO_GATE_MSG="Demo feature not enabled"
+
+demo_gate_check() {
+    local label="$1"
+    shift
+    local out rc
+    out=$($PMAT_BIN demo "$@" 2>&1 </dev/null) && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] && echo "$out" | grep -qF "$DEMO_GATE_MSG"; then
+        test_pass "$label"
+    else
+        test_fail "$label (exit $rc, feature-gate message expected)"
+    fi
+}
+
 # Test 1: Create test project for demo
 echo ""
 echo "Test 1: Creating test project for demo"
@@ -208,17 +227,8 @@ echo ""
 echo "Test 2: Basic demo command (CLI mode)"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli > demo_cli.txt 2>&1; then
-        test_pass "CLI demo completed"
-        
-        if grep -q "Demo\|Analysis\|Report\|Summary" demo_cli.txt; then
-            test_pass "CLI demo output contains expected elements"
-        else
-            test_fail "CLI demo output missing expected elements"
-        fi
-    else
-        test_fail "CLI demo failed"
-    fi
+    demo_gate_check "CLI demo reports the feature gate (default build)" -p . --cli
+
 else
     cat > demo_cli.txt << 'EOF'
 🎯 PMAT Interactive Demo
@@ -262,19 +272,8 @@ echo ""
 echo "Test 3: Demo with JSON output format"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli --format=json > demo.json 2>&1; then
-        test_pass "JSON demo completed"
-        
-        if ! command -v jq &> /dev/null; then
-            test_skip "JSON validity not verified: jq not available"
-        elif jq empty demo.json 2>/dev/null; then
-            test_pass "JSON output is valid"
-        else
-            test_fail "JSON demo output is not valid JSON"
-        fi
-    else
-        test_fail "JSON demo failed"
-    fi
+    demo_gate_check "JSON demo reports the feature gate (default build)" -p . --cli --format=json
+
 else
     cat > demo.json << 'EOF'
 {
@@ -361,17 +360,8 @@ echo ""
 echo "Test 4: Demo with debug mode"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli --debug --debug-output=debug-report.json > demo_debug.txt 2>&1; then
-        test_pass "Debug demo completed"
-        
-        if [ -f "debug-report.json" ]; then
-            test_pass "Debug report file created"
-        else
-            test_fail "Debug report file not created"
-        fi
-    else
-        test_fail "Debug demo failed"
-    fi
+    demo_gate_check "Debug demo reports the feature gate (default build)" -p . --cli --debug --debug-output=debug-report.json
+
 else
     cat > demo_debug.txt << 'EOF'
 🐛 PMAT Demo (Debug Mode)
@@ -420,15 +410,8 @@ echo ""
 echo "Test 5: Demo with HTTP protocol (web mode)"
 
 if [ "$MOCK_MODE" = false ]; then
-    # For web mode, we can't easily test the browser opening, so just check it starts
-    # A server runs until timeout kills it (exit 124). Any other exit, or an error line, is a failure.
-    WEB_RC=0
-    timeout 5s $PMAT_BIN demo . --no-browser --port=0 > web_demo.txt 2>&1 || WEB_RC=$?
-    if [ "$WEB_RC" -eq 124 ] && ! grep -q "^error:" web_demo.txt && grep -q "Server\|HTTP\|Web\|localhost\|port" web_demo.txt; then
-        test_pass "Web demo server started"
-    else
-        test_fail "Web demo ran but server start was not observed"
-    fi
+    demo_gate_check "Web demo reports the feature gate (default build)" -p . --no-browser --port=0
+
 else
     cat > web_demo.txt << 'EOF'
 🌐 PMAT Web Demo Server
@@ -464,13 +447,8 @@ echo ""
 echo "Test 6: Demo with repository URL analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    # This would actually clone a repo, so we'll just test the command parsing
-    if $PMAT_BIN demo --repo=gh:rust-lang/rustlings --cli --help > repo_demo.txt 2>&1; then
-        test_pass "Repository demo command parsed"
-    else
-        # The command might not support --help in this context
-        test_fail "Repository demo command failed"
-    fi
+    demo_gate_check "Repository demo reports the feature gate (default build)" --repo=gh:rust-lang/rustlings --cli
+
 else
     cat > repo_demo.txt << 'EOF'
 🔄 PMAT Repository Demo
@@ -512,12 +490,8 @@ echo ""
 echo "Test 7: Demo with MCP protocol"
 
 if [ "$MOCK_MODE" = false ]; then
-    # MCP protocol demo - this might need special setup
-    if $PMAT_BIN demo . --protocol=mcp --cli > mcp_demo.txt 2>&1; then
-        test_pass "MCP protocol demo completed"
-    else
-        test_fail "MCP protocol demo command failed"
-    fi
+    demo_gate_check "MCP protocol demo reports the feature gate (default build)" -p . --protocol=mcp --cli
+
 else
     cat > mcp_demo.txt << 'EOF'
 🔌 PMAT MCP Protocol Demo
@@ -563,17 +537,8 @@ echo ""
 echo "Test 8: Demo with performance metrics"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli --format=table --target-nodes=10 > perf_demo.txt 2>&1; then
-        test_pass "Performance demo completed"
-        
-        if grep -q "Performance\|Time\|Nodes\|Metrics" perf_demo.txt; then
-            test_pass "Performance metrics included"
-        else
-            test_fail "Performance metrics not found"
-        fi
-    else
-        test_fail "Performance demo failed"
-    fi
+    demo_gate_check "Performance demo reports the feature gate (default build)" -p . --cli --format=table --target-nodes=10
+
 else
     cat > perf_demo.txt << 'EOF'
 ⚡ PMAT Performance Demo
