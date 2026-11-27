@@ -108,17 +108,13 @@ else
 fi
 
 echo "=== Test 3: Memory Configuration ==="
-if pmat memory configure --max-heap 500 2>/dev/null
+# 3.44.0 flag is --max-memory-mb: it is echoed back, and pmat says it is not enforced.
+CONFIG_OUTPUT=$(pmat memory configure --max-memory-mb 500 2>/dev/null) || CONFIG_OUTPUT=""
+if echo "$CONFIG_OUTPUT" | grep -q "Maximum memory: 500 MB" && echo "$CONFIG_OUTPUT" | grep -q "Runtime reconfiguration not yet supported"
 then
-    test_pass "Memory limits configured"
+    test_pass "Memory limit echoed (--max-memory-mb 500); runtime reconfiguration not supported"
 else
-    CONFIG_OUTPUT=$(pmat memory configure 2>&1) || CONFIG_OUTPUT=""
-    if echo "$CONFIG_OUTPUT" | grep -q "config\|limit\|memory"
-    then
-        test_pass "Memory configuration available"
-    else
-        pmat_fail "Configuration system exists"
-    fi
+    pmat_fail "Configuration system exists"
 fi
 
 echo "=== Test 4: Memory Pools ==="
@@ -140,29 +136,33 @@ else
 fi
 
 echo "=== Test 6: Memory with Verbose ==="
+# --verbose adds tracing, not data: the manager is created by this command and reads 0 B.
 VERBOSE_MEM=$(pmat memory stats --verbose 2>&1) || VERBOSE_MEM=""
-if echo "$VERBOSE_MEM" | grep -q "heap\|stack\|resident\|virtual"
+if echo "$VERBOSE_MEM" | grep -q "Initializing global memory manager" && echo "$VERBOSE_MEM" | grep -q "Total Allocated: 0 B"
 then
-    test_pass "Detailed memory stats work"
+    test_pass "Verbose adds tracing only (counters read 0 B, as documented)"
 else
     pmat_fail "Verbose memory info available"
 fi
 
 echo "=== Test 7: Force Garbage Collection ==="
-if pmat memory cleanup --force-gc 2>/dev/null
+# Rust has no runtime GC: --force-gc does not exist (exit 2). cleanup reports 0 B.
+rc=0; GC_OUTPUT=$(pmat memory cleanup --force-gc 2>&1) || rc=$?
+CLEANUP_OUTPUT=$(pmat memory cleanup 2>/dev/null) || CLEANUP_OUTPUT=""
+if [ $rc -eq 2 ] && echo "$GC_OUTPUT" | grep -q "unexpected argument '--force-gc'" && echo "$CLEANUP_OUTPUT" | grep -q "Cleaned 0 B of memory"
 then
-    test_pass "Garbage collection forced"
+    test_pass "No --force-gc (exit 2, as documented); cleanup reports Cleaned 0 B"
 else
-    GC_OUTPUT=$(pmat memory cleanup --gc 2>&1) || GC_OUTPUT=""
     pmat_fail "GC triggering available"
 fi
 
 echo "=== Test 8: Memory Limits Check ==="
-if pmat memory configure --check-limits 2>/dev/null
+# --check-limits does not exist (exit 2). Limits are echoed by configure, not enforced (Test 3).
+rc=0; LIMITS_OUTPUT=$(pmat memory configure --check-limits 2>&1) || rc=$?
+if [ $rc -eq 2 ] && echo "$LIMITS_OUTPUT" | grep -q "unexpected argument '--check-limits'"
 then
-    test_pass "Memory limits verified"
+    test_pass "No --check-limits (exit 2, as documented); limits are echoed, not enforced"
 else
-    LIMITS_OUTPUT=$(pmat memory stats 2>&1 | grep -i "limit\|max") || LIMITS_OUTPUT=""
     pmat_fail "Memory limit checking available"
 fi
 
@@ -172,6 +172,10 @@ echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All memory management tests passed!"
     exit 0

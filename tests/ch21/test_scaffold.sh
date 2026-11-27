@@ -46,10 +46,10 @@ trap cleanup EXIT
 cd "$TEST_DIR"
 
 echo "=== Test 1: Scaffold Complete Project ==="
-if pmat scaffold project rust-api --name test-api --path . 2>/dev/null
+if pmat scaffold project rust -p project_name=test-api -p description="Test API" 2>/dev/null
 then
-    # Check if project structure was created
-    if [ -f Cargo.toml ] || [ -f src/main.rs ] || [ -f README.md ]; then
+    # 3.44.0 writes <project_name>/ with Makefile, README.md and .gitignore
+    if [ -f test-api/Makefile ] && [ -f test-api/README.md ] && [ -f test-api/.gitignore ]; then
         test_pass "Project scaffolding created structure"
     else
         pmat_fail "Project scaffolding completed"
@@ -65,7 +65,7 @@ else
 fi
 
 echo "=== Test 2: Scaffold MCP Agent ==="
-if pmat scaffold agent deterministic --name test-agent --path agent-dir 2>/dev/null
+if pmat scaffold agent -n test_agent -t calculator -o agent-dir 2>/dev/null
 then
     if [ -d agent-dir ]; then
         test_pass "Agent scaffolding created directory"
@@ -83,7 +83,8 @@ else
 fi
 
 echo "=== Test 3: List Agent Templates ==="
-AGENT_TEMPLATES=$(pmat scaffold list-templates 2>/dev/null) || AGENT_TEMPLATES=""
+# 3.44.0 writes this listing to stderr, so capture both streams.
+AGENT_TEMPLATES=$(pmat scaffold list-templates 2>&1) || AGENT_TEMPLATES=""
 if echo "$AGENT_TEMPLATES" | grep -q "template\|agent\|deterministic\|tool"
 then
     test_pass "Agent template listing works"
@@ -136,55 +137,50 @@ serde = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 EOF
 
-if pmat scaffold project rust-web --config scaffold-config.toml --path custom-project 2>/dev/null
-then
-    if [ -d custom-project ]; then
-        test_pass "Custom configuration scaffolding works"
-    else
-        pmat_fail "Configuration-based scaffolding completed"
-    fi
+# 3.44.0 has no --config on 'scaffold project' (chapter 21 says so). Assert that
+# pmat rejects the flag with clap's error and creates nothing.
+CONFIG_OUTPUT=$(pmat scaffold project rust --config scaffold-config.toml -p project_name=custom-project 2>&1) && CONFIG_RC=0 || CONFIG_RC=$?
+if [ "$CONFIG_RC" -ne 0 ] && echo "$CONFIG_OUTPUT" | grep -q "unexpected argument '--config'" && [ ! -e custom-project ]; then
+    test_pass "scaffold project rejects --config (not in 3.44.0; chapter 21 documents this)"
 else
     pmat_fail "Configuration support available"
 fi
 
 echo "=== Test 6: Interactive Scaffolding ==="
 # Test with pre-provided answers
-echo -e "test-interactive\n0.1.0\nTest Description" | pmat scaffold project rust-cli --interactive --path interactive-project 2>/dev/null || true
-
-if [ -d interactive-project ]; then
-    test_pass "Interactive scaffolding works"
+# 3.44.0: 'scaffold project' has no --interactive (chapter 21 says so), and
+# 'scaffold agent -i' reports that interactive mode is unavailable. Assert both.
+INTERACTIVE_OUTPUT=$(pmat scaffold project rust --interactive -p project_name=interactive-project 2>&1) && INTERACTIVE_RC=0 || INTERACTIVE_RC=$?
+AGENT_I_OUTPUT=$(pmat scaffold agent -i -n interactive_agent -t calculator -o interactive-agent 2>&1) && AGENT_I_RC=0 || AGENT_I_RC=$?
+if [ "$INTERACTIVE_RC" -ne 0 ] && echo "$INTERACTIVE_OUTPUT" | grep -q "unexpected argument '--interactive'" \
+    && [ "$AGENT_I_RC" -ne 0 ] && echo "$AGENT_I_OUTPUT" | grep -q "Interactive mode is not available" \
+    && [ ! -e interactive-project ] && [ ! -e interactive-agent ]; then
+    test_pass "Interactive scaffolding is absent in 3.44.0 (chapter 21 documents this)"
 else
     pmat_fail "Interactive mode available"
 fi
 
 echo "=== Test 7: Scaffold with Git Initialization ==="
-if pmat scaffold project rust-lib --name git-project --git --path git-project 2>/dev/null
-then
-    if [ -d git-project/.git ]; then
-        test_pass "Git initialization with scaffolding works"
-    else
-        pmat_fail "Project created (git optional)"
-    fi
+# 3.44.0 has no --git on 'scaffold project' (chapter 21 says so). Assert the rejection.
+GIT_OUTPUT=$(pmat scaffold project rust --git -p project_name=git-project -p description=d 2>&1) && GIT_RC=0 || GIT_RC=$?
+if [ "$GIT_RC" -ne 0 ] && echo "$GIT_OUTPUT" | grep -q "unexpected argument '--git'" && [ ! -e git-project ]; then
+    test_pass "scaffold project rejects --git (not in 3.44.0; chapter 21 documents this)"
 else
     pmat_fail "Git integration available"
 fi
 
 echo "=== Test 8: Multi-Language Project Scaffolding ==="
-if pmat scaffold project polyglot --languages "rust,python,typescript" --path multi-lang 2>/dev/null
+# 3.44.0 has no --languages. Multiple languages come from one 'scaffold project' call per toolchain.
+if pmat scaffold project rust -p project_name=multi-rust -p description="Rust part" 2>/dev/null \
+    && pmat scaffold project python-uv -p project_name=multi-py -p description="Python part" 2>/dev/null
 then
-    if [ -d multi-lang ]; then
-        test_pass "Multi-language scaffolding works"
+    if [ -f multi-rust/Makefile ] && [ -f multi-py/Makefile ]; then
+        test_pass "Multi-language scaffolding works (one call per toolchain)"
     else
         pmat_fail "Multi-language project created"
     fi
 else
-    # Try individual language scaffolding
-    if pmat scaffold project python-api --name py-api --path py-project 2>/dev/null
-    then
-        test_pass "Python project scaffolding available"
-    else
-        pmat_fail "Language-specific scaffolding exists"
-    fi
+    pmat_fail "Language-specific scaffolding exists"
 fi
 
 # Summary
@@ -193,8 +189,11 @@ echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
-if [ $FAIL_COUNT -eq 0 ]; then
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -gt 0 ]; then
     echo "✅ All scaffolding tests passed!"
+    exit 0
+elif [ $FAIL_COUNT -eq 0 ]; then
+    echo "⚠️  No checks ran (pmat not on PATH): nothing was verified"
     exit 0
 else
     echo "❌ Some tests failed"

@@ -57,12 +57,14 @@ fi
 
 echo "=== Test 2: Component Status Verification ==="
 # Check individual components
-COMPONENTS="analysis cache telemetry agent quality templates"
+# 3.44.0 feature-test names (exact; anything else exits 1)
+COMPONENTS="ast.rust analysis.complexity cache.subsystem"
 for component in $COMPONENTS; do
-    if pmat diagnose --only "$component" --format compact 2>/dev/null | grep -q "$component\|✅\|pass"
+    if pmat diagnose --only "$component" --format compact 2>/dev/null | grep -q '"ok":true'
     then
         test_pass "Component '$component' verified"
-        break
+    else
+        pmat_fail "Component '$component' verified"
     fi
 done
 
@@ -115,19 +117,23 @@ fn broken_syntax {
 }
 EOF
 
-ERROR_OUTPUT=$(pmat diagnose 2>&1) || ERROR_OUTPUT=""
-if echo "$ERROR_OUTPUT" | grep -q "error\|fail\|issue\|problem"
+# diagnose self-tests the pmat binary, not the project in the cwd: the broken
+# file must not change its verdict (the chapter documents this).
+rc=0; ERROR_OUTPUT=$(pmat diagnose 2>&1) || rc=$?
+if [ $rc -eq 0 ] && echo "$ERROR_OUTPUT" | grep -q "Failed: 0"
 then
-    test_pass "Error detection works"
+    test_pass "diagnose ignores the broken project and reports pmat's own self-tests (Failed: 0)"
 else
-    pmat_fail "Error reporting system available"
+    pmat_fail "diagnose self-test verdict (exit $rc)"
 fi
 cd ..
 
 echo "=== Test 7: Resource Usage Monitoring ==="
-if pmat diagnose --verbose 2>&1 | grep -q "memory\|cpu\|disk\|resource"
+# The only resource field diagnose reports is cache.subsystem.memory_pressure in
+# the JSON report. It is in-process (same as pmat memory), not a project measurement.
+if pmat diagnose --format json 2>/dev/null | grep -q '"memory_pressure"'
 then
-    test_pass "Resource monitoring works"
+    test_pass "Resource field reported in JSON (cache.subsystem.memory_pressure, in-process)"
 else
     pmat_fail "Resource tracking available"
 fi
@@ -150,6 +156,10 @@ echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All health monitoring tests passed!"
     exit 0

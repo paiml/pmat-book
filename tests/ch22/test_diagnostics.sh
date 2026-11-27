@@ -126,15 +126,16 @@ echo "=== Test 4: Feature-Specific Diagnostics ==="
 if [ $HAVE_PMAT -eq 0 ]; then
     test_skip "Feature-specific diagnostics (pmat not found on PATH)"
 else
-    rc=0; pmat diagnose --only analysis >/dev/null 2>&1 || rc=$?
+    # --only takes exact feature-test names (ast.rust, analysis.complexity, cache.subsystem, ...)
+    rc=0; pmat diagnose --only analysis.complexity >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
         test_pass "Feature-specific diagnostics work"
     else
-        rc=0; pmat diagnose --only cache >/dev/null 2>&1 || rc=$?
+        rc=0; pmat diagnose --only cache.subsystem >/dev/null 2>&1 || rc=$?
         if [ $rc -eq 0 ]; then
             test_pass "Selective feature testing works"
         else
-            test_fail "Feature-specific diagnostics (--only analysis and --only cache both failed)"
+            test_fail "Feature-specific diagnostics (--only analysis.complexity and --only cache.subsystem both failed)"
         fi
     fi
 fi
@@ -143,11 +144,14 @@ echo "=== Test 5: Skip Feature Tests ==="
 if [ $HAVE_PMAT -eq 0 ]; then
     test_skip "Feature skipping (pmat not found on PATH)"
 else
-    rc=0; pmat diagnose --skip telemetry --skip agent >/dev/null 2>&1 || rc=$?
-    if [ $rc -eq 0 ]; then
-        test_pass "Feature skipping works"
+    # Skipped features stay in the JSON report with "skipped": "User requested skip", and the summary counts them.
+    rc=0; skipped=$(pmat diagnose --skip integration.git --skip output.mermaid --format json 2>/dev/null) || rc=$?
+    if [ $rc -ne 0 ]; then
+        test_fail "Feature skipping (pmat diagnose --skip integration.git --skip output.mermaid exited $rc)"
+    elif echo "$skipped" | grep -q '"skipped": "User requested skip"' && echo "$skipped" | grep -q '"skipped": 2'; then
+        test_pass "Feature skipping works (2 features reported as skipped)"
     else
-        test_fail "Feature skipping (pmat diagnose --skip telemetry --skip agent exited $rc)"
+        test_fail "Feature skipping (skip reasons not reported in JSON)"
     fi
 fi
 
@@ -181,7 +185,7 @@ echo "=== Test 8: Multiple Feature Check ==="
 if [ $HAVE_PMAT -eq 0 ]; then
     test_skip "Multiple feature diagnostics (pmat not found on PATH)"
 else
-    rc=0; pmat diagnose --only analysis --only cache --only quality >/dev/null 2>&1 || rc=$?
+    rc=0; pmat diagnose --only analysis.complexity --only cache.subsystem --only ast.rust >/dev/null 2>&1 || rc=$?
     if [ $rc -eq 0 ]; then
         test_pass "Multiple feature diagnostics work"
     else

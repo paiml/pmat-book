@@ -14,6 +14,8 @@
 *PMAT version: pmat 2.213.1*
 <!-- DOC_STATUS_END -->
 
+> **Not in the default build.** The agent daemon is compiled only with the `agent-daemon` Cargo feature. The default `pmat` 3.44.0 build does not include it, so every `pmat agent` subcommand used in this chapter exits with status 1 and prints `Error: Agent daemon feature not enabled. Build with --features agent-daemon`. `pmat agent --help` marks the subcommands as `NOT AVAILABLE in the default build`. To run the examples below, build pmat with `--features agent-daemon`.
+
 ## The Problem
 
 Development teams need continuous quality monitoring that works in the background without interrupting the development workflow. Manual quality checks are often forgotten, and by the time issues are discovered, they've accumulated significant technical debt. The PMAT agent system provides automated, continuous quality monitoring with intelligent alerting and self-healing capabilities.

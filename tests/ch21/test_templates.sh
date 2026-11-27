@@ -76,17 +76,17 @@ else
 fi
 
 echo "=== Test 3: Generate Single Template ==="
-# Try to generate a basic template
-if pmat generate rust cli --param name=test-cli --output main.rs 2>/dev/null
+# Try to generate a basic template (CATEGORY TEMPLATE, e.g. makefile rust/cli)
+if pmat generate makefile rust/cli -p project_name=test-cli --output Makefile 2>/dev/null
 then
-    if [ -f main.rs ]; then
+    if [ -f Makefile ]; then
         test_pass "Single template generated successfully"
     else
         pmat_fail "Template generation completed"
     fi
 else
     # Try alternative syntax
-    if pmat gen rust cli -p name=test-cli -o main.rs 2>/dev/null
+    if pmat gen makefile rust/cli -p project_name=test-cli -o Makefile 2>/dev/null
     then
         test_pass "Template generation with short flags works"
     else
@@ -95,11 +95,11 @@ else
 fi
 
 echo "=== Test 4: Template Parameter Validation ==="
-if pmat validate rust cli --param name=test-project 2>/dev/null
+if pmat validate template://makefile/rust/cli -p project_name=test-project 2>/dev/null
 then
     test_pass "Template parameter validation works"
 else
-    VALIDATE_OUTPUT=$(pmat validate rust cli 2>&1) || VALIDATE_OUTPUT=""
+    VALIDATE_OUTPUT=$(pmat validate template://makefile/rust/cli 2>&1) || VALIDATE_OUTPUT=""
     if echo "$VALIDATE_OUTPUT" | grep -q "valid\|param\|require"
     then
         test_pass "Parameter validation available"
@@ -123,9 +123,9 @@ else
 fi
 
 echo "=== Test 6: Generate with Directory Creation ==="
-if pmat generate rust cli --param name=nested-app --output deep/nested/app.rs --create-dirs 2>/dev/null
+if pmat generate readme rust/cli -p project_name=nested-app -p description="Nested app" -o deep/nested/app.md --create-dirs 2>/dev/null
 then
-    if [ -f deep/nested/app.rs ]; then
+    if [ -f deep/nested/app.md ]; then
         test_pass "Directory creation with template works"
     else
         pmat_fail "Directory structure created"
@@ -158,8 +158,11 @@ echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
-if [ $FAIL_COUNT -eq 0 ]; then
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -gt 0 ]; then
     echo "✅ All template generation tests passed!"
+    exit 0
+elif [ $FAIL_COUNT -eq 0 ]; then
+    echo "⚠️  No checks ran (pmat not on PATH): nothing was verified"
     exit 0
 else
     echo "❌ Some tests failed"
