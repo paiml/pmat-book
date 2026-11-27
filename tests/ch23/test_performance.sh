@@ -172,7 +172,7 @@ then
     test_pass "Integration testing works"
 else
     INTEGRATION_OUTPUT=$(timeout 30 pmat test integration 2>&1) || INTEGRATION_OUTPUT=""
-    test_skip "Integration test suite available"
+    pmat_fail "Integration test suite available"
 fi
 
 echo "=== Test 7: All Test Suites ==="

@@ -181,7 +181,7 @@ then
     test_pass "Eviction policy configured"
 else
     EVICTION_OUTPUT=$(pmat cache stats 2>&1 | grep -i "evict\|lru\|lfu") || EVICTION_OUTPUT=""
-    test_skip "Eviction management available"
+    pmat_fail "Eviction management available"
 fi
 
 echo "=== Test 8: Cache Warmup ==="

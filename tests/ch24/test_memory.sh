@@ -154,7 +154,7 @@ then
     test_pass "Garbage collection forced"
 else
     GC_OUTPUT=$(pmat memory cleanup --gc 2>&1) || GC_OUTPUT=""
-    test_skip "GC triggering available"
+    pmat_fail "GC triggering available"
 fi
 
 echo "=== Test 8: Memory Limits Check ==="
@@ -163,7 +163,7 @@ then
     test_pass "Memory limits verified"
 else
     LIMITS_OUTPUT=$(pmat memory stats 2>&1 | grep -i "limit\|max") || LIMITS_OUTPUT=""
-    test_skip "Memory limit checking available"
+    pmat_fail "Memory limit checking available"
 fi
 
 # Summary

@@ -149,7 +149,7 @@ then
     test_pass "Search with result limit works"
 else
     LIMIT_OUTPUT=$(pmat search "test" --limit 3 2>&1) || LIMIT_OUTPUT=""
-    test_skip "Search limiting capability available"
+    pmat_fail "Search limiting capability available"
 fi
 
 # Summary

@@ -59,14 +59,21 @@ fi
 echo "Test 2: Test MCP help command"
 if pmat help 2>&1 | grep -i mcp >/dev/null || pmat mcp --help >/dev/null 2>&1; then
     test_pass "MCP help command works"
-else
-    test_fail "MCP help command failed"
-    echo "⚠️  Skipping MCP tests - command not available"
+elif ! type -P pmat >/dev/null 2>&1; then
+    test_skip "MCP help command not checked: pmat not on PATH"
     echo ""
     echo "=== Test Summary ==="
     echo "Passed: $PASS_COUNT"
     echo "Failed: $FAIL_COUNT"
+    echo "⚠️  SKIPPED: this run verified NOTHING about MCP"
+    exit 0
+else
+    test_fail "MCP help command failed"
     echo "❌ MCP tests not run: MCP help check failed (see FAIL above)"
+    echo ""
+    echo "=== Test Summary ==="
+    echo "Passed: $PASS_COUNT"
+    echo "Failed: $FAIL_COUNT"
     exit 1
 fi
 
@@ -91,7 +98,7 @@ if pmat mcp validate-config mcp-config.yaml 2>/dev/null; then
 elif pmat mcp --help 2>&1 | grep -q "validate"; then
     test_fail "MCP configuration validation failed"
 else
-    test_skip "MCP configuration validation not implemented: not verified"
+    test_fail "MCP configuration validation: pmat mcp validate-config is not available"
 fi
 
 # Test 4: Test MCP tools listing
@@ -107,7 +114,7 @@ if pmat mcp list-tools 2>/dev/null | grep -q "analyze"; then
         test_fail "No MCP tools found"
     fi
 else
-    test_skip "MCP tools listing not implemented: not verified"
+    test_fail "MCP tools listing: pmat mcp list-tools is not available"
 fi
 
 # Test 5: Test MCP server health check endpoint

@@ -133,7 +133,7 @@ then
     test_pass "Single project monitoring configured"
 else
     MONITOR_OUTPUT=$(pmat agent monitor --project-path "$TEST_DIR/project-a" 2>&1) || MONITOR_OUTPUT=""
-    test_skip "Project monitoring system available"
+    pmat_fail "Project monitoring system available"
 fi
 
 echo "=== Test 2: Monitor Multiple Projects ==="

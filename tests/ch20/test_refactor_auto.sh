@@ -211,7 +211,7 @@ then
     test_pass "File exclusion patterns work"
 else
     EXCLUDE_OUTPUT=$(pmat refactor auto --exclude "tests/**" --dry-run 2>&1) || EXCLUDE_OUTPUT=""
-    test_skip "Exclusion pattern system available"
+    pmat_fail "Exclusion pattern system available"
 fi
 
 echo "=== Test 6: Test-Driven Refactoring ==="
@@ -220,7 +220,7 @@ then
     test_pass "Test-driven refactoring works"
 else
     TEST_OUTPUT=$(pmat refactor auto --test-name "test_complex" --dry-run 2>&1) || TEST_OUTPUT=""
-    test_skip "Test-focused refactoring available"
+    pmat_fail "Test-focused refactoring available"
 fi
 
 echo "=== Test 7: JSON Output Format ==="

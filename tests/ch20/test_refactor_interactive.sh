@@ -162,7 +162,7 @@ then
     test_pass "Target complexity setting works"
 else
     COMPLEXITY_OUTPUT=$(timeout 5 pmat refactor interactive --target-complexity 5 --steps 1 2>&1) || COMPLEXITY_OUTPUT=""
-    test_skip "Complexity targeting available"
+    pmat_fail "Complexity targeting available"
 fi
 
 echo "=== Test 4: Explanation Levels ==="
