@@ -1,7 +1,7 @@
 # Chapter 18: The MCP HTTP Server and Roadmap Management
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ Rewritten against pmat 3.32.0 — every example below was executed
+**Chapter Status**: ✅ Rewritten against pmat 3.32.0; tool count re-measured on pmat 3.47.0 (20) — every example below was executed
 
 | Status | Count | Examples |
 |--------|-------|----------|
@@ -71,7 +71,7 @@ fit the page; nothing else is changed:
 pmat MCP (streamable HTTP) listening on http://127.0.0.1:8791/
   endpoint: the ROOT path — `/mcp` and `/health` are 404, there is no health endpoint
   auth: Bearer, from PMAT_MCP_HTTP_TOKEN; unauthenticated requests get 401
-  tools: 19 (identical to the stdio surface)
+  tools: 20 (identical to the stdio surface)
 
 Register this server with Claude Code (copy-paste):
 
@@ -136,7 +136,7 @@ Executed response (truncated at 400 bytes):
 {"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"quality_gate","description":"Run the `pmat quality-gate --checks all` suite (complexity, dead code, SATD, entropy, security, duplicates, coverage, documentation sections, provability) plus a TDG score against the given paths. Any check a path could not answer is named in `not_measured` and, with its reason, in `checks.not_run`.","inputSchema":{"t
 ```
 
-The 19 tools served here are the same 19 the stdio server serves — one `build_server`
+The 20 tools served here are the same 20 the stdio server serves — one `build_server`
 builds both, so the two surfaces cannot drift. The tool list and each tool's arguments
 are in [Chapter 15](ch15-00-mcp-tools.md) and
 [Chapter 3.4](ch03-04-mcp-transports.md).
