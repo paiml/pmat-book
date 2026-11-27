@@ -373,8 +373,10 @@ if [ "$MOCK_MODE" = false ]; then
     # This should fail and return non-zero exit code
     if $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1; then
         test_fail "Quality gate should have failed with strict thresholds"
-    else
+    elif grep -qiE "violation|exceed|threshold|complexity" strict.txt; then
         test_pass "Quality gate correctly failed with strict enforcement"
+    else
+        test_fail "Quality gate exited non-zero without reporting a violation (see strict.txt)"
     fi
 else
     cat > strict.txt << 'EOF'
