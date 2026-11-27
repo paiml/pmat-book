@@ -111,7 +111,7 @@ echo "Test 1b: bare 'pmat analyze .' is rejected"
 if pmat analyze . &> /dev/null; then
     test_fail "'pmat analyze .' unexpectedly succeeded"
 else
-    test_skip "'pmat analyze .' rejected, as documented"
+    test_pass "'pmat analyze .' rejected, as documented"
 fi
 
 # Test 2: Analyze with JSON output
@@ -161,7 +161,7 @@ echo "Test 3b: 'pmat analyze tdg .' is rejected"
 if pmat analyze tdg . &> /dev/null; then
     test_fail "'pmat analyze tdg .' unexpectedly succeeded"
 else
-    test_skip "'pmat analyze tdg .' rejected, as documented"
+    test_pass "'pmat analyze tdg .' rejected, as documented"
 fi
 
 # Test 4: Executive summary

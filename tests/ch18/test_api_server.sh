@@ -203,7 +203,7 @@ if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
     if ps -o stat= -g "$GPID" 2>/dev/null | grep -qv "^Z"; then
         test_fail "Server survived shutdown"
     else
-        test_skip "Server shut down"
+        test_pass "Server shut down"
     fi
 else
     test_fail "Server was not running at shutdown"

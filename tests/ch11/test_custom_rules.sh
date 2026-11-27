@@ -165,7 +165,7 @@ printf 'max_complexty = 3\n' >> .pmat-gates.toml
 if "$PMAT_BIN" quality-gates show 2>&1 | grep -q "max_complexty"; then
     test_fail "a misspelled key now surfaces — the chapter's warning is stale"
 else
-    test_skip "a misspelled key is silently ignored (as the chapter warns)"
+    test_pass "a misspelled key is silently ignored (as the chapter warns)"
 fi
 mv .pmat-gates.toml.bak .pmat-gates.toml
 
@@ -237,7 +237,7 @@ fi
 if "$PMAT_BIN" quality-gate -p . --checks bogus >/dev/null 2>&1; then
     test_fail "an unknown --checks value was accepted"
 else
-    test_skip "an unknown --checks value is rejected, not silently skipped"
+    test_pass "an unknown --checks value is rejected, not silently skipped"
 fi
 
 if "$PMAT_BIN" quality-gate -p . --report-only >/dev/null 2>&1; then
@@ -254,7 +254,7 @@ echo 'Test 7: the rules subcommand remains nonexistent'
 if "$PMAT_BIN" rules --help >/dev/null 2>&1; then
     test_fail "a 'rules' subcommand now exists — the chapter's banner is stale"
 else
-    test_skip "no 'rules' subcommand (banner is still correct)"
+    test_pass "no 'rules' subcommand (banner is still correct)"
 fi
 
 echo ""

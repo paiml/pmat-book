@@ -304,7 +304,7 @@ echo "Test 9: the architecture subcommand remains nonexistent"
 if "$PMAT_BIN" architecture --help >/dev/null 2>&1; then
     test_fail "an 'architecture' subcommand now exists — the chapter's banner is stale"
 else
-    test_skip "no 'architecture' subcommand (banner is still correct)"
+    test_pass "no 'architecture' subcommand (banner is still correct)"
 fi
 
 echo ""

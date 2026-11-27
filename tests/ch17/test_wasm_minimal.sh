@@ -76,7 +76,7 @@ fi
 if grep -qE "^#+ .*(Performance Profiling|Formal Verification)" src/ch17-00-wasm-analysis.md; then
     test_fail "A 'Performance Profiling' or 'Formal Verification' heading is back; pmat has neither"
 else
-    test_skip "No profiling or formal-verification section"
+    test_pass "No profiling or formal-verification section"
 fi
 
 echo ""

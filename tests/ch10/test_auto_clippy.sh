@@ -133,7 +133,7 @@ fi
 if "$PMAT_BIN" analyze clippy --dry-run --confidence bogus >/dev/null 2>&1; then
     test_fail "an invalid confidence level was accepted"
 else
-    test_skip "an invalid confidence level is rejected, not silently defaulted"
+    test_pass "an invalid confidence level is rejected, not silently defaulted"
 fi
 
 # ---------------------------------------------------------------------------
@@ -197,7 +197,7 @@ echo "Test 6: the top-level clippy subcommand remains nonexistent"
 if "$PMAT_BIN" clippy --help >/dev/null 2>&1; then
     test_fail "a top-level 'clippy' subcommand now exists — the chapter is stale"
 else
-    test_skip "no top-level 'clippy' subcommand; the real one is 'analyze clippy'"
+    test_pass "no top-level 'clippy' subcommand; the real one is 'analyze clippy'"
 fi
 
 echo ""
