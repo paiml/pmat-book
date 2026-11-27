@@ -321,10 +321,9 @@ echo "Test 7: TDG to letter grade conversion"
 
 if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN analyze tdg -p . --format json 2>/dev/null | grep -qE '(grade|Grade)' ; then
-        test_skip "Grade conversion found in output"
+        test_pass "Grade conversion found in output"
     else
-        echo "Note: Grade conversion may be in different format"
-        test_pass "Grade test completed"
+        test_fail "Grade conversion missing from 'analyze tdg --format json' output"
     fi
 else
     # Mock grade output
