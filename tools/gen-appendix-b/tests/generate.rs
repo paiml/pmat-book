@@ -36,11 +36,11 @@ fn counts_commands_and_subcommands() {
 }
 
 #[test]
-fn usage_line_names_the_rust_tool_not_python() {
+fn usage_line_names_the_rust_tool() {
     let out = run(fake().to_str().unwrap(), &[]);
     let s = String::from_utf8(out.stdout).unwrap();
     assert!(s.contains("tools/gen-appendix-b/Cargo.toml"));
-    assert!(!s.contains("python"));
+    assert!(!s.contains(".py"));
 }
 
 #[test]

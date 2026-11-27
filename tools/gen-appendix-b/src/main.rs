@@ -514,7 +514,7 @@ fn today() -> String {
     civil((secs / 86_400) as i64)
 }
 
-/// Mirror of Python's `shutil.which`.
+/// True when the PMAT value resolves to an executable (path or PATH lookup).
 fn on_path(pmat: &str) -> bool {
     use std::os::unix::fs::PermissionsExt;
     let ok = |p: &Path| p.is_file() && p.metadata().is_ok_and(|m| m.permissions().mode() & 0o111 != 0);
