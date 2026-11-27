@@ -321,8 +321,19 @@ jobs:
         GRADE=$(jq -r '.score.grade' pmat-tdg.json)
         echo "Code Quality Grade: $GRADE"
         
+        # Rank the letter grade. String comparison is wrong here: "A-" < "B"
+        # lexically, so the best grade failed. Unknown or null fails closed (-1).
+        rank() {
+          case "$1" in
+            A+) echo 12;; A) echo 11;; A-) echo 10;;
+            B+) echo 9;;  B) echo 8;;  B-) echo 7;;
+            C+) echo 6;;  C) echo 5;;  C-) echo 4;;
+            D+) echo 3;;  D) echo 2;;  D-) echo 1;;
+            F) echo 0;;   *) echo -1;;
+          esac
+        }
         # Fail if grade is below B
-        if [[ "$GRADE" < "B" ]]; then
+        if [ "$(rank "$GRADE")" -lt 8 ]; then
           echo "❌ Quality gate failed: Grade $GRADE is below B"
           exit 1
         fi
