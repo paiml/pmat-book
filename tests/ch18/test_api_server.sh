@@ -116,8 +116,8 @@ then
 else
     # Try alternative response format
     HEALTH_RESPONSE=$(curl -s -m 10 http://localhost:9090/health)
-    if [ ! -z "$HEALTH_RESPONSE" ]; then
-        test_pass "Health endpoint returns: $HEALTH_RESPONSE"
+    if curl -sf -m 10 http://localhost:9090/health >/dev/null; then
+        test_pass "Health endpoint returns 2xx: $HEALTH_RESPONSE"
     else
         test_fail "Health check endpoint not responding"
     fi
