@@ -322,7 +322,14 @@ echo "Test 4: Quality gate with custom thresholds"
 
 if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human --report-only > thresholds.txt 2>&1; then
-        test_pass "Quality gate with custom thresholds completed"
+        # pmat 3.44.0 accepts --max-complexity-p99 but does not apply it: the report
+        # states the built-in defaults. Assert that real behaviour, so this check
+        # fails when pmat starts enforcing the flag and the book must change.
+        if grep -q "from built-in defaults" thresholds.txt; then
+            test_pass "Quality gate accepted threshold flags; report shows built-in complexity defaults (flag not applied in 3.44.0)"
+        else
+            test_fail "Quality gate threshold report changed: built-in defaults line missing, re-check --max-complexity-p99 behaviour"
+        fi
     else
         test_fail "Quality gate exited non-zero (thresholds)"
     fi
