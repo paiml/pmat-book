@@ -86,6 +86,13 @@ edition = "2021"
 EOF
 
 echo "=== Test 1: Start API Server ==="
+# Without pmat there is no server to test: the whole suite is SKIPPED, not failed.
+if ! type -P pmat >/dev/null 2>&1; then
+    test_skip "API server tests not run: pmat not on PATH (this run verified NOTHING about the API)"
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
+
 # The server never exits on its own: bound its lifetime with timeout(1) so a
 # lost cleanup cannot hold the job, and wait only on pids we name.
 setsid timeout -k 5 120 pmat serve --port 9090 > server.log 2>&1 &
@@ -110,7 +117,7 @@ else
     # Try alternative response format
     HEALTH_RESPONSE=$(curl -s -m 10 http://localhost:9090/health)
     if [ ! -z "$HEALTH_RESPONSE" ]; then
-        test_skip "Health endpoint returns: $HEALTH_RESPONSE"
+        test_pass "Health endpoint returns: $HEALTH_RESPONSE"
     else
         test_fail "Health check endpoint not responding"
     fi
@@ -126,7 +133,7 @@ if [ ! -z "$ANALYZE_RESPONSE" ]; then
     then
         test_pass "Analyze endpoint responds with data"
     else
-        test_skip "Analyze endpoint responds (format varies)"
+        test_fail "Analyze endpoint did not respond with data"
     fi
 else
     test_fail "Analyze endpoint not responding"
@@ -156,9 +163,9 @@ else
     
     if echo "$WS_CHECK" | grep -q "101\|Upgrade\|websocket"
     then
-        test_skip "WebSocket upgrade headers supported"
+        test_pass "WebSocket upgrade headers supported"
     else
-        test_skip "WebSocket feature available (not active in test)"
+        test_fail "WebSocket upgrade headers not supported"
     fi
 fi
 
@@ -170,7 +177,7 @@ if [ ! -z "$VERSION_RESPONSE" ]; then
     test_pass "Version endpoint responds"
 else
     # Version might be in health or status
-    test_skip "Version info available through API"
+    test_fail "Version info not available through API"
 fi
 
 echo "=== Test 7: Concurrent Request Handling ==="
