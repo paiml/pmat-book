@@ -166,16 +166,20 @@ else
 fi
 
 echo "=== Test 4: Explanation Levels ==="
+EXPLAIN_OK=false
 for level in brief detailed verbose; do
     if timeout 3 pmat refactor interactive --explain "$level" --steps 1 2>/dev/null
     then
         test_pass "Explanation level '$level' works"
+        EXPLAIN_OK=true
         break
     fi
 done
 
-if [ $PASS_COUNT -eq 3 ]; then
+if [ "$EXPLAIN_OK" = true ]; then
     test_pass "Explanation level system available"
+else
+    pmat_fail "No explanation level accepted by 'pmat refactor interactive'"
 fi
 
 echo "=== Test 5: Project Path Specification ==="

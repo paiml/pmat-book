@@ -265,10 +265,12 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN demo . --cli --format=json > demo.json 2>&1; then
         test_pass "JSON demo completed"
         
-        if command -v jq &> /dev/null && jq empty demo.json 2>/dev/null; then
+        if ! command -v jq &> /dev/null; then
+            test_skip "JSON validity not verified: jq not available"
+        elif jq empty demo.json 2>/dev/null; then
             test_pass "JSON output is valid"
         else
-            test_skip "JSON demo output not validated: JSON validity not verified"
+            test_fail "JSON demo output is not valid JSON"
         fi
     else
         test_fail "JSON demo failed"
@@ -424,7 +426,7 @@ if [ "$MOCK_MODE" = false ]; then
     if grep -q "Server\|HTTP\|Web\|localhost\|port" web_demo.txt; then
         test_pass "Web demo server started"
     else
-        test_skip "Web demo not verified: server start not observed"
+        test_fail "Web demo ran but server start was not observed"
     fi
 else
     cat > web_demo.txt << 'EOF'
@@ -466,7 +468,7 @@ if [ "$MOCK_MODE" = false ]; then
         test_pass "Repository demo command parsed"
     else
         # The command might not support --help in this context
-        test_skip "Repository demo not verified: command failed"
+        test_fail "Repository demo command failed"
     fi
 else
     cat > repo_demo.txt << 'EOF'
@@ -513,7 +515,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN demo . --protocol=mcp --cli > mcp_demo.txt 2>&1; then
         test_pass "MCP protocol demo completed"
     else
-        test_skip "MCP protocol demo not verified: command failed"
+        test_fail "MCP protocol demo command failed"
     fi
 else
     cat > mcp_demo.txt << 'EOF'
