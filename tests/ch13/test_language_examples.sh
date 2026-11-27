@@ -93,7 +93,7 @@ if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
             # Verify functions were detected
             FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
-                test_skip "Python analysis: Found $FUNC_COUNT functions in calculator.py"
+                test_pass "Python analysis: Found $FUNC_COUNT functions in calculator.py"
             else
                 test_fail "Python analysis: Expected >=3 functions, found $FUNC_COUNT"
             fi
@@ -178,7 +178,7 @@ if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
         if [[ "$FOUND_FILE" == *"main.rs"* ]]; then
             FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 4 ]; then
-                test_skip "Rust analysis: Found $FUNC_COUNT functions in main.rs"
+                test_pass "Rust analysis: Found $FUNC_COUNT functions in main.rs"
             else
                 test_fail "Rust analysis: Expected >=4 functions, found $FUNC_COUNT"
             fi
@@ -251,7 +251,7 @@ if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
         if [[ "$FOUND_FILE" == *"calculator.ts"* ]]; then
             FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
-                test_skip "TypeScript analysis: Found $FUNC_COUNT functions in calculator.ts"
+                test_pass "TypeScript analysis: Found $FUNC_COUNT functions in calculator.ts"
             else
                 test_fail "TypeScript analysis: Expected >=3 functions, found $FUNC_COUNT"
             fi
@@ -312,7 +312,7 @@ if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
         if [[ "$FOUND_FILE" == *"index.js"* ]]; then
             FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
-                test_skip "JavaScript analysis: Found $FUNC_COUNT functions in index.js"
+                test_pass "JavaScript analysis: Found $FUNC_COUNT functions in index.js"
             else
                 test_fail "JavaScript analysis: Expected >=3 functions, found $FUNC_COUNT"
             fi
@@ -382,7 +382,7 @@ if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
         if [[ "$FOUND_FILE" == *"calculator.c"* ]]; then
             FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
-                test_skip "C analysis: Found $FUNC_COUNT functions in calculator.c"
+                test_pass "C analysis: Found $FUNC_COUNT functions in calculator.c"
             else
                 test_fail "C analysis: Expected >=3 functions, found $FUNC_COUNT"
             fi
@@ -456,7 +456,7 @@ if echo "$OUTPUT" | jq -e '.files' &> /dev/null; then
         if [[ "$FOUND_FILE" == *"calculator.cpp"* ]]; then
             FUNC_COUNT=$(echo "$OUTPUT" | jq '.files[0].functions | length')
             if [ "$FUNC_COUNT" -ge 3 ]; then
-                test_skip "C++ analysis: Found $FUNC_COUNT functions in calculator.cpp"
+                test_pass "C++ analysis: Found $FUNC_COUNT functions in calculator.cpp"
             else
                 test_fail "C++ analysis: Expected >=3 functions, found $FUNC_COUNT"
             fi
@@ -532,12 +532,13 @@ if echo "$OUTPUT" | jq -e '.language' &> /dev/null; then
 
     if [ "$LANG" = "Lua" ]; then
         # Verify confidence is 0.9 (tree-sitter, not heuristic fallback)
-        HIGH_CONF=$(echo "$CONFIDENCE > 0.5" | bc -l 2>/dev/null || echo "1")
+        # awk, not bc: a missing or failing comparison must read as a failure, never as a pass.
+        HIGH_CONF=$(awk -v c="$CONFIDENCE" 'BEGIN { print (c + 0 > 0.5) }' 2>/dev/null || echo "0")
         if [ "$HIGH_CONF" = "1" ]; then
             # Verify total score is reasonable (>50)
-            GOOD_SCORE=$(echo "$TOTAL > 50" | bc -l 2>/dev/null || echo "1")
+            GOOD_SCORE=$(awk -v t="$TOTAL" 'BEGIN { print (t + 0 > 50) }' 2>/dev/null || echo "0")
             if [ "$GOOD_SCORE" = "1" ]; then
-                test_skip "Lua TDG: grade=$GRADE, total=$TOTAL, confidence=$CONFIDENCE"
+                test_pass "Lua TDG: grade=$GRADE, total=$TOTAL, confidence=$CONFIDENCE"
             else
                 test_fail "Lua TDG: score too low ($TOTAL), expected >50"
             fi
@@ -560,7 +561,12 @@ echo "=== Chapter 13 Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
-if [ $FAIL_COUNT -eq 0 ]; then
+if [ "$PASS_COUNT" -eq 0 ] && [ "$FAIL_COUNT" -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
+
+if [ $FAIL_COUNT -eq 0 ] && [ "$PASS_COUNT" -gt 0 ]; then
     echo "✅ All tests passed! Chapter 13 VALIDATED AGAINST ACTUAL PMAT BEHAVIOR"
     echo "🎯 EXTREME TDD: All multi-language examples verified with real pmat analyze commands"
     echo "✅ Quality Gate: Genchi Genbutsu (go and see) - tested actual system behavior"

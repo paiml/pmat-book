@@ -376,14 +376,34 @@ fi
 echo ""
 echo "Test 5: Quality gate with fail-on-violation"
 
+# A gate verdict is exit 1 with a blocking-violation report. A clap usage error (exit 2, "error: ..."
+# at line start) is not a verdict, even though its usage text names complexity flags.
+gate_blocked() { # $1 = exit code, $2 = output file
+    [ "$1" -eq 1 ] || return 1
+    grep -qE "^error: " "$2" && return 1
+    grep -qiE "Blocking violations: [1-9]|QUALITY GATE FAILED" "$2"
+}
+
 if [ "$MOCK_MODE" = false ]; then
     # This should fail and return non-zero exit code
-    if $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1; then
+    STRICT_RC=0
+    $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1 || STRICT_RC=$?
+    if [ "$STRICT_RC" -eq 0 ]; then
         test_fail "Quality gate should have failed with strict thresholds"
-    elif grep -qiE "violation|exceed|threshold|complexity" strict.txt; then
-        test_pass "Quality gate correctly failed with strict enforcement"
+    elif gate_blocked "$STRICT_RC" strict.txt; then
+        test_pass "Quality gate correctly failed with strict enforcement (exit 1, blocking violation)"
     else
-        test_fail "Quality gate exited non-zero without reporting a violation (see strict.txt)"
+        test_fail "Quality gate exit $STRICT_RC is not a blocking verdict (usage error or no violation report, see strict.txt)"
+    fi
+
+    # Regression: a usage error must never count as a verdict. Run the unknown-flag case through
+    # the same predicate; it must be rejected.
+    USAGE_RC=0
+    $PMAT_BIN quality-gate --project-path . --no-such-flag > usage.txt 2>&1 || USAGE_RC=$?
+    if gate_blocked "$USAGE_RC" usage.txt; then
+        test_fail "A clap usage error was accepted as a quality-gate verdict"
+    else
+        test_pass "A clap usage error (exit $USAGE_RC) is rejected as a quality-gate verdict"
     fi
 else
     cat > strict.txt << 'EOF'
