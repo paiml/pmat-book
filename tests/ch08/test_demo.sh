@@ -422,8 +422,8 @@ echo "Test 5: Demo with HTTP protocol (web mode)"
 if [ "$MOCK_MODE" = false ]; then
     # For web mode, we can't easily test the browser opening, so just check it starts
     # A server runs until timeout kills it (exit 124). Any other exit, or an error line, is a failure.
-    timeout 5s $PMAT_BIN demo . --no-browser --port=0 > web_demo.txt 2>&1
-    WEB_RC=$?
+    WEB_RC=0
+    timeout 5s $PMAT_BIN demo . --no-browser --port=0 > web_demo.txt 2>&1 || WEB_RC=$?
     if [ "$WEB_RC" -eq 124 ] && ! grep -q "^error:" web_demo.txt && grep -q "Server\|HTTP\|Web\|localhost\|port" web_demo.txt; then
         test_pass "Web demo server started"
     else
