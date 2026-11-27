@@ -124,12 +124,12 @@ else
 fi
 
 echo "=== Test 3: Analyze Endpoint ==="
-ANALYZE_RESPONSE=$(curl -s -m 10 -X POST http://localhost:9090/analyze \
+ANALYZE_RESPONSE=$(curl -sf -m 10 -X POST http://localhost:9090/analyze \
     -H "Content-Type: application/json" \
     -d "{\"path\": \"$TEST_DIR\"}" 2>/dev/null || echo "")
 
 if [ ! -z "$ANALYZE_RESPONSE" ]; then
-    if echo "$ANALYZE_RESPONSE" | grep -q "files\|error\|lines"
+    if echo "$ANALYZE_RESPONSE" | grep -q "files\|lines"
     then
         test_pass "Analyze endpoint responds with data"
     else
@@ -140,7 +140,7 @@ else
 fi
 
 echo "=== Test 4: Context Generation Endpoint ==="
-CONTEXT_RESPONSE=$(curl -s -m 10 -X POST http://localhost:9090/context \
+CONTEXT_RESPONSE=$(curl -sf -m 10 -X POST http://localhost:9090/context \
     -H "Content-Type: application/json" \
     -d "{\"path\": \"$TEST_DIR\"}" 2>/dev/null || echo "")
 
@@ -170,8 +170,8 @@ else
 fi
 
 echo "=== Test 6: API Version Endpoint ==="
-VERSION_RESPONSE=$(curl -s -m 10 http://localhost:9090/version 2>/dev/null || \
-    curl -s -m 10 http://localhost:9090/api/version 2>/dev/null || echo "")
+VERSION_RESPONSE=$(curl -sf -m 10 http://localhost:9090/version 2>/dev/null || \
+    curl -sf -m 10 http://localhost:9090/api/version 2>/dev/null || echo "")
 
 if [ ! -z "$VERSION_RESPONSE" ]; then
     test_pass "Version endpoint responds"
