@@ -1,15 +1,15 @@
 # Appendix B: Command Reference
 
 > **This appendix is generated from the binary, not written by hand.**
-> Every command path below was read out of `pmat 3.32.0`'s own `--help` output and
+> Every command path below was read out of `pmat 3.47.0`'s own `--help` output and
 > then re-checked by running `pmat <path> --help` and requiring exit status 0.
 > Nothing in the tables is transcribed from memory. Regenerate it with:
 >
 > ```bash
-> python3 scripts/gen-appendix-b.py > src/appendix-b-commands.md
+> cargo run -q --release --manifest-path tools/gen-appendix-b/Cargo.toml > src/appendix-b-commands.md
 > ```
 >
-> **If you bookmarked this page before 2026-08-25, what you read here was wrong.**
+> **If you bookmarked this page before 2026-11-27, what you read here was wrong.**
 > Earlier editions listed 31 top-level commands that `pmat` has never had —
 > `pmat architecture`, `pmat rules`, `pmat clippy`, `pmat status`, `pmat scan`,
 > `pmat dashboard` and more. Of the 150 command paths that edition printed, 73 did
@@ -17,7 +17,7 @@
 > [Commands earlier editions listed that do not exist](#commands-earlier-editions-listed-that-do-not-exist),
 > with the real replacement where there is one.
 
-`pmat 3.32.0` exposes **70 top-level commands** and **202 subcommands**.
+`pmat 3.47.0` exposes **70 top-level commands** and **206 subcommands**.
 
 ## How to read this appendix
 
@@ -83,7 +83,7 @@
 | `pmat verify` | `preflight`, `vfy` | — | Pre-flight verification for autonomous agents: run the CI-faithful gate set (format, complexity, satd, clippy, tests) fail-fast before committing |
 | `pmat enforce` | `enf` | [1](#pmat-enforce) | Enforce extreme quality standards using state machine |
 | `pmat refactor` | `ref`, `rf` | [6](#pmat-refactor) | Refactor code with real-time analysis or interactive mode |
-| `pmat roadmap` | `road`, `rm` | [8](#pmat-roadmap) | Roadmap management with PDMT todos and quality gates |
+| `pmat roadmap` | `road`, `rm` | [9](#pmat-roadmap) | Roadmap management with PDMT todos and quality gates |
 | `pmat test` | — | — | Performance testing per SPECIFICATION.md Section 30 |
 | `pmat memory` | — | [5](#pmat-memory) | Memory management and optimization |
 | `pmat cache` | — | [1](#pmat-cache) | Cache strategy management and optimization |
@@ -100,16 +100,16 @@
 | `pmat embed` | `emb` | [3](#pmat-embed) | Manage semantic search embeddings for code search |
 | `pmat semantic` | `sem`, `find-code` | [2](#pmat-semantic) | Semantic code search using embeddings |
 | `pmat debug` | `dbg` | [2](#pmat-debug) | Time-travel debugging commands for execution traces |
-| `pmat work` | `w` | [24](#pmat-work) | Unified GitHub/YAML workflow management |
+| `pmat work` | `w` | [25](#pmat-work) | Unified GitHub/YAML workflow management |
 | `pmat falsify` | `falsify-spec` | — | Falsify claims in a work item, spec, or ticket against the codebase |
 | `pmat qa-work` | `qa`, `quality` | [7](#pmat-qa-work) | QA validation after work completion with Toyota Way quality gates |
 | `pmat five-whys` | `why`, `debug-whys` | — | Five Whys root cause analysis (Toyota Way methodology) This is the ONLY acceptable debugging method per CLAUDE.md policy |
 | `pmat oracle` | `fix`, `pdca` | [3](#pmat-oracle) | PMAT Oracle - PDCA loop for automated quality improvement (Toyota Way) Converges ANY Rust project toward perfect quality using CITL signals |
 | `pmat perfection-score` | `perfection`, `perfect`, `ps` | — | Unified 200-point Perfection Score (master-plan-`pmat`-work-system.md) Aggregates TDG, Repo Score, Rust Score, Coverage, Mutation, Docs, Performance |
 | `pmat explain` | `explain-check`, `what-is` | — | Explain what a check, metric, or grade means |
-| `pmat spec` | `specification` | [6](#pmat-spec) | Specification management and validation |
+| `pmat spec` | `specification` | [7](#pmat-spec) | Specification management and validation |
 | `pmat ci-local` | `ci`, `local-ci` | — | Run local CI simulation (quality gates, clippy, tests, cross-compilation) |
-| `pmat comply` | `compliance` | [19](#pmat-comply) | PMAT compliance checking and migration system (runs check by default) |
+| `pmat comply` | `compliance` | [20](#pmat-comply) | PMAT compliance checking and migration system (runs check by default) |
 | `pmat kaizen` | `improve` | — | Autonomous continuous improvement (Toyota Way Kaizen) Scans, fixes, commits, and files GitHub issues for remaining findings |
 | `pmat project-diag` | `pdiag`, `proj-diag` | — | Rust project diagnostics (20 checks across 5 categories) |
 | `pmat test-discovery` | `test-fix`, `fix-tests` | [6](#pmat-test-discovery) | Systematic test discovery and fixing |
@@ -346,7 +346,8 @@ Roadmap management with PDMT todos and quality gates
 
 | Subcommand | Aliases | Path | What it does |
 |------------|---------|------|--------------|
-| `pmat roadmap sync` | — | `--path` | Render a canonical ROADMAP.yaml from the work store + ledger states (MACS F6 / Component 32). Deterministic: ids sorted, generation timestamp excluded from the content … |
+| `pmat roadmap sync` | — | `--path` | The ONE writer of docs/roadmaps/roadmap.yaml (#1370). When docs/roadmaps/entries/ exists, regenerate roadmap.yaml from its base and the per-ticket fragments `pmat work … |
+| `pmat roadmap aggregate` | — | — | Regenerate docs/roadmaps/roadmap.yaml from its base and docs/roadmaps/entries/<id>.yaml (PMAT-1363). A fragment supersedes the base row with its id and lands at its … |
 | `pmat roadmap init` | — | — | Initialize a new sprint in the roadmap |
 | `pmat roadmap todos` | — | — | Generate PDMT todos from roadmap tasks |
 | `pmat roadmap start` | — | — | Start working on a task |
@@ -515,8 +516,9 @@ Unified GitHub/YAML workflow management
 | `pmat work event` | `ev` | `--path` | Record an agent interruption event (refusal, model switch, session restart, workflow spawn) or acknowledge one (MACS F1/E5) |
 | `pmat work claim` | `claims` | — | Claim exclusive ownership of paths for one agent, so concurrent agents cannot silently collide on the same file (ULTRA-002) |
 | `pmat work triage` | — | — | Record and gate the coverage of a bounded triage pass: what was examined, what was acted on, and what was dropped (ULTRA-003) |
+| `pmat work estimate` | — | — | Append to and check the estimate ledger docs/audits/impl-estimates.jsonl: one gated, append-only writer (PMAT-1366) |
 | `pmat work status` | `st`, `stat` | `--path` | Show work status |
-| `pmat work sync` | `sy` | `--path` | Synchronize GitHub and YAML |
+| `pmat work sync` | `sy` | `--path` | Synchronize GitHub and YAML (goal-mode.md §5): judge the roadmap/GitHub bijection, then fix the orphans in the chosen direction. A COLLISION is reported and never fixed |
 | `pmat work init` | `setup`, `ini` | `--path` | Initialize roadmap and hooks |
 | `pmat work validate` | `check`, `lint`, `v` | `--path` | Validate roadmap.yaml syntax and content (Part B: UX Improvements) |
 | `pmat work migrate` | `fix`, `m` | `--path` | Auto-fix common roadmap.yaml issues (Part B: UX Improvements) |
@@ -566,6 +568,7 @@ Specification management and validation
 | `pmat spec list` | `ls`, `l` | `--path` | List all specifications with their scores |
 | `pmat spec sync` | `sy`, `link` | — | Sync specs with roadmap (bidirectional ticket linking) |
 | `pmat spec drift` | `orphans`, `unlinked` | — | Report specs without roadmap links (drift detection) |
+| `pmat spec review` | — | `--path` | Validate a spec review and stage it (goal-mode.md §6.3, CB-2111) |
 
 <a id="pmat-comply"></a>
 
@@ -594,6 +597,7 @@ PMAT compliance checking and migration system (runs check by default)
 | `pmat comply ratchet-override` | `override` | `--path` | Override verification level ratchet for a binding (escape hatch for CB-1330). Records signed entry in .`pmat`-metrics/ratchet-overrides.jsonl, expires in 14 days |
 | `pmat comply asset-validate` | `av` | `--path` | Validate non-code asset layout contracts (README, Dockerfile, SVG, etc.) Runs CB-1320..1326 checks on a specific asset or all assets |
 | `pmat comply cross-crate` | `cc`, `xc` | `--path` | Cross-crate duplication detection (CC-001 through CC-005) Detects copy-paste duplication, API divergence, and churn correlation across workspace crates |
+| `pmat comply github` | — | `--path` | Judge a GitHub repository against the GHC-001 rules (R1-R6, R4d, R6b) |
 
 <a id="pmat-test-discovery"></a>
 
@@ -642,7 +646,7 @@ Cross-repo dependency coordination for the sovereign AI stack
 
 ## Verified examples
 
-Each block below was **executed** against `pmat 3.32.0` on 2026-08-25, in a two-file Rust
+Each block below was **executed** against `pmat 3.47.0` on 2026-11-27, in a two-file Rust
 fixture, and the exit status recorded. Output is trimmed for length; nothing else is
 edited.
 
@@ -722,7 +726,7 @@ Check the Path column in the tables above before typing a path.
 ## Commands earlier editions listed that do not exist
 
 Every row here was printed as a working command by this appendix before
-2026-08-25. None of them resolve against `pmat 3.32.0`. The middle column is what the
+2026-11-27. None of them resolve against `pmat 3.47.0`. The middle column is what the
 binary actually does when you type it; the right column is the nearest real command,
 verified to resolve.
 
@@ -730,7 +734,7 @@ Where the right column says **nothing** — there is no equivalent. `pmat` has n
 system, no webhook manager, no notification sender, no team/retrospective features and
 no secret scanner. That capability was never built; it was only ever written down.
 
-| Documented command (fiction) | What really happens | Real command in pmat 3.32.0 |
+| Documented command (fiction) | What really happens | Real command in pmat 3.47.0 |
 |------------------------------|---------------------|---------------------------|
 | `pmat status` | `error: unrecognized subcommand` | `pmat diagnose`, or `pmat score --path .` |
 | `pmat scan` | `error: unrecognized subcommand` | `pmat analyze comprehensive --path .` |
@@ -791,7 +795,7 @@ These are accepted by every command (from `pmat --help`):
 
 ## Environment variables
 
-Only variables that `pmat 3.32.0` itself declares in `--help` (as `[env: NAME=]`) or
+Only variables that `pmat 3.47.0` itself declares in `--help` (as `[env: NAME=]`) or
 prints from `pmat mcp connect` are listed. Earlier editions of this appendix listed
 eight variables — `PMAT_CONFIG_PATH`, `PMAT_PROFILE`, `PMAT_MAX_THREADS`,
 `PMAT_MEMORY_LIMIT`, `PMAT_API_TOKEN`, `PMAT_DEBUG`, `PMAT_LOG_LEVEL` and
