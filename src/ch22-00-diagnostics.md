@@ -1,17 +1,17 @@
 # Chapter 22: System Diagnostics and Health Monitoring
 
 <!-- DOC_STATUS_START -->
-**Chapter Status**: ✅ Rewritten against pmat 3.32.0 — every example below was executed
+**Chapter Status**: ✅ Rewritten against pmat 3.32.0 — every example below was executed there. The `pmat diagnose` examples were re-measured against pmat 3.47.0 on 2026-11-27 (all exit codes match the text; `--serve` still exits 2). Sections beyond `pmat diagnose` have not been re-measured against 3.47.0.
 
 | Status | Count | Examples |
 |--------|-------|----------|
-| ✅ Working | 17 | Executed against pmat 3.32.0 on 2026-08-25 |
+| ✅ Working | 17 | Executed against pmat 3.32.0 on 2026-08-25; `pmat diagnose` examples re-measured on 3.47.0 on 2026-11-27 |
 | ⚠️ Not Implemented | 0 | — |
 | ❌ Broken | 0 | — |
 | 📋 Planned | 0 | — |
 
-*Last updated: 2026-08-25*
-*PMAT version: pmat 3.32.0*
+*Last updated: 2026-11-27 (diagnose examples)*
+*PMAT version: pmat 3.32.0 (original run); pmat 3.47.0 (diagnose re-measure)*
 <!-- DOC_STATUS_END -->
 
 > **⚠️ Historical warning, as of pmat 3.32.0 (2026-08-25). The diagnostic server,
