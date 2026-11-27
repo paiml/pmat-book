@@ -321,8 +321,21 @@ jobs:
         GRADE=$(jq -r '.score.grade' pmat-tdg.json)
         echo "Code Quality Grade: $GRADE"
         
-        # Fail if grade is below B
-        if [[ "$GRADE" < "B" ]]; then
+        # Rank grades numerically: a string compare ranks "A-" below "B" and fails A- books
+        grade_rank() {
+          case "$1" in
+            A+) echo 13 ;; A) echo 12 ;; A-) echo 11 ;;
+            B+) echo 10 ;; B) echo 9 ;;  B-) echo 8 ;;
+            C+) echo 7 ;;  C) echo 6 ;;  C-) echo 5 ;;
+            D+) echo 4 ;;  D) echo 3 ;;  D-) echo 2 ;;
+            F) echo 1 ;;
+            *) echo "" ;;
+          esac
+        }
+        RANK=$(grade_rank "$GRADE")
+        MIN=$(grade_rank B)
+        # Fail if grade is below B (unknown grades fail)
+        if [ -z "$RANK" ] || [ "$RANK" -lt "$MIN" ]; then
           echo "❌ Quality gate failed: Grade $GRADE is below B"
           exit 1
         fi
