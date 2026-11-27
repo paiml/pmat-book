@@ -190,6 +190,10 @@ agent_gate_check "Unmonitor by project id reports feature gate" unmonitor --proj
 
 # Summary
 echo ""
+if [ "$PASS_COUNT" -eq 0 ] && [ "$FAIL_COUNT" -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
