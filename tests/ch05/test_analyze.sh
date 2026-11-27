@@ -164,7 +164,7 @@ Languages: Python (100%)
 
 ## Quality Grade: C+
 EOF
-    test_pass "Mock analysis completed"
+    test_skip "Mock analysis completed"
 fi
 
 # Test 3: Complexity analysis
@@ -195,7 +195,7 @@ Average Complexity: 3.2
 Maximum Complexity: 12 (complex_function)
 Files Over Threshold (10): 1
 EOF
-    test_pass "Mock complexity analysis completed"
+    test_skip "Mock complexity analysis completed"
 fi
 
 # Test 4: Dead code detection
@@ -218,7 +218,7 @@ Found 1 unused function:
 
 Suggested Action: Safe to remove
 EOF
-    test_pass "Mock dead code analysis completed"
+    test_skip "Mock dead code analysis completed"
 fi
 
 # Test 5: SATD (Self-Admitted Technical Debt) analysis
@@ -250,7 +250,7 @@ Categories:
 Priority: Medium
 Estimated Effort: 2-4 hours
 EOF
-    test_pass "Mock SATD analysis completed"
+    test_skip "Mock SATD analysis completed"
 fi
 
 # Test 6: Similarity/duplication detection
@@ -279,7 +279,7 @@ Total Duplication: 15%
 Duplicate Blocks: 1
 Lines Saved if Refactored: 8
 EOF
-    test_pass "Mock similarity analysis completed"
+    test_skip "Mock similarity analysis completed"
 fi
 
 # Test 7: Output formats
@@ -319,7 +319,7 @@ else
   "grade": "C+"
 }
 EOF
-    test_pass "Mock JSON analysis completed"
+    test_skip "Mock JSON analysis completed"
     if jq empty analysis.json 2>/dev/null; then
         test_skip "Mock JSON is valid"
     fi
@@ -351,7 +351,7 @@ External Dependencies:
 Circular Dependencies: None detected
 Coupling Score: Low (Good)
 EOF
-    test_pass "Mock dependency analysis completed"
+    test_skip "Mock dependency analysis completed"
 fi
 
 # Cleanup

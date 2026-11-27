@@ -202,7 +202,7 @@ if [ "$MOCK_MODE" = false ]; then
 else
     # Mock test
     echo "Mock: Running TDG analysis..."
-    test_pass "Mock TDG analysis completed"
+    test_skip "Mock TDG analysis completed"
 fi
 
 # Test 3: TDG with component breakdown
@@ -258,7 +258,7 @@ if [ "$MOCK_MODE" = false ]; then
         test_fail "Custom threshold filtering failed"
     fi
 else
-    test_pass "Mock threshold filtering completed"
+    test_skip "Mock threshold filtering completed"
 fi
 
 # Test 5: Different output formats
@@ -356,7 +356,7 @@ cat > mcp_request.json << 'EOF'
 EOF
 
 if [ -f mcp_request.json ]; then
-    test_pass "MCP request format validated"
+    test_skip "MCP request format validated"
 else
     test_fail "Failed to create MCP request"
 fi

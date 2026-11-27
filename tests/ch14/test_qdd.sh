@@ -197,7 +197,7 @@ Adds two integers with proper type checking and error handling.
 - Coverage: 85% (Good)
 - TDG Score: 2 (Acceptable)
 EOF
-    test_pass "Mock QDD create completed"
+    test_skip "Mock QDD create completed"
 fi
 
 # Test 3: QDD Refactor command
@@ -231,7 +231,7 @@ Analysis Results:
 - Estimated refactor time: 15 minutes
 - Quality improvement: B- → A
 EOF
-    test_pass "Mock QDD refactor completed"
+    test_skip "Mock QDD refactor completed"
 fi
 
 # Test 4: QDD Validate command
@@ -265,7 +265,7 @@ else
 📋 Validation Summary:
 Status: ✅ PASSED
 EOF
-    test_pass "Mock QDD validate completed"
+    test_skip "Mock QDD validate completed"
 fi
 
 # Test 5: QDD Quality Profiles
@@ -293,7 +293,7 @@ for profile in "${profiles[@]}"; do
 🔍 QDD Quality Validation - ${profile} Profile
 Status: ✅ PASSED
 EOF
-        test_pass "Mock QDD $profile profile completed"
+        test_skip "Mock QDD $profile profile completed"
     fi
 done
 
@@ -350,7 +350,7 @@ Status: ✅ PASSED
 EOF
                 ;;
         esac
-        test_pass "Mock QDD $format format completed"
+        test_skip "Mock QDD $format format completed"
     fi
 done
 
@@ -401,7 +401,7 @@ def validate_email(email: str) -> bool:
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 EOF
-    test_pass "Mock QDD extreme profile completed"
+    test_skip "Mock QDD extreme profile completed"
 fi
 
 # Test 8: QDD MCP Integration Format
@@ -429,7 +429,7 @@ cat > mcp_qdd_request.json << 'EOF'
 EOF
 
 if [ -f mcp_qdd_request.json ]; then
-    test_pass "MCP QDD request format validated"
+    test_skip "MCP QDD request format validated"
 else
     test_fail "Failed to create MCP QDD request"
 fi
