@@ -405,8 +405,11 @@ echo "Test 6: Single file quality analysis"
 if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2>&1; then
         test_pass "Single file analysis completed"
+    elif [ -s single_file.json ] && jq empty single_file.json 2>/dev/null; then
+        # quality-gate exits non-zero when it reports issues; a valid report is the check.
+        test_pass "Single file analysis produced a JSON report (non-zero exit: issues reported)"
     else
-        test_pass "Single file analysis completed with expected issues"
+        test_fail "Single file analysis failed and produced no valid JSON report"
     fi
 else
     cat > single_file.json << 'EOF'
