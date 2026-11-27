@@ -93,7 +93,7 @@ if command -v jq >/dev/null 2>&1; then
             test_pass "JSON examples are valid"
         else
             echo "⚠️  Some JSON examples may be invalid, but this is acceptable for documentation"
-            test_skip "JSON examples did not validate: not verified"
+            test_fail "JSON examples in the output docs did not validate"
         fi
     else
         test_skip "JSON examples test not run: no examples found"
