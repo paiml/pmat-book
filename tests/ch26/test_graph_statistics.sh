@@ -1,4 +1,12 @@
 #!/bin/bash
+
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
 # TDD Test: Chapter 26 - Graph Statistics (`pmat analyze graph-metrics`)
 # Every check asserts on real output of the installed pmat and can fail.
 #
@@ -22,6 +30,10 @@ TEST_DIR=$(mktemp -d)
 trap 'rm -rf "${TEST_DIR:?}"' EXIT
 
 BOOK="$(dirname "$0")/../../src/ch26-00-graph-statistics.md"
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
 test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
@@ -75,6 +87,18 @@ printf 'use crate::core;\nuse crate::utils;\npub fn handle() {}\npub fn health()
 printf 'fn main() {}\n' > "$TEST_DIR/src/main.rs"
 
 if [ -f "$BOOK" ]; then test_pass "chapter source found"; else test_fail "chapter source not found at $BOOK"; fi
+
+# Without pmat every check below reads empty output, and empty output passes the
+# "no match" and "is a number (0)" checks vacuously. Report one SKIPPED and stop.
+if [ -z "$(type -P pmat)" ]; then
+    test_skip "pmat not on PATH: graph-metrics, context and split checks not run"
+    echo ""
+    echo "=== Test Summary ==="
+    echo "Passed: $PASS_COUNT"
+    echo "Failed: $FAIL_COUNT"
+    [ "$FAIL_COUNT" -eq 0 ] && exit 0
+    exit 1
+fi
 
 # gm <args>: run graph-metrics in the crate root; print output then a final "rc=N" line.
 gm() {

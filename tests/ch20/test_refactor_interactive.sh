@@ -2,9 +2,26 @@
 # TDD Test: Chapter 20 - Interactive Refactoring Mode
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
+
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -116,27 +133,30 @@ if timeout 5 pmat refactor interactive --config refactor-config.toml --steps 1 2
 then
     test_pass "Interactive mode with configuration works"
 else
-    CONFIG_OUTPUT=$(timeout 5 pmat refactor interactive --config refactor-config.toml --steps 1 2>&1 || echo "interactive")
+    CONFIG_OUTPUT=$(timeout 5 pmat refactor interactive --config refactor-config.toml --steps 1 2>&1) || CONFIG_OUTPUT=""
     if echo "$CONFIG_OUTPUT" | grep -q "interactive\|refactor\|config"
     then
         test_pass "Interactive refactoring system available"
     else
-        test_pass "Interactive mode configuration supported"
+        pmat_fail "Interactive mode configuration supported"
     fi
 fi
 
 echo "=== Test 2: Checkpoint State Management ==="
+# 3.44.0: interactive mode accepts --checkpoint but writes no state file
+# (chapter 20 documents this). Assert that real behaviour; a file appearing
+# means the book text is out of date.
 if timeout 5 pmat refactor interactive --checkpoint state.json --steps 1 2>/dev/null
 then
-    test_pass "Checkpoint state management works"
-    
-    if [ -f state.json ]; then
-        test_pass "State persistence file created"
+    test_pass "Checkpoint flag accepted by 'refactor interactive'"
+
+    if [ ! -e state.json ]; then
+        test_pass "No state file written in 3.44.0 (chapter 20 documents this)"
     else
-        test_pass "State management available"
+        pmat_fail "State management available"
     fi
 else
-    test_pass "Checkpoint functionality exists"
+    pmat_fail "Checkpoint functionality exists"
 fi
 
 echo "=== Test 3: Target Complexity Configuration ==="
@@ -144,21 +164,25 @@ if timeout 5 pmat refactor interactive --target-complexity 5 --steps 1 2>/dev/nu
 then
     test_pass "Target complexity setting works"
 else
-    COMPLEXITY_OUTPUT=$(timeout 5 pmat refactor interactive --target-complexity 5 --steps 1 2>&1 || echo "complexity")
-    test_pass "Complexity targeting available"
+    COMPLEXITY_OUTPUT=$(timeout 5 pmat refactor interactive --target-complexity 5 --steps 1 2>&1) || COMPLEXITY_OUTPUT=""
+    pmat_fail "Complexity targeting available"
 fi
 
 echo "=== Test 4: Explanation Levels ==="
+EXPLAIN_OK=false
 for level in brief detailed verbose; do
     if timeout 3 pmat refactor interactive --explain "$level" --steps 1 2>/dev/null
     then
         test_pass "Explanation level '$level' works"
+        EXPLAIN_OK=true
         break
     fi
 done
 
-if [ $PASS_COUNT -eq 3 ]; then
+if [ "$EXPLAIN_OK" = true ]; then
     test_pass "Explanation level system available"
+else
+    pmat_fail "No explanation level accepted by 'pmat refactor interactive'"
 fi
 
 echo "=== Test 5: Project Path Specification ==="
@@ -166,51 +190,37 @@ if timeout 5 pmat refactor interactive --project-path "$TEST_DIR" --steps 1 2>/d
 then
     test_pass "Project path specification works"
 else
-    test_pass "Project targeting capability exists"
+    pmat_fail "Project targeting capability exists"
 fi
 
 echo "=== Test 6: Resume from Checkpoint ==="
-if pmat refactor resume --checkpoint state.json 2>/dev/null
-then
-    test_pass "Resume from checkpoint works"
+# 3.44.0: no state file exists (Test 2), so resume must reject the missing
+# checkpoint with its own error. Assert that real behaviour.
+RESUME_OUTPUT=$(pmat refactor resume --checkpoint state.json 2>&1) && RESUME_RC=0 || RESUME_RC=$?
+if [ "$RESUME_RC" -ne 0 ] && echo "$RESUME_OUTPUT" | grep -q "Checkpoint file not found"; then
+    test_pass "Resume rejects a missing checkpoint: 'Checkpoint file not found' (chapter 20 documents this)"
 else
-    RESUME_OUTPUT=$(pmat refactor resume --checkpoint state.json 2>&1 || echo "resume")
-    if echo "$RESUME_OUTPUT" | grep -q "resume\|checkpoint\|state"
-    then
-        test_pass "Resume functionality available"
-    else
-        test_pass "Resume capability exists"
-    fi
+    pmat_fail "Resume capability exists"
 fi
 
 echo "=== Test 7: Refactor Status Monitoring ==="
-if pmat refactor status 2>/dev/null
-then
-    test_pass "Refactor status monitoring works"
+# 3.44.0: 'refactor status' reads refactor_state.json, which is never written,
+# so it reports the same missing-checkpoint error. Assert that real behaviour.
+STATUS_OUTPUT=$(pmat refactor status 2>&1) && STATUS_RC=0 || STATUS_RC=$?
+if [ "$STATUS_RC" -ne 0 ] && echo "$STATUS_OUTPUT" | grep -q "Checkpoint file not found"; then
+    test_pass "Status reports missing state: 'Checkpoint file not found' (chapter 20 documents this)"
 else
-    STATUS_OUTPUT=$(pmat refactor status 2>&1 || echo "status")
-    if echo "$STATUS_OUTPUT" | grep -q "status\|refactor\|progress"
-    then
-        test_pass "Status monitoring available"
-    else
-        test_pass "Progress tracking capability exists"
-    fi
+    pmat_fail "Progress tracking capability exists"
 fi
 
 echo "=== Test 8: Server Mode for Batch Processing ==="
-if timeout 5 pmat refactor serve --port 8091 > server.log 2>&1 &
-then
-    SERVER_PID=$!
-    sleep 2
-    
-    if ps -p $SERVER_PID > /dev/null 2>&1; then
-        test_pass "Refactor server mode works"
-        kill $SERVER_PID 2>/dev/null || true
-    else
-        test_pass "Server mode process management works"
-    fi
+# 3.44.0: 'refactor serve' has no --port and no listener. It runs one batch
+# over the project and exits 0. Assert that real behaviour.
+SERVE_OUTPUT=$(pmat refactor serve --project "$TEST_DIR" 2>&1) && SERVE_RC=0 || SERVE_RC=$?
+if [ "$SERVE_RC" -eq 0 ] && echo "$SERVE_OUTPUT" | grep -q "Refactors applied:"; then
+    test_pass "Refactor serve runs one batch and exits (no daemon in 3.44.0)"
 else
-    test_pass "Batch processing server mode available"
+    pmat_fail "Server mode process management works"
 fi
 
 # Summary
@@ -219,8 +229,11 @@ echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
-if [ $FAIL_COUNT -eq 0 ]; then
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -gt 0 ]; then
     echo "✅ All interactive refactoring tests passed!"
+    exit 0
+elif [ $FAIL_COUNT -eq 0 ]; then
+    echo "⚠️  No checks ran (pmat not on PATH): nothing was verified"
     exit 0
 else
     echo "❌ Some tests failed"

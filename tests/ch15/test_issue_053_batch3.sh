@@ -7,6 +7,10 @@ set -e
 PASS_COUNT=0
 FAIL_COUNT=0
 
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
+
 test_pass() {
     echo "✅ PASS: $1"
     PASS_COUNT=$((PASS_COUNT + 1))

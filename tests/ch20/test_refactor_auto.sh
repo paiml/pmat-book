@@ -2,9 +2,26 @@
 # TDD Test: Chapter 20 - AI-Powered Automated Refactoring
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
+
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -133,12 +150,12 @@ if pmat refactor auto --project-path "$TEST_DIR" --dry-run --format summary 2>/d
 then
     test_pass "Auto refactor dry run completed"
 else
-    AUTO_OUTPUT=$(pmat refactor auto --project-path "$TEST_DIR" --dry-run 2>&1 || echo "refactoring")
+    AUTO_OUTPUT=$(pmat refactor auto --project-path "$TEST_DIR" --dry-run 2>&1) || AUTO_OUTPUT=""
     if echo "$AUTO_OUTPUT" | grep -q "refactor\|complexity\|quality"
     then
         test_pass "Auto refactor system available"
     else
-        test_pass "Refactoring capability exists"
+        pmat_fail "Refactoring capability exists"
     fi
 fi
 
@@ -147,41 +164,47 @@ if pmat refactor auto --file main.rs --dry-run --single-file-mode 2>/dev/null
 then
     test_pass "Single file refactoring works"
 else
-    SINGLE_OUTPUT=$(pmat refactor auto --file main.rs --dry-run 2>&1 || echo "single file")
+    SINGLE_OUTPUT=$(pmat refactor auto --file main.rs --dry-run 2>&1) || SINGLE_OUTPUT=""
     if echo "$SINGLE_OUTPUT" | grep -q "file\|refactor\|single"
     then
         test_pass "Single file mode available"
     else
-        test_pass "File-specific refactoring supported"
+        pmat_fail "File-specific refactoring supported"
     fi
 fi
 
 echo "=== Test 3: Quality Profile Configuration ==="
+PROFILE_OK=false
 for profile in standard strict extreme; do
     if pmat refactor auto --quality-profile "$profile" --dry-run --max-iterations 1 2>/dev/null
     then
         test_pass "Quality profile '$profile' configured"
+        PROFILE_OK=true
         break
     fi
 done
 
-if [ $PASS_COUNT -eq 2 ]; then
+if [ "$PROFILE_OK" = true ]; then
     test_pass "Quality profile system available"
+else
+    pmat_fail "No quality profile accepted by 'pmat refactor auto'"
 fi
 
 echo "=== Test 4: Checkpoint and Resume ==="
+# 3.44.0: 'refactor auto' accepts --checkpoint but writes no checkpoint file
+# (chapter 20 documents this). Assert that real behaviour: the flag is accepted
+# and no file appears. A file appearing means the book text is out of date.
 if pmat refactor auto --checkpoint refactor.checkpoint --dry-run --max-iterations 2 2>/dev/null
 then
-    test_pass "Checkpoint creation works"
-    
-    # Test resume functionality
-    if [ -f refactor.checkpoint ]; then
-        test_pass "Checkpoint file created"
+    test_pass "Checkpoint flag accepted by 'refactor auto'"
+
+    if [ ! -e refactor.checkpoint ]; then
+        test_pass "No checkpoint file written in 3.44.0 (chapter 20 documents this)"
     else
-        test_pass "Checkpoint system available"
+        pmat_fail "Checkpoint system available"
     fi
 else
-    test_pass "Checkpoint and resume functionality exists"
+    pmat_fail "Checkpoint and resume functionality exists"
 fi
 
 echo "=== Test 5: Exclusion Patterns ==="
@@ -189,8 +212,8 @@ if pmat refactor auto --exclude "tests/**" --dry-run --max-iterations 1 2>/dev/n
 then
     test_pass "File exclusion patterns work"
 else
-    EXCLUDE_OUTPUT=$(pmat refactor auto --exclude "tests/**" --dry-run 2>&1 || echo "exclude")
-    test_pass "Exclusion pattern system available"
+    EXCLUDE_OUTPUT=$(pmat refactor auto --exclude "tests/**" --dry-run 2>&1) || EXCLUDE_OUTPUT=""
+    pmat_fail "Exclusion pattern system available"
 fi
 
 echo "=== Test 6: Test-Driven Refactoring ==="
@@ -198,17 +221,19 @@ if pmat refactor auto --test-name "test_complex_calculation" --dry-run 2>/dev/nu
 then
     test_pass "Test-driven refactoring works"
 else
-    TEST_OUTPUT=$(pmat refactor auto --test-name "test_complex" --dry-run 2>&1 || echo "test driven")
-    test_pass "Test-focused refactoring available"
+    TEST_OUTPUT=$(pmat refactor auto --test-name "test_complex" --dry-run 2>&1) || TEST_OUTPUT=""
+    pmat_fail "Test-focused refactoring available"
 fi
 
 echo "=== Test 7: JSON Output Format ==="
-JSON_OUTPUT=$(pmat refactor auto --format json --dry-run --max-iterations 1 2>/dev/null || echo "{}")
+# 3.44.0: 'refactor auto --format json' prints no JSON (chapter 20 documents this).
+# Structured output is available from 'analyze complexity --format json'.
+JSON_OUTPUT=$(pmat analyze complexity --format json 2>/dev/null) || JSON_OUTPUT=""
 if echo "$JSON_OUTPUT" | grep -q "{" || echo "$JSON_OUTPUT" | grep -q "json"
 then
     test_pass "JSON output format supported"
 else
-    test_pass "Structured output formats available"
+    pmat_fail "Structured output formats available"
 fi
 
 echo "=== Test 8: Integration with Bug Reports ==="
@@ -230,7 +255,7 @@ if pmat refactor auto --bug-report-path bug-report.md --dry-run 2>/dev/null
 then
     test_pass "Bug report integration works"
 else
-    test_pass "Bug report analysis capability exists"
+    pmat_fail "Bug report analysis capability exists"
 fi
 
 # Summary
@@ -239,8 +264,11 @@ echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
-if [ $FAIL_COUNT -eq 0 ]; then
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -gt 0 ]; then
     echo "✅ All auto refactoring tests passed!"
+    exit 0
+elif [ $FAIL_COUNT -eq 0 ]; then
+    echo "⚠️  No checks ran (pmat not on PATH): nothing was verified"
     exit 0
 else
     echo "❌ Some tests failed"

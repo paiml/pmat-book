@@ -384,8 +384,11 @@ name. Use `code_analyzer`.
 
 Other options: `-l` / `--quality` (`standard`, `strict` (default), `extreme`),
 `-f` / `--features` (comma-separated), `--force` to overwrite an existing
-directory, `-i` / `--interactive` for guided creation, and
-`--deterministic-core <SPEC>` for hybrid agents.
+directory, and `--deterministic-core <SPEC>` for hybrid agents.
+
+`-i` / `--interactive` is not available in pmat 3.44.0. It exits 1 with
+`Error: Interactive mode is not available. Use explicit arguments instead`,
+so pass `-n` and `-t` explicitly.
 
 ### Validating an agent template
 

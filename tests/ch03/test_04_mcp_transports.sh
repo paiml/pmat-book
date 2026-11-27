@@ -6,6 +6,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 3.4: MCP Transports ==="
 
 # ---------------------------------------------------------------------------
@@ -13,7 +21,7 @@ echo "=== Testing Chapter 3.4: MCP Transports ==="
 # suite that cannot fail proves nothing.
 # ---------------------------------------------------------------------------
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
@@ -60,6 +68,10 @@ bounded 30 "$PMAT_BIN" --version | head -1
 
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"

@@ -2,9 +2,26 @@
 # TDD Test: Chapter 19 - Agent Daemon Management
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
+
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -14,6 +31,24 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# The agent subsystem is behind the `agent-daemon` Cargo feature and is not in
+# the default pmat 3.44.0 build. Every `pmat agent` subcommand therefore exits
+# non-zero with the documented feature-gate message. A check passes only when
+# both hold: a non-zero exit AND that exact message.
+AGENT_GATE_MSG="Agent daemon feature not enabled"
+
+agent_gate_check() {
+    local label="$1"
+    shift
+    local out rc
+    out=$(pmat agent "$@" 2>&1) && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] && echo "$out" | grep -qF "$AGENT_GATE_MSG"; then
+        test_pass "$label"
+    else
+        pmat_fail "$label"
+    fi
 }
 
 # Create test workspace
@@ -72,89 +107,25 @@ edition = "2021"
 EOF
 
 echo "=== Test 1: Agent Status Check ==="
-STATUS=$(pmat agent status 2>/dev/null || echo "not running")
-if echo "$STATUS" | grep -q "running\|stopped\|not running"
-then
-    test_pass "Agent status command responds"
-else
-    test_pass "Agent status available"
-fi
+agent_gate_check "Agent status reports feature gate (not in default build)" status
 
 echo "=== Test 2: Start Agent Daemon ==="
-if pmat agent start --foreground --project-path "$TEST_DIR" > agent.log 2>&1 &
-then
-    AGENT_PID=$!
-    sleep 2  # Give agent time to start
-    
-    # Check if agent is running
-    if ps -p $AGENT_PID > /dev/null 2>&1; then
-        test_pass "Agent daemon started successfully"
-        
-        # Kill the foreground agent for next tests
-        kill $AGENT_PID 2>/dev/null || true
-        wait $AGENT_PID 2>/dev/null || true
-    else
-        test_pass "Agent process lifecycle managed"
-    fi
-else
-    test_pass "Agent start command available"
-fi
+agent_gate_check "Agent start reports feature gate" start --foreground --project-path "$TEST_DIR"
 
 echo "=== Test 3: Agent Health Check ==="
-HEALTH=$(pmat agent health 2>/dev/null || echo "health check")
-if echo "$HEALTH" | grep -q "healthy\|running\|check"
-then
-    test_pass "Agent health check responds"
-else
-    test_pass "Health monitoring available"
-fi
+agent_gate_check "Agent health reports feature gate" health
 
 echo "=== Test 4: Project Monitoring ==="
-if pmat agent monitor --project-path "$TEST_DIR" --project-id "test-project" 2>/dev/null
-then
-    test_pass "Project monitoring configured"
-else
-    MONITOR_OUTPUT=$(pmat agent monitor --project-path "$TEST_DIR" 2>&1 || echo "monitoring")
-    if echo "$MONITOR_OUTPUT" | grep -q "monitor\|project\|path"
-    then
-        test_pass "Project monitoring command available"
-    else
-        test_pass "Monitoring functionality exists"
-    fi
-fi
+agent_gate_check "Agent monitor reports feature gate" monitor --project-path "$TEST_DIR" --project-id "test-project"
 
 echo "=== Test 5: Quality Gate Through Agent ==="
-if pmat agent quality-gate --project-path "$TEST_DIR" 2>/dev/null
-then
-    test_pass "Agent quality gate executed"
-else
-    QG_OUTPUT=$(pmat agent quality-gate 2>&1 || echo "quality gate")
-    if echo "$QG_OUTPUT" | grep -q "quality\|gate\|analysis"
-    then
-        test_pass "Agent quality gate available"
-    else
-        test_pass "Quality gate integration exists"
-    fi
-fi
+agent_gate_check "Agent quality-gate reports feature gate" quality-gate --project "$TEST_DIR"
 
 echo "=== Test 6: MCP Server Start ==="
-if timeout 5 pmat agent mcp-server --debug > mcp-server.log 2>&1 &
-then
-    MCP_PID=$!
-    sleep 2
-    
-    if ps -p $MCP_PID > /dev/null 2>&1; then
-        test_pass "MCP server started through agent"
-        kill $MCP_PID 2>/dev/null || true
-    else
-        test_pass "MCP server process managed"
-    fi
-else
-    test_pass "MCP server command available"
-fi
+agent_gate_check "Agent mcp-server reports feature gate" mcp-server --debug
 
 echo "=== Test 7: Agent Configuration ==="
-# Test configuration file handling
+# Configuration file handling
 cat > agent-config.toml << 'EOF'
 [monitoring]
 health_interval = 30
@@ -165,47 +136,20 @@ min_grade = "B+"
 auto_fix = false
 EOF
 
-if pmat agent start --config agent-config.toml --foreground --project-path "$TEST_DIR" > config-test.log 2>&1 &
-then
-    CONFIG_PID=$!
-    sleep 2
-    
-    if ps -p $CONFIG_PID > /dev/null 2>&1; then
-        test_pass "Agent uses custom configuration"
-        kill $CONFIG_PID 2>/dev/null || true
-    else
-        test_pass "Configuration file handling available"
-    fi
-else
-    test_pass "Agent configuration management exists"
-fi
+agent_gate_check "Agent start with --config reports feature gate" start --config agent-config.toml --foreground --project-path "$TEST_DIR"
 
 echo "=== Test 8: Agent Stop and Cleanup ==="
-# Try to stop any running agents
-if pmat agent stop 2>/dev/null
-then
-    test_pass "Agent daemon stopped successfully"
-else
-    STOP_OUTPUT=$(pmat agent stop 2>&1 || echo "stop")
-    if echo "$STOP_OUTPUT" | grep -q "stop\|not running\|daemon"
-    then
-        test_pass "Agent stop command available"
-    else
-        test_pass "Agent lifecycle management exists"
-    fi
-fi
+agent_gate_check "Agent stop reports feature gate" stop
 
 # Final status check
-STATUS_FINAL=$(pmat agent status 2>/dev/null || echo "checked")
-if echo "$STATUS_FINAL" | grep -q "stopped\|not running\|checked"
-then
-    test_pass "Agent properly stopped"
-else
-    test_pass "Agent status tracking works"
-fi
+agent_gate_check "Agent status tracking reports feature gate after stop" status
 
 # Summary
 echo ""
+if [ "$PASS_COUNT" -eq 0 ] && [ "$FAIL_COUNT" -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"

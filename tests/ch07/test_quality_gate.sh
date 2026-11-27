@@ -4,6 +4,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 7: pmat quality-gate Command ==="
 
 # Check if pmat is available.
@@ -22,7 +30,7 @@ echo "=== Testing Chapter 7: pmat quality-gate Command ==="
 # deliberately BROKEN pmat, because it was never calling pmat either way.
 MOCK_MODE=false
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
@@ -46,6 +54,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -55,6 +64,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test project for quality gate testing
@@ -158,7 +173,7 @@ fn test_simple_add() {
 }
 EOF
 
-test_pass "Test project created with complexity and quality issues"
+echo "fixture: Test project created with complexity and quality issues"
 
 # `pmat quality-gate` takes the project through `-p/--project-path`, NOT as a
 # positional argument. Every call in this file used to pass a bare `.`, which
@@ -226,7 +241,7 @@ Time: 2.3s
 Overall Status: ❌ FAILED
 Quality Score: 50/100
 EOF
-    test_pass "Mock quality gate completed"
+    test_skip "Mock quality gate completed"
 fi
 
 # Test 3: Specific checks only
@@ -234,16 +249,16 @@ echo ""
 echo "Test 3: Running specific quality checks"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --checks=complexity,dead_code --format=json > specific_checks.json 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --checks=complexity,dead-code --format=json --report-only > specific_checks.json 2> specific_checks.err; then
         test_pass "Specific checks completed"
         
         if command -v jq &> /dev/null && jq empty specific_checks.json 2>/dev/null; then
             test_pass "JSON output is valid"
         else
-            test_pass "Specific checks completed (JSON not validated)"
+            test_fail "Specific checks output is not valid JSON"
         fi
     else
-        test_pass "Specific checks completed with expected failures"
+        test_fail "Specific checks exited non-zero"
     fi
 else
     cat > specific_checks.json << 'EOF'
@@ -294,10 +309,10 @@ else
   }
 }
 EOF
-    test_pass "Mock specific checks completed"
+    test_skip "Mock specific checks completed"
     
     if command -v jq &> /dev/null && jq empty specific_checks.json 2>/dev/null; then
-        test_pass "Mock JSON is valid"
+        test_skip "Mock JSON is valid"
     fi
 fi
 
@@ -306,10 +321,17 @@ echo ""
 echo "Test 4: Quality gate with custom thresholds"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human > thresholds.txt 2>&1; then
-        test_pass "Quality gate with custom thresholds completed"
+    if $PMAT_BIN quality-gate --project-path . --max-complexity-p99=30 --max-dead-code=20.0 --format=human --report-only > thresholds.txt 2>&1; then
+        # pmat 3.44.0 accepts --max-complexity-p99 but does not apply it: the report
+        # states the built-in defaults. Assert that real behaviour, so this check
+        # fails when pmat starts enforcing the flag and the book must change.
+        if grep -q "from built-in defaults" thresholds.txt; then
+            test_pass "Quality gate accepted threshold flags; report shows built-in complexity defaults (flag not applied in 3.44.0)"
+        else
+            test_fail "Quality gate threshold report changed: built-in defaults line missing, re-check --max-complexity-p99 behaviour"
+        fi
     else
-        test_pass "Quality gate with thresholds completed with expected failures"
+        test_fail "Quality gate exited non-zero (thresholds)"
     fi
 else
     cat > thresholds.txt << 'EOF'
@@ -347,19 +369,41 @@ Recommendations:
 2. Remove unused_function
 3. Address technical debt markers
 EOF
-    test_pass "Mock quality gate with thresholds completed"
+    test_skip "Mock quality gate with thresholds completed"
 fi
 
 # Test 5: Quality gate with strict enforcement
 echo ""
 echo "Test 5: Quality gate with fail-on-violation"
 
+# A gate verdict is exit 1 with a blocking-violation report. A clap usage error (exit 2, "error: ..."
+# at line start) is not a verdict, even though its usage text names complexity flags.
+gate_blocked() { # $1 = exit code, $2 = output file
+    [ "$1" -eq 1 ] || return 1
+    grep -qE "^error: " "$2" && return 1
+    grep -qiE "Blocking violations: [1-9]|QUALITY GATE FAILED" "$2"
+}
+
 if [ "$MOCK_MODE" = false ]; then
     # This should fail and return non-zero exit code
-    if $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1; then
+    STRICT_RC=0
+    $PMAT_BIN quality-gate --project-path . --fail-on-violation --checks=complexity --max-complexity-p99=5 > strict.txt 2>&1 || STRICT_RC=$?
+    if [ "$STRICT_RC" -eq 0 ]; then
         test_fail "Quality gate should have failed with strict thresholds"
+    elif gate_blocked "$STRICT_RC" strict.txt; then
+        test_pass "Quality gate correctly failed with strict enforcement (exit 1, blocking violation)"
     else
-        test_pass "Quality gate correctly failed with strict enforcement"
+        test_fail "Quality gate exit $STRICT_RC is not a blocking verdict (usage error or no violation report, see strict.txt)"
+    fi
+
+    # Regression: a usage error must never count as a verdict. Run the unknown-flag case through
+    # the same predicate; it must be rejected.
+    USAGE_RC=0
+    $PMAT_BIN quality-gate --project-path . --no-such-flag > usage.txt 2>&1 || USAGE_RC=$?
+    if gate_blocked "$USAGE_RC" usage.txt; then
+        test_fail "A clap usage error was accepted as a quality-gate verdict"
+    else
+        test_pass "A clap usage error (exit $USAGE_RC) is rejected as a quality-gate verdict"
     fi
 else
     cat > strict.txt << 'EOF'
@@ -380,7 +424,7 @@ Results:
 
 Exit Code: 1 (Quality gate violation)
 EOF
-    test_pass "Mock strict quality gate completed"
+    test_skip "Mock strict quality gate completed"
 fi
 
 # Test 6: Single file analysis
@@ -388,10 +432,13 @@ echo ""
 echo "Test 6: Single file quality analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --file=src/lib.rs --format=json > single_file.json 2> single_file.err; then
         test_pass "Single file analysis completed"
+    elif [ -s single_file.json ] && jq empty single_file.json 2>/dev/null; then
+        # quality-gate exits non-zero when it reports issues; a valid report is the check.
+        test_pass "Single file analysis produced a JSON report (non-zero exit: issues reported)"
     else
-        test_pass "Single file analysis completed with expected issues"
+        test_fail "Single file analysis failed and produced no valid JSON report"
     fi
 else
     cat > single_file.json << 'EOF'
@@ -425,7 +472,7 @@ else
   }
 }
 EOF
-    test_pass "Mock single file analysis completed"
+    test_skip "Mock single file analysis completed"
 fi
 
 # Test 7: Quality gate with output to file
@@ -433,14 +480,14 @@ echo ""
 echo "Test 7: Quality gate with output to file"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --output=quality-report.json --format=json > file_output.log 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --output=quality-report.json --format=json --report-only > file_output.log 2>&1; then
         if [ -f "quality-report.json" ]; then
             test_pass "Quality gate report saved to file"
         else
             test_fail "Quality gate report file not created"
         fi
     else
-        test_pass "Quality gate with output completed with expected failures"
+        test_fail "Quality gate exited non-zero (output)"
     fi
 else
     cat > quality-report.json << 'EOF'
@@ -460,7 +507,7 @@ EOF
 ✅ Quality gate analysis complete
 📄 Report saved to: quality-report.json
 EOF
-    test_pass "Mock quality gate with file output completed"
+    test_skip "Mock quality gate with file output completed"
 fi
 
 # Test 8: Quality gate with performance metrics
@@ -468,7 +515,7 @@ echo ""
 echo "Test 8: Quality gate with performance metrics"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN quality-gate --project-path . --performance --format=human > perf.txt 2>&1; then
+    if $PMAT_BIN quality-gate --project-path . --perf --format=human --report-only > perf.txt 2>&1; then
         test_pass "Quality gate with performance metrics completed"
         
         if grep -q "Performance\|time\|ms\|seconds" perf.txt; then
@@ -477,7 +524,7 @@ if [ "$MOCK_MODE" = false ]; then
             test_fail "Performance metrics not found in output"
         fi
     else
-        test_pass "Quality gate with performance completed with expected failures"
+        test_fail "Quality gate exited non-zero (performance)"
     fi
 else
     cat > perf.txt << 'EOF'
@@ -509,8 +556,8 @@ Start Time: 2025-09-09 10:30:00
    CPU Utilization: 23%
    I/O Operations: 15 reads, 3 writes
 EOF
-    test_pass "Mock performance metrics completed"
-    test_pass "Performance metrics included in mock output"
+    test_skip "Mock performance metrics completed"
+    test_skip "Performance metrics included in mock output"
 fi
 
 # Cleanup
@@ -521,7 +568,12 @@ echo ""
 echo "=== Chapter 7 Quality Gate Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All quality gate tests passed!"
     exit 0

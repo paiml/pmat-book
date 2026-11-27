@@ -4,6 +4,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 5: pmat analyze Command Suite ==="
 
 # Check if pmat is available.
@@ -22,7 +30,7 @@ echo "=== Testing Chapter 5: pmat analyze Command Suite ==="
 # deliberately BROKEN pmat, because it was never calling pmat either way.
 MOCK_MODE=false
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
@@ -46,6 +54,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -55,6 +64,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test project for analysis
@@ -111,7 +126,7 @@ def multiply(a, b):
     return a * b
 EOF
 
-test_pass "Test project created"
+echo "  fixture: Test project created (not an assertion)"
 
 # Test 2: Basic analyze command
 echo ""
@@ -149,7 +164,7 @@ Languages: Python (100%)
 
 ## Quality Grade: C+
 EOF
-    test_pass "Mock analysis completed"
+    test_skip "Mock analysis completed"
 fi
 
 # Test 3: Complexity analysis
@@ -180,7 +195,7 @@ Average Complexity: 3.2
 Maximum Complexity: 12 (complex_function)
 Files Over Threshold (10): 1
 EOF
-    test_pass "Mock complexity analysis completed"
+    test_skip "Mock complexity analysis completed"
 fi
 
 # Test 4: Dead code detection
@@ -203,7 +218,7 @@ Found 1 unused function:
 
 Suggested Action: Safe to remove
 EOF
-    test_pass "Mock dead code analysis completed"
+    test_skip "Mock dead code analysis completed"
 fi
 
 # Test 5: SATD (Self-Admitted Technical Debt) analysis
@@ -235,7 +250,7 @@ Categories:
 Priority: Medium
 Estimated Effort: 2-4 hours
 EOF
-    test_pass "Mock SATD analysis completed"
+    test_skip "Mock SATD analysis completed"
 fi
 
 # Test 6: Similarity/duplication detection
@@ -264,7 +279,7 @@ Total Duplication: 15%
 Duplicate Blocks: 1
 Lines Saved if Refactored: 8
 EOF
-    test_pass "Mock similarity analysis completed"
+    test_skip "Mock similarity analysis completed"
 fi
 
 # Test 7: Output formats
@@ -304,9 +319,9 @@ else
   "grade": "C+"
 }
 EOF
-    test_pass "Mock JSON analysis completed"
+    test_skip "Mock JSON analysis completed"
     if jq empty analysis.json 2>/dev/null; then
-        test_pass "Mock JSON is valid"
+        test_skip "Mock JSON is valid"
     fi
 fi
 
@@ -336,7 +351,7 @@ External Dependencies:
 Circular Dependencies: None detected
 Coupling Score: Low (Good)
 EOF
-    test_pass "Mock dependency analysis completed"
+    test_skip "Mock dependency analysis completed"
 fi
 
 # Cleanup
@@ -347,7 +362,12 @@ echo ""
 echo "=== Chapter 5 Analyze Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All analyze tests passed!"
     exit 0

@@ -1,4 +1,12 @@
 #!/bin/bash
+
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
 # TDD Test: Chapter 13 - Multi-Language Project Examples
 # Tests ACTUAL PMAT behavior across different programming languages
 # EXTREME TDD with NASA-style quality verification - VALIDATES REAL PMAT
@@ -9,6 +17,10 @@ echo "=== Testing Chapter 13: Multi-Language Examples (ACTUAL PMAT VALIDATION) =
 
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -21,7 +33,7 @@ test_fail() {
 }
 
 # Verify pmat is available
-if ! command -v pmat &> /dev/null; then
+if ! type -P pmat &> /dev/null; then
     echo "❌ FATAL: pmat binary not found in PATH"
     exit 1
 fi
@@ -520,10 +532,11 @@ if echo "$OUTPUT" | jq -e '.language' &> /dev/null; then
 
     if [ "$LANG" = "Lua" ]; then
         # Verify confidence is 0.9 (tree-sitter, not heuristic fallback)
-        HIGH_CONF=$(echo "$CONFIDENCE > 0.5" | bc -l 2>/dev/null || echo "1")
+        # awk, not bc: a missing or failing comparison must read as a failure, never as a pass.
+        HIGH_CONF=$(awk -v c="$CONFIDENCE" 'BEGIN { print (c + 0 > 0.5) }' 2>/dev/null || echo "0")
         if [ "$HIGH_CONF" = "1" ]; then
             # Verify total score is reasonable (>50)
-            GOOD_SCORE=$(echo "$TOTAL > 50" | bc -l 2>/dev/null || echo "1")
+            GOOD_SCORE=$(awk -v t="$TOTAL" 'BEGIN { print (t + 0 > 50) }' 2>/dev/null || echo "0")
             if [ "$GOOD_SCORE" = "1" ]; then
                 test_pass "Lua TDG: grade=$GRADE, total=$TOTAL, confidence=$CONFIDENCE"
             else
@@ -548,7 +561,12 @@ echo "=== Chapter 13 Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
-if [ $FAIL_COUNT -eq 0 ]; then
+if [ "$PASS_COUNT" -eq 0 ] && [ "$FAIL_COUNT" -eq 0 ]; then
+    echo "❌ FAIL: this run verified NOTHING"
+    exit 1
+fi
+
+if [ $FAIL_COUNT -eq 0 ] && [ "$PASS_COUNT" -gt 0 ]; then
     echo "✅ All tests passed! Chapter 13 VALIDATED AGAINST ACTUAL PMAT BEHAVIOR"
     echo "🎯 EXTREME TDD: All multi-language examples verified with real pmat analyze commands"
     echo "✅ Quality Gate: Genchi Genbutsu (go and see) - tested actual system behavior"

@@ -35,9 +35,13 @@ pmat scaffold project rust --templates=makefile,readme,gitignore
 # Scaffold with parameters
 pmat scaffold project rust \
     --templates=cli,lib \
-    --param name=my-tool \
-    --param author="Your Name"
+    -p project_name=my-tool \
+    -p description="My tool" \
+    -p author="Your Name"
 ```
+
+pmat 3.44.0 writes the project to `./<project_name>/`. An unrecognised parameter
+such as `--param name=` is ignored and the project lands in `./project/`, with exit 0.
 
 ### Supported Toolchains
 
@@ -82,9 +86,9 @@ Each toolchain provides specialized templates:
 ```bash
 pmat scaffold project rust \
     --templates=cli,makefile,readme,gitignore \
-    --param name=code-analyzer \
-    --param author="Development Team" \
-    --param description="Static code analysis tool"
+    -p project_name=code-analyzer \
+    -p author="Development Team" \
+    -p description="Static code analysis tool"
 ```
 
 **Generated Structure:**
@@ -256,12 +260,20 @@ Combine deterministic cores with AI capabilities:
 
 ```bash
 pmat scaffold agent \
-    --name smart-assistant \
+    --name smart_assistant \
     --template hybrid \
     --deterministic-core state-machine \
+    --probabilistic-wrapper llm \
     --quality extreme \
-    --features logging,monitoring,ai-integration
+    --features monitoring,tracing
 ```
+
+pmat 3.44.0 rejects a hybrid agent that names only one half: `--deterministic-core`
+without `--probabilistic-wrapper` exits 1 with `Hybrid agents require both
+deterministic core and probabilistic wrapper specifications`. Agent names must be
+alphanumeric with underscores (`smart-assistant` is rejected), and the features
+`logging` and `ai-integration` are not in 3.44.0; unknown features are skipped with a
+warning.
 
 **Architecture:**
 ```
@@ -327,36 +339,20 @@ Preview generated code without creating files:
 
 ```bash
 pmat scaffold agent \
-    --name preview-agent \
+    --name preview_agent \
     --template mcp-server \
-    --features logging,monitoring \
+    --features monitoring,tracing \
     --dry-run
 ```
 
-**Output:**
+**Output (pmat 3.44.0):**
 ```
-🔍 Dry Run: Would generate MCP agent 'preview-agent'
-
-Template: mcp-server
-Features: logging, monitoring  
-Quality Level: strict
-
-Files that would be generated:
-  📄 src/main.rs (325 lines)
-  📄 Cargo.toml (45 lines)
-  📄 src/tools/mod.rs (125 lines)
-  📄 src/prompts/mod.rs (89 lines)
-  📄 tests/integration.rs (156 lines)
-  📄 README.md (234 lines)
-  📄 .gitignore (23 lines)
-
-Total: 7 files, 997 lines
-
-Quality Checks:
-  ✅ Error handling: Comprehensive
-  ✅ Testing: Property-based
-  ✅ Documentation: Complete
-  ✅ Performance: Optimized
+🔍 Dry run mode - would generate the following:
+  Agent: preview_agent
+  Template: MCPToolServer
+  Quality: Strict
+  Features: 2 enabled
+  Output: preview_agent
 ```
 
 ## Interactive Mode

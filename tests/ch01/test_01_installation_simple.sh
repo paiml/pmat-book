@@ -4,11 +4,20 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 1: Installation Documentation ==="
 
 # Test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -18,6 +27,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Verify installation chapter exists
@@ -78,13 +93,13 @@ if command -v jq >/dev/null 2>&1; then
             test_pass "JSON examples are valid"
         else
             echo "⚠️  Some JSON examples may be invalid, but this is acceptable for documentation"
-            test_pass "JSON validation attempted"
+            test_fail "JSON examples in the output docs did not validate"
         fi
     else
-        test_pass "JSON examples test skipped (no examples found)"
+        test_skip "JSON examples test not run: no examples found"
     fi
 else
-    test_pass "JSON validation skipped (jq not available)"
+    test_skip "JSON validation not run: jq not available"
 fi
 
 # Test 5: Test file creation example

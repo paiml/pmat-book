@@ -4,6 +4,14 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 14: Quality-Driven Development (QDD) ==="
 
 # EVERY `pmat qdd` CALL IN THIS FILE USED THE WRONG SIGNATURE, and the mock
@@ -29,7 +37,7 @@ echo "=== Testing Chapter 14: Quality-Driven Development (QDD) ==="
 # way.
 MOCK_MODE=false
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
@@ -53,6 +61,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -62,6 +71,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test files for QDD operations
@@ -118,7 +133,7 @@ def complex_payment_processor(user_data, payment_info, config):
     return result
 EOF
 
-test_pass "Test files created"
+echo "  fixture: Test files created (not an assertion)"
 
 # Test 2: QDD Create command
 echo ""
@@ -182,7 +197,7 @@ Adds two integers with proper type checking and error handling.
 - Coverage: 85% (Good)
 - TDG Score: 2 (Acceptable)
 EOF
-    test_pass "Mock QDD create completed"
+    test_skip "Mock QDD create completed"
 fi
 
 # Test 3: QDD Refactor command
@@ -216,7 +231,7 @@ Analysis Results:
 - Estimated refactor time: 15 minutes
 - Quality improvement: B- → A
 EOF
-    test_pass "Mock QDD refactor completed"
+    test_skip "Mock QDD refactor completed"
 fi
 
 # Test 4: QDD Validate command
@@ -250,7 +265,7 @@ else
 📋 Validation Summary:
 Status: ✅ PASSED
 EOF
-    test_pass "Mock QDD validate completed"
+    test_skip "Mock QDD validate completed"
 fi
 
 # Test 5: QDD Quality Profiles
@@ -278,7 +293,7 @@ for profile in "${profiles[@]}"; do
 🔍 QDD Quality Validation - ${profile} Profile
 Status: ✅ PASSED
 EOF
-        test_pass "Mock QDD $profile profile completed"
+        test_skip "Mock QDD $profile profile completed"
     fi
 done
 
@@ -335,7 +350,7 @@ Status: ✅ PASSED
 EOF
                 ;;
         esac
-        test_pass "Mock QDD $format format completed"
+        test_skip "Mock QDD $format format completed"
     fi
 done
 
@@ -386,7 +401,7 @@ def validate_email(email: str) -> bool:
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 EOF
-    test_pass "Mock QDD extreme profile completed"
+    test_skip "Mock QDD extreme profile completed"
 fi
 
 # Test 8: QDD MCP Integration Format
@@ -414,7 +429,7 @@ cat > mcp_qdd_request.json << 'EOF'
 EOF
 
 if [ -f mcp_qdd_request.json ]; then
-    test_pass "MCP QDD request format validated"
+    test_skip "MCP QDD request format validated"
 else
     test_fail "Failed to create MCP QDD request"
 fi
@@ -460,7 +475,7 @@ pattern = "print\\("
 EOF
 
 if [ -f qdd-config.toml ]; then
-    test_pass "QDD configuration created"
+    test_skip "QDD configuration created"
 else
     test_fail "Failed to create QDD configuration"
 fi
@@ -500,7 +515,7 @@ def add(a, b):
 EOF
 
 if [ -f toyota_way_examples.py ]; then
-    test_pass "Toyota Way examples created"
+    test_skip "Toyota Way examples created"
 else
     test_fail "Failed to create Toyota Way examples"
 fi
@@ -513,7 +528,12 @@ echo ""
 echo "=== Chapter 14 QDD Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All QDD tests passed!"
     exit 0

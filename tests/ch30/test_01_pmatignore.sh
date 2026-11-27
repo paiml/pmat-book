@@ -1,4 +1,12 @@
 #!/bin/bash
+
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
 # TDD Test: Chapter 30 - File Exclusions (.pmatignore/.paimlignore)
 # Tests ACTUAL PMAT behavior with file exclusion patterns
 # EXTREME TDD with NASA-style quality verification - VALIDATES REAL PMAT
@@ -9,6 +17,10 @@ echo "=== Testing Chapter 30: File Exclusion Examples (ACTUAL PMAT VALIDATION) =
 
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -22,7 +34,7 @@ test_fail() {
 }
 
 # Verify pmat is available
-if ! command -v pmat &> /dev/null; then
+if ! type -P pmat &> /dev/null; then
     echo "❌ FATAL: pmat binary not found in PATH"
     exit 1
 fi

@@ -4,11 +4,20 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 3: MCP Tools Examples ==="
 
 # Test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 TEST_DIR=$(mktemp -d)
 
 test_pass() {
@@ -19,6 +28,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 cleanup() {
@@ -390,7 +405,7 @@ fi
 
 # Test 8: Test that PMAT can analyze our test project
 echo "Test 8: Test actual PMAT analysis on test project"
-if command -v pmat >/dev/null 2>&1; then
+if type -P pmat >/dev/null 2>&1; then
     if pmat analyze . --format json > analysis_result.json 2>/dev/null; then
         test_pass "PMAT successfully analyzed test project"
         
@@ -411,7 +426,7 @@ if command -v pmat >/dev/null 2>&1; then
         test_fail "PMAT analysis failed"
     fi
 else
-    test_pass "PMAT not installed - analysis test skipped (expected in CI)"
+    test_skip "PMAT not installed: analysis test not run, nothing verified"
 fi
 
 # Summary

@@ -279,18 +279,26 @@ Continue to step 2/4? [y/n]: y
 
 ### Checkpoint and Resume
 
+> **What pmat 3.44.0 does.** `pmat refactor interactive --checkpoint` and
+> `pmat refactor auto --checkpoint` accept the flag and exit 0, but no
+> checkpoint file is written. In the runs checked, `refactor auto` reported
+> zero findings even on a function with cyclomatic complexity above 50, which
+> `pmat analyze complexity` reports. With no file present, `resume` and
+> `status` fail with `Checkpoint file not found`. The commands below show the
+> intended workflow; they do not resume anything in 3.44.0.
+
 ```bash
-# Save progress to checkpoint
+# Save progress to checkpoint (3.44.0: accepted, no file written)
 pmat refactor interactive --checkpoint session.json
 
-# Resume from checkpoint
+# Resume from checkpoint (3.44.0: fails with "Checkpoint file not found")
 pmat refactor resume --checkpoint session.json
 
-# View refactoring status
+# View refactoring status (3.44.0: fails with "Checkpoint file not found")
 pmat refactor status
 ```
 
-**Checkpoint File Example:**
+**Checkpoint File Example (intended format, not written by 3.44.0):**
 ```json
 {
   "session_id": "refactor_20250912_143022",
@@ -442,15 +450,21 @@ Summary:
 
 ### Refactoring Server
 
-```bash
-# Start refactoring server
-pmat refactor serve --port 8080
+> **What pmat 3.44.0 does.** `pmat refactor serve` has no `--port` flag and
+> does not listen on any port. It runs one batch over the project and exits 0.
+> Its real options are `-p/--project`, `--refactor-mode <batch|interactive>`,
+> `-c/--config <FILE>` (batch mode), `--parallel` and `--memory-limit`. The HTTP
+> API below is not part of 3.44.0.
 
-# With custom configuration
-pmat refactor serve --port 8080 --config batch-config.toml
+```bash
+# Run one batch over the project (3.44.0: exits when the batch finishes)
+pmat refactor serve --project .
+
+# With a JSON batch configuration
+pmat refactor serve --project . --config batch-config.json
 ```
 
-**Server API Usage:**
+**Server API Usage (not available in 3.44.0):**
 ```bash
 # Submit refactoring job
 curl -X POST http://localhost:8080/refactor \
@@ -534,17 +548,19 @@ jobs:
     
     - name: Run Refactoring Analysis
       run: |
-        pmat refactor auto --dry-run --format json > refactor-report.json
+        # 3.44.0: 'refactor auto --format json' prints no JSON, so the report
+        # comes from 'analyze complexity --format json' (findings are in .violations)
+        pmat analyze complexity --format json > refactor-report.json
         
         # Check if refactoring is needed
-        SUGGESTIONS=$(jq '.suggestions | length' refactor-report.json)
+        SUGGESTIONS=$(jq '.violations | length' refactor-report.json)
         
         if [ "$SUGGESTIONS" -gt 0 ]; then
           echo "🤖 AI Refactoring suggestions found:"
-          jq -r '.suggestions[] | "- \(.file):\(.line) - \(.suggestion)"' refactor-report.json
+          jq -r '.violations[] | "- \(.file):\(.line) - \(.message)"' refactor-report.json
           
           # Create PR comment with suggestions
-          jq -r '"## 🤖 AI Refactoring Suggestions\n\n" + (.suggestions[] | "- **\(.file):\(.line)** - \(.suggestion)\n") + "\n💡 Run `pmat refactor auto` to apply these improvements."' refactor-report.json > pr-comment.md
+          jq -r '"## 🤖 AI Refactoring Suggestions\n\n" + (.violations[] | "- **\(.file):\(.line)** - \(.message)\n") + "\n💡 Run `pmat refactor auto` to apply these improvements."' refactor-report.json > pr-comment.md
           
           gh pr comment ${{ github.event.number }} --body-file pr-comment.md
         else

@@ -4,12 +4,21 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 8: pmat demo Command ==="
 
 # Check if pmat is available
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
+    MOCK_MODE=false
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
@@ -33,6 +42,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -42,6 +52,31 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
+}
+
+# pmat demo is behind the non-default `demo` Cargo feature. In the default
+# pmat 3.44.0 build every demo mode exits 1 with DEMO_GATE_MSG (the documented
+# feature-gate message; ch08 says the same). A check passes only when both hold:
+# a non-zero exit AND that exact message. Run with the flags the chapter lists
+# (`-p`, not a positional path).
+DEMO_GATE_MSG="Demo feature not enabled"
+
+demo_gate_check() {
+    local label="$1"
+    shift
+    local out rc
+    out=$($PMAT_BIN demo "$@" 2>&1 </dev/null) && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] && echo "$out" | grep -qF "$DEMO_GATE_MSG"; then
+        test_pass "$label"
+    else
+        test_fail "$label (exit $rc, feature-gate message expected)"
+    fi
 }
 
 # Test 1: Create test project for demo
@@ -185,24 +220,15 @@ cargo test
 ```
 EOF
 
-test_pass "Demo test project created"
+echo "fixture: Demo test project created"
 
 # Test 2: Basic demo command (CLI mode)
 echo ""
 echo "Test 2: Basic demo command (CLI mode)"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli > demo_cli.txt 2>&1; then
-        test_pass "CLI demo completed"
-        
-        if grep -q "Demo\|Analysis\|Report\|Summary" demo_cli.txt; then
-            test_pass "CLI demo output contains expected elements"
-        else
-            test_fail "CLI demo output missing expected elements"
-        fi
-    else
-        test_fail "CLI demo failed"
-    fi
+    demo_gate_check "CLI demo reports the feature gate (default build)" -p . --cli
+
 else
     cat > demo_cli.txt << 'EOF'
 🎯 PMAT Interactive Demo
@@ -238,7 +264,7 @@ Languages: Rust (100%)
 
 ✅ Demo Complete - Project analyzed successfully!
 EOF
-    test_pass "Mock CLI demo completed"
+    test_skip "Mock CLI demo completed"
 fi
 
 # Test 3: Demo with JSON output format
@@ -246,17 +272,8 @@ echo ""
 echo "Test 3: Demo with JSON output format"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli --format=json > demo.json 2>&1; then
-        test_pass "JSON demo completed"
-        
-        if command -v jq &> /dev/null && jq empty demo.json 2>/dev/null; then
-            test_pass "JSON output is valid"
-        else
-            test_pass "JSON demo completed (JSON not validated)"
-        fi
-    else
-        test_fail "JSON demo failed"
-    fi
+    demo_gate_check "JSON demo reports the feature gate (default build)" -p . --cli --format=json
+
 else
     cat > demo.json << 'EOF'
 {
@@ -331,10 +348,10 @@ else
   ]
 }
 EOF
-    test_pass "Mock JSON demo completed"
+    test_skip "Mock JSON demo completed"
     
     if command -v jq &> /dev/null && jq empty demo.json 2>/dev/null; then
-        test_pass "Mock JSON is valid"
+        test_skip "Mock JSON is valid"
     fi
 fi
 
@@ -343,17 +360,8 @@ echo ""
 echo "Test 4: Demo with debug mode"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli --debug --debug-output=debug-report.json > demo_debug.txt 2>&1; then
-        test_pass "Debug demo completed"
-        
-        if [ -f "debug-report.json" ]; then
-            test_pass "Debug report file created"
-        else
-            test_fail "Debug report file not created"
-        fi
-    else
-        test_fail "Debug demo failed"
-    fi
+    demo_gate_check "Debug demo reports the feature gate (default build)" -p . --cli --debug --debug-output=debug-report.json
+
 else
     cat > demo_debug.txt << 'EOF'
 🐛 PMAT Demo (Debug Mode)
@@ -393,8 +401,8 @@ EOF
   }
 }
 EOF
-    test_pass "Mock debug demo completed"
-    test_pass "Mock debug report file created"
+    test_skip "Mock debug demo completed"
+    test_skip "Mock debug report file created"
 fi
 
 # Test 5: Demo with HTTP protocol (simulated)
@@ -402,14 +410,8 @@ echo ""
 echo "Test 5: Demo with HTTP protocol (web mode)"
 
 if [ "$MOCK_MODE" = false ]; then
-    # For web mode, we can't easily test the browser opening, so just check it starts
-    timeout 5s $PMAT_BIN demo . --no-browser --port=0 > web_demo.txt 2>&1 || true
-    
-    if grep -q "Server\|HTTP\|Web\|localhost\|port" web_demo.txt; then
-        test_pass "Web demo server started"
-    else
-        test_pass "Web demo attempted (may need longer timeout)"
-    fi
+    demo_gate_check "Web demo reports the feature gate (default build)" -p . --no-browser --port=0
+
 else
     cat > web_demo.txt << 'EOF'
 🌐 PMAT Web Demo Server
@@ -437,7 +439,7 @@ Press Ctrl+C to stop server
    
 ✅ Demo server ready - Open browser to explore!
 EOF
-    test_pass "Mock web demo server started"
+    test_skip "Mock web demo server started"
 fi
 
 # Test 6: Demo with repository URL (GitHub)
@@ -445,13 +447,8 @@ echo ""
 echo "Test 6: Demo with repository URL analysis"
 
 if [ "$MOCK_MODE" = false ]; then
-    # This would actually clone a repo, so we'll just test the command parsing
-    if $PMAT_BIN demo --repo=gh:rust-lang/rustlings --cli --help > repo_demo.txt 2>&1; then
-        test_pass "Repository demo command parsed"
-    else
-        # The command might not support --help in this context
-        test_pass "Repository demo command attempted"
-    fi
+    demo_gate_check "Repository demo reports the feature gate (default build)" --repo=gh:rust-lang/rustlings --cli
+
 else
     cat > repo_demo.txt << 'EOF'
 🔄 PMAT Repository Demo
@@ -485,7 +482,7 @@ Project Structure:
    
 Quality Grade: A- (Excellent for learning)
 EOF
-    test_pass "Mock repository demo completed"
+    test_skip "Mock repository demo completed"
 fi
 
 # Test 7: Demo with MCP protocol
@@ -493,12 +490,8 @@ echo ""
 echo "Test 7: Demo with MCP protocol"
 
 if [ "$MOCK_MODE" = false ]; then
-    # MCP protocol demo - this might need special setup
-    if $PMAT_BIN demo . --protocol=mcp --cli > mcp_demo.txt 2>&1; then
-        test_pass "MCP protocol demo completed"
-    else
-        test_pass "MCP protocol demo attempted (may require MCP setup)"
-    fi
+    demo_gate_check "MCP protocol demo reports the feature gate (default build)" -p . --protocol=mcp --cli
+
 else
     cat > mcp_demo.txt << 'EOF'
 🔌 PMAT MCP Protocol Demo
@@ -536,7 +529,7 @@ Transport: stdio
 
 ✅ MCP Demo Complete - Tools working correctly!
 EOF
-    test_pass "Mock MCP protocol demo completed"
+    test_skip "Mock MCP protocol demo completed"
 fi
 
 # Test 8: Demo with performance metrics and visualization
@@ -544,17 +537,8 @@ echo ""
 echo "Test 8: Demo with performance metrics"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN demo . --cli --format=table --target-nodes=10 > perf_demo.txt 2>&1; then
-        test_pass "Performance demo completed"
-        
-        if grep -q "Performance\|Time\|Nodes\|Metrics" perf_demo.txt; then
-            test_pass "Performance metrics included"
-        else
-            test_fail "Performance metrics not found"
-        fi
-    else
-        test_fail "Performance demo failed"
-    fi
+    demo_gate_check "Performance demo reports the feature gate (default build)" -p . --cli --format=table --target-nodes=10
+
 else
     cat > perf_demo.txt << 'EOF'
 ⚡ PMAT Performance Demo
@@ -594,8 +578,8 @@ Target Nodes: 10 (complexity reduction enabled)
 
 ✅ Performance demo complete - System optimized!
 EOF
-    test_pass "Mock performance demo completed"
-    test_pass "Performance metrics included"
+    test_skip "Mock performance demo completed"
+    test_skip "Performance metrics included"
 fi
 
 # Cleanup
@@ -606,7 +590,17 @@ echo ""
 echo "=== Chapter 8 Demo Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+# pmat on PATH but nothing verified: that is a failure, not a skip.
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ] && type -P pmat >/dev/null 2>&1; then
+    echo "❌ pmat is on PATH but no check passed: nothing verified"
+    exit 1
+fi
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All demo tests passed!"
     exit 0

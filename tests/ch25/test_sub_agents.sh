@@ -1,4 +1,12 @@
 #!/bin/bash
+
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
 # TDD Test: Chapter 25 - Sub-Agents (`pmat agent`)
 # Every check asserts on real `pmat agent` output from the installed pmat.
 # No path to a pmat source checkout is used.
@@ -7,6 +15,10 @@ PASS_COUNT=0
 FAIL_COUNT=0
 TEST_DIR=$(mktemp -d)
 trap 'rm -rf "${TEST_DIR:?}"' EXIT
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() { echo "✅ PASS: $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
 test_fail() { echo "❌ FAIL: $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }

@@ -4,11 +4,20 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 3: MCP Setup Examples ==="
 
 # Test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 TEST_DIR=$(mktemp -d)
 MCP_PORT=3334  # Use non-standard port for testing
 
@@ -20,6 +29,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 cleanup() {
@@ -44,15 +59,24 @@ fi
 echo "Test 2: Test MCP help command"
 if pmat help 2>&1 | grep -i mcp >/dev/null || pmat mcp --help >/dev/null 2>&1; then
     test_pass "MCP help command works"
-else
-    test_fail "MCP help command failed"
-    echo "⚠️  Skipping MCP tests - command not available"
+elif ! type -P pmat >/dev/null 2>&1; then
+    test_skip "MCP help command not checked: pmat not on PATH"
     echo ""
     echo "=== Test Summary ==="
     echo "Passed: $PASS_COUNT"
     echo "Failed: $FAIL_COUNT"
-    echo "⚠️  MCP tests skipped - feature may not be implemented yet"
+    echo "⚠️  SKIPPED: this run verified NOTHING about MCP"
+    # A FAIL recorded earlier in this run must still fail the run.
+    [ "$FAIL_COUNT" -eq 0 ] || exit 1
     exit 0
+else
+    test_fail "MCP help command failed"
+    echo "❌ MCP tests not run: MCP help check failed (see FAIL above)"
+    echo ""
+    echo "=== Test Summary ==="
+    echo "Passed: $PASS_COUNT"
+    echo "Failed: $FAIL_COUNT"
+    exit 1
 fi
 
 # Test 3: Test MCP server startup (mock/dry-run)
@@ -76,7 +100,7 @@ if pmat mcp validate-config mcp-config.yaml 2>/dev/null; then
 elif pmat mcp --help 2>&1 | grep -q "validate"; then
     test_fail "MCP configuration validation failed"
 else
-    test_pass "MCP configuration validation not implemented (expected)"
+    test_fail "MCP configuration validation: pmat mcp validate-config is not available"
 fi
 
 # Test 4: Test MCP tools listing
@@ -92,7 +116,7 @@ if pmat mcp list-tools 2>/dev/null | grep -q "analyze"; then
         test_fail "No MCP tools found"
     fi
 else
-    test_pass "MCP tools listing not implemented (expected)"
+    test_fail "MCP tools listing: pmat mcp list-tools is not available"
 fi
 
 # Test 5: Test MCP server health check endpoint
@@ -177,7 +201,7 @@ if [ -f docker-compose.test.yml ]; then
             test_fail "Docker Compose config validation failed"
         fi
     else
-        test_pass "Docker Compose validation skipped (not installed)"
+        test_skip "Docker Compose validation not run (not installed)"
     fi
 else
     test_fail "Failed to create Docker Compose config"

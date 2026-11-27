@@ -3,10 +3,18 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 14: Large Codebase Optimization ==="
 
 PMAT_BIN="pmat"
-if ! command -v pmat > /dev/null 2>&1; then
+if ! type -P pmat > /dev/null 2>&1; then
     if [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
         PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
     fi

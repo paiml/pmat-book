@@ -1,10 +1,28 @@
 #!/bin/bash
 # TDD Test: Chapter 18 - Roadmap Management Commands
+# Checks the flags pmat 3.44.0 accepts (see src/ch18-00-api.md, Part 2).
 set -e
+
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
 
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
+
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -15,6 +33,13 @@ test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
 }
+
+# Without pmat there is no roadmap to test: the whole suite is SKIPPED, not passed.
+if ! type -P pmat >/dev/null 2>&1; then
+    test_skip "roadmap tests not run: pmat not on PATH (this run verified NOTHING about roadmap)"
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 
 # Create test workspace
 TEST_DIR=$(mktemp -d)
@@ -47,110 +72,85 @@ edition = "2021"
 EOF
 
 echo "=== Test 1: Initialize Roadmap Sprint ==="
-if pmat roadmap init --sprint "v1.0.0" --goal "Complete core features" 2>/dev/null
+# The directory must already exist: pmat roadmap init does not create docs/execution/.
+mkdir -p docs/execution
+if pmat roadmap init --version "v1.0.0" --title "Core features" 2>/dev/null \
+    && [ -s docs/execution/roadmap.md ]
 then
     test_pass "Sprint initialized successfully"
 else
-    # Try without flags
-    if echo -e "v1.0.0\nComplete core features" | pmat roadmap init 2>/dev/null
-    then
-        test_pass "Sprint initialized with prompts"
-    else
-        test_pass "Roadmap init command available"
-    fi
+    pmat_fail "Roadmap init command available"
 fi
 
+# Tasks are rows written into the roadmap table by hand (there is no `roadmap add`).
+# Task IDs are exactly four digits: PMAT-0001, not PMAT-001.
+sed -i '/^|----|/a | PMAT-0001 | Implement token bucket | pending | medium | P0 |' docs/execution/roadmap.md
+
 echo "=== Test 2: Generate PDMT Todos ==="
-OUTPUT=$(pmat roadmap todos 2>/dev/null || echo "generated")
-if echo "$OUTPUT" | grep -q "todo\|task\|generated"
+OUTPUT=$(pmat roadmap todos 2>/dev/null) || OUTPUT=""
+if echo "$OUTPUT" | grep -q "todo\|task\|generated" && [ -s todos.md ]
 then
     test_pass "PDMT todos generated from roadmap"
 else
-    test_pass "Todos generation command available"
+    pmat_fail "Todos generation command available"
 fi
 
 echo "=== Test 3: Start a Task ==="
-if pmat roadmap start "PMAT-001" 2>/dev/null
+if pmat roadmap start "PMAT-0001" 2>/dev/null
 then
-    test_pass "Task PMAT-001 started"
+    test_pass "Task PMAT-0001 started"
 else
-    # Try without task ID
-    if pmat roadmap start 2>/dev/null
-    then
-        test_pass "Task start command available"
-    else
-        test_pass "Task management available"
-    fi
+    pmat_fail "Task management available"
 fi
 
 echo "=== Test 4: Complete Task with Quality Check ==="
-if pmat roadmap complete "PMAT-001" --quality-check 2>/dev/null
+# `complete` runs the repo-wide quality checks first (the default; no flag needed).
+if pmat roadmap complete "PMAT-0001" 2>/dev/null
 then
     test_pass "Task completed with quality validation"
 else
-    # Try without quality check flag
-    if pmat roadmap complete "PMAT-001" 2>/dev/null
-    then
-        test_pass "Task completion available"
-    else
-        test_pass "Quality validation on completion"
-    fi
+    pmat_fail "Quality validation on completion"
 fi
 
 echo "=== Test 5: Check Sprint Status ==="
-STATUS=$(pmat roadmap status 2>/dev/null || echo "status")
-if echo "$STATUS" | grep -q "sprint\|progress\|status\|complete"
+STATUS=$(pmat roadmap status 2>/dev/null) || STATUS=""
+if echo "$STATUS" | grep -q "Sprint v1.0.0\|Progress:"
 then
     test_pass "Sprint status retrieved"
 else
-    test_pass "Status command available"
+    pmat_fail "Status command available"
 fi
 
 echo "=== Test 6: Run Quality Checks ==="
-if pmat roadmap quality-check "PMAT-001" 2>/dev/null
+# The flag is --task-id; the checks are repo-wide regardless of the task named.
+if pmat roadmap quality-check --task-id "PMAT-0001" 2>/dev/null
 then
     test_pass "Quality check passed for task"
 else
-    # Try general quality check
-    if pmat roadmap quality-check 2>/dev/null
-    then
-        test_pass "Quality check command available"
-    else
-        test_pass "Quality validation integrated"
-    fi
+    pmat_fail "Quality validation integrated"
 fi
 
 echo "=== Test 7: Validate Sprint for Release ==="
-if pmat roadmap validate 2>/dev/null
+# validate must refuse to certify release readiness it cannot measure: exit 1 and say so.
+# (pmat holds no state for the Definition-of-Done checklist, so it never certifies.)
+VALIDATE_OUTPUT=$(pmat roadmap validate --sprint v1.0.0 2>&1) && VALIDATE_RC=0 || VALIDATE_RC=$?
+if [ "$VALIDATE_RC" = 1 ] && echo "$VALIDATE_OUTPUT" | grep -q "NOT ready for release\|readiness NOT certified"
 then
-    test_pass "Sprint validated for release"
+    test_pass "Sprint release readiness check runs and refuses to certify (exit 1)"
 else
-    VALIDATE_OUTPUT=$(pmat roadmap validate 2>&1 || echo "validation")
-    if echo "$VALIDATE_OUTPUT" | grep -q "valid\|ready\|release"
-    then
-        test_pass "Sprint validation available"
-    else
-        test_pass "Release readiness check available"
-    fi
+    pmat_fail "Release readiness check available"
 fi
 
 echo "=== Test 8: Generate Roadmap Report ==="
-# Try to generate a roadmap using PMAT on itself
-if pmat roadmap status --format json > roadmap.json 2>/dev/null
+if pmat roadmap status --sprint v1.0.0 --format json > roadmap.json 2>/dev/null
 then
-    if [ -s roadmap.json ]; then
+    if [ -s roadmap.json ] && grep -q '"tasks"' roadmap.json; then
         test_pass "Roadmap report generated in JSON"
     else
-        test_pass "Roadmap export capability available"
+        pmat_fail "Roadmap export capability available"
     fi
 else
-    # Try alternative command
-    if pmat analyze . --output roadmap.json 2>/dev/null
-    then
-        test_pass "Analysis-based roadmap generated"
-    else
-        test_pass "Roadmap generation feature available"
-    fi
+    pmat_fail "Roadmap generation feature available"
 fi
 
 # Summary

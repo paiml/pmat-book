@@ -4,12 +4,24 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 9: Pre-commit Hooks Management ==="
 
 # Test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
 TEST_DIR=$(mktemp -d)
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -185,7 +197,7 @@ cat > .git/hooks/pre-commit << 'HOOK'
 echo "🔍 Running PMAT quality checks..."
 
 # Run PMAT quality gate
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     pmat quality-gate --strict || {
         echo "❌ PMAT quality gate failed"
         echo "Run 'pmat analyze .' for details"

@@ -163,7 +163,10 @@ output but not a property name.
 pmat test all
 ```
 
-Runs every suite in turn.
+It does not run every suite in turn. It starts with the performance suite and stops
+at that suite's first budget miss. On ordinary hardware that is the throughput check
+(exit 1, the same error as above), so `memory`, `property`, `regression` and
+`integration` never run under `all`. Run each suite on its own.
 
 ## The Real Options
 

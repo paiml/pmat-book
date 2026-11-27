@@ -4,12 +4,21 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 4.1: Technical Debt Grading (TDG) ==="
 
 # Check if pmat is available
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
+    MOCK_MODE=false
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
@@ -33,6 +42,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -42,6 +52,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: Create test files with varying complexity
@@ -164,7 +180,7 @@ def process_users(users):
     return valid_users
 EOF
 
-test_pass "Test files created"
+echo "  fixture: Test files created (not an assertion)"
 
 # Test 2: Run basic TDG analysis
 echo ""
@@ -186,7 +202,7 @@ if [ "$MOCK_MODE" = false ]; then
 else
     # Mock test
     echo "Mock: Running TDG analysis..."
-    test_pass "Mock TDG analysis completed"
+    test_skip "Mock TDG analysis completed"
 fi
 
 # Test 3: TDG with component breakdown
@@ -220,7 +236,7 @@ File: low_complexity.py
     - Duplication: 0.1
     - Domain Risk: 0.1
 EOF
-    test_pass "Mock TDG components generated"
+    test_skip "Mock TDG components generated"
 fi
 
 # Test 4: TDG thresholds and filtering
@@ -242,7 +258,7 @@ if [ "$MOCK_MODE" = false ]; then
         test_fail "Custom threshold filtering failed"
     fi
 else
-    test_pass "Mock threshold filtering completed"
+    test_skip "Mock threshold filtering completed"
 fi
 
 # Test 5: Different output formats
@@ -267,7 +283,7 @@ else
     # Mock outputs
     echo '{"tdg_scores": []}' > tdg.json
     echo "# TDG Report" > tdg.md
-    test_pass "Mock output formats generated"
+    test_skip "Mock output formats generated"
 fi
 
 # Test 6: TDG configuration
@@ -294,7 +310,7 @@ top_files = 5
 EOF
 
 if [ -f pmat.toml ]; then
-    test_pass "TDG configuration created"
+    echo "  fixture: TDG configuration created (not an assertion)"
 else
     test_fail "Failed to create TDG configuration"
 fi
@@ -307,8 +323,7 @@ if [ "$MOCK_MODE" = false ]; then
     if $PMAT_BIN analyze tdg -p . --format json 2>/dev/null | grep -qE '(grade|Grade)' ; then
         test_pass "Grade conversion found in output"
     else
-        echo "Note: Grade conversion may be in different format"
-        test_pass "Grade test completed"
+        test_fail "Grade conversion missing from 'analyze tdg --format json' output"
     fi
 else
     # Mock grade output
@@ -322,7 +337,7 @@ TDG Score -> Grade Conversion:
 2.5-3.0: D  (Poor)
 3.0+:    F  (Critical)
 EOF
-    test_pass "Mock grade conversion created"
+    test_skip "Mock grade conversion created"
 fi
 
 # Test 8: MCP integration test
@@ -341,7 +356,7 @@ cat > mcp_request.json << 'EOF'
 EOF
 
 if [ -f mcp_request.json ]; then
-    test_pass "MCP request format validated"
+    test_skip "MCP request format validated"
 else
     test_fail "Failed to create MCP request"
 fi
@@ -354,7 +369,12 @@ echo ""
 echo "=== Chapter 4.1 TDG Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All TDG tests passed!"
     exit 0

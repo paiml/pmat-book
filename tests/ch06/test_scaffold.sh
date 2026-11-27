@@ -4,12 +4,21 @@
 
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 echo "=== Testing Chapter 6: pmat scaffold Command ==="
 
 # Check if pmat is available
 PMAT_BIN=""
-if command -v pmat &> /dev/null; then
+if type -P pmat &> /dev/null; then
     PMAT_BIN="pmat"
+    MOCK_MODE=false
     echo "✅ PMAT detected in PATH"
 elif [ -x "../paiml-mcp-agent-toolkit/target/release/pmat" ]; then
     PMAT_BIN="../paiml-mcp-agent-toolkit/target/release/pmat"
@@ -33,6 +42,7 @@ cd "$TEST_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -42,6 +52,12 @@ test_pass() {
 test_fail() {
     echo "❌ FAIL: $1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+# A check that did not run is SKIPPED and counts zero passes.
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
 }
 
 # Test 1: List available agent templates
@@ -72,7 +88,7 @@ else
 
 Total: 5 templates available
 EOF
-    test_pass "Mock list templates completed"
+    test_skip "Mock list templates completed"
 fi
 
 # Test 2: Scaffold a basic project
@@ -83,7 +99,9 @@ mkdir -p test-project
 cd test-project
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold project rust --templates=makefile,readme --param name=test-project > scaffold.log 2>&1; then
+    # 3.44.0 writes <cwd>/<project_name>/ and takes -p project_name=...
+    # (--param name= is not a recognised key), so generate from the parent dir.
+    if (cd .. && $PMAT_BIN scaffold project rust --templates=makefile,readme -p project_name=test-project -p description="Test project" > test-project/scaffold.log 2>&1); then
         test_pass "Project scaffolding completed"
         
         if [ -f "Makefile" ] && [ -f "README.md" ]; then
@@ -128,7 +146,7 @@ EOF
 ✅ Generated: README.md
 📦 Project scaffolded successfully with 2 templates
 EOF
-    test_pass "Mock project scaffolding completed"
+    test_skip "Mock project scaffolding completed"
 fi
 
 cd ..
@@ -138,10 +156,12 @@ echo ""
 echo "Test 3: Scaffold MCP agent (dry-run)"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold agent --name test-agent --template mcp-server --features logging,monitoring --dry-run > agent-dry-run.txt 2>&1; then
+    # Agent names take underscores, not hyphens; 'logging' is not a feature in
+    # 3.44.0 (it is skipped with a warning), so use 'monitoring,tracing'.
+    if $PMAT_BIN scaffold agent --name test_agent --template mcp-server --features monitoring,tracing --dry-run > agent-dry-run.txt 2>&1; then
         test_pass "Agent dry-run completed"
-        
-        if grep -q "Would generate\|dry-run\|preview" agent-dry-run.txt; then
+
+        if grep -q "Dry run mode\|would generate" agent-dry-run.txt; then
             test_pass "Dry-run output contains expected preview"
         else
             test_fail "Dry-run output missing expected preview"
@@ -168,7 +188,7 @@ Files that would be generated:
 
 Total: 7 files, 997 lines
 EOF
-    test_pass "Mock agent dry-run completed"
+    test_skip "Mock agent dry-run completed"
 fi
 
 # Test 4: Scaffold actual MCP agent
@@ -176,7 +196,7 @@ echo ""
 echo "Test 4: Scaffold actual MCP agent"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold agent --name calculator-agent --template calculator --output calculator-agent --force > agent.log 2>&1; then
+    if $PMAT_BIN scaffold agent --name calculator_agent --template calculator --output calculator-agent --force > agent.log 2>&1; then
         test_pass "Agent scaffolding completed"
         
         if [ -d "calculator-agent" ] && [ -f "calculator-agent/src/main.rs" ]; then
@@ -218,7 +238,7 @@ EOF
 ✅ Generated: calculator-agent/Cargo.toml
 🤖 MCP agent 'calculator-agent' scaffolded successfully
 EOF
-    test_pass "Mock agent scaffolding completed"
+    test_skip "Mock agent scaffolding completed"
 fi
 
 # Test 5: Interactive scaffolding (simulated)
@@ -227,7 +247,7 @@ echo "Test 5: Interactive scaffolding simulation"
 
 if [ "$MOCK_MODE" = false ]; then
     # We can't easily test interactive mode, so skip for real tests
-    test_pass "Interactive mode testing skipped (requires user input)"
+    test_skip "Interactive mode testing not run (requires user input)"
 else
     cat > interactive.log << 'EOF'
 🎯 Interactive Agent Scaffolding
@@ -241,7 +261,7 @@ Output directory: ./my-interactive-agent
 Preview generated, continue? (y/n): y
 ✅ Agent scaffolded successfully!
 EOF
-    test_pass "Mock interactive scaffolding completed"
+    test_skip "Mock interactive scaffolding completed"
 fi
 
 # Test 6: Validate agent template
@@ -274,7 +294,7 @@ Format: Valid JSON
 Required fields: Present
 File structure: Valid
 EOF
-    test_pass "Mock template validation completed"
+    test_skip "Mock template validation completed"
 fi
 
 # Test 7: Hybrid agent scaffolding
@@ -282,7 +302,9 @@ echo ""
 echo "Test 7: Hybrid agent scaffolding"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold agent --name hybrid-agent --template hybrid --deterministic-core state-machine --quality extreme --dry-run > hybrid.log 2>&1; then
+    # 3.44.0 requires both halves of a hybrid agent: a deterministic core and a
+    # probabilistic wrapper (either alone is rejected with exit 1).
+    if $PMAT_BIN scaffold agent --name hybrid_agent --template hybrid --deterministic-core state-machine --probabilistic-wrapper llm --quality extreme --dry-run > hybrid.log 2>&1; then
         test_pass "Hybrid agent scaffolding (dry-run) completed"
     else
         test_fail "Hybrid agent scaffolding failed"
@@ -305,7 +327,7 @@ Components:
 Files: 15 files, 2,456 lines
 Quality Gates: All enabled
 EOF
-    test_pass "Mock hybrid agent scaffolding completed"
+    test_skip "Mock hybrid agent scaffolding completed"
 fi
 
 # Test 8: Project scaffolding with multiple toolchains
@@ -313,8 +335,15 @@ echo ""
 echo "Test 8: Multi-toolchain project scaffolding"
 
 if [ "$MOCK_MODE" = false ]; then
-    if $PMAT_BIN scaffold project python-uv --templates=makefile,readme,gitignore --param name=ml-project --param author="Test Author" > multi-toolchain.log 2>&1; then
+    # 3.44.0 ignores --param name= (it writes to ./project/ and exits 0), so
+    # pass project_name with -p and check the files that must exist.
+    if $PMAT_BIN scaffold project python-uv --templates=makefile,readme,gitignore -p project_name=ml-project -p description="ML project" -p author="Test Author" > multi-toolchain.log 2>&1; then
         test_pass "Multi-toolchain scaffolding completed"
+        if [ -f ml-project/Makefile ] && [ -f ml-project/README.md ] && [ -f ml-project/.gitignore ]; then
+            test_pass "Multi-toolchain project files created"
+        else
+            test_fail "Multi-toolchain project files not found"
+        fi
     else
         test_fail "Multi-toolchain scaffolding failed"
     fi
@@ -327,7 +356,7 @@ else
 Author: Test Author
 Templates: 3/3 successful
 EOF
-    test_pass "Mock multi-toolchain scaffolding completed"
+    test_skip "Mock multi-toolchain scaffolding completed"
 fi
 
 # Cleanup
@@ -338,7 +367,12 @@ echo ""
 echo "=== Chapter 6 Scaffold Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
+echo "Skipped: $SKIP_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All scaffold tests passed!"
     exit 0

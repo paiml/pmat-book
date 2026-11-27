@@ -2,9 +2,26 @@
 # TDD Test: Chapter 22 - Health Monitoring and System Verification
 set -e
 
+# pmat shim: when pmat is absent, fail silently (no "command not found" text
+# for greps to match); every caller then takes its SKIPPED arm.
+pmat() {
+    type -P pmat >/dev/null 2>&1 || return 127
+    command pmat "$@"
+}
+
+
 # Source test utilities
 PASS_COUNT=0
 FAIL_COUNT=0
+
+test_skip() {
+    echo "⚠️  SKIPPED: $1"
+}
+
+# A failed pmat command fails the run; with pmat absent the check is SKIPPED.
+pmat_fail() {
+    if type -P pmat >/dev/null 2>&1; then test_fail "$1"; else test_skip "$1 (pmat not on PATH)"; fi
+}
 
 test_pass() {
     echo "✅ PASS: $1"
@@ -30,40 +47,42 @@ cd "$TEST_DIR"
 
 echo "=== Test 1: System Health Check ==="
 # Run a comprehensive health check
-HEALTH_OUTPUT=$(pmat diagnose 2>&1 || echo "health check")
+HEALTH_OUTPUT=$(pmat diagnose 2>&1) || HEALTH_OUTPUT=""
 if echo "$HEALTH_OUTPUT" | grep -q "health\|system\|status\|ok"
 then
     test_pass "System health check runs"
 else
-    test_pass "Health monitoring system available"
+    pmat_fail "Health monitoring system available"
 fi
 
 echo "=== Test 2: Component Status Verification ==="
 # Check individual components
-COMPONENTS="analysis cache telemetry agent quality templates"
+# 3.44.0 feature-test names (exact; anything else exits 1)
+COMPONENTS="ast.rust analysis.complexity cache.subsystem"
 for component in $COMPONENTS; do
-    if pmat diagnose --only "$component" --format compact 2>/dev/null | grep -q "$component\|✅\|pass"
+    if out=$(pmat diagnose --only "$component" --format compact 2>/dev/null) && grep -q '"ok":true' <<<"$out"
     then
         test_pass "Component '$component' verified"
-        break
+    else
+        pmat_fail "Component '$component' verified"
     fi
 done
 
 echo "=== Test 3: Performance Metrics Collection ==="
-if pmat diagnose --verbose 2>&1 | grep -q "time\|ms\|performance\|latency"
+if out=$(pmat diagnose --verbose 2>&1) && grep -q "time\|ms\|performance\|latency" <<<"$out"
 then
     test_pass "Performance metrics collected"
 else
-    test_pass "Performance monitoring available"
+    pmat_fail "Performance monitoring available"
 fi
 
 echo "=== Test 4: Dependency Verification ==="
 # Check system dependencies
-if pmat diagnose 2>&1 | grep -q "depend\|version\|require\|cargo\|rust"
+if out=$(pmat diagnose 2>&1) && grep -q "depend\|version\|require\|cargo\|rust" <<<"$out"
 then
     test_pass "Dependency verification works"
 else
-    test_pass "Dependency checking available"
+    pmat_fail "Dependency checking available"
 fi
 
 echo "=== Test 5: Configuration Validation ==="
@@ -85,7 +104,7 @@ if PMAT_CONFIG=pmat-config.toml pmat diagnose 2>/dev/null
 then
     test_pass "Configuration validation works"
 else
-    test_pass "Config validation capability exists"
+    pmat_fail "Config validation capability exists"
 fi
 
 echo "=== Test 6: Error Detection and Reporting ==="
@@ -98,21 +117,25 @@ fn broken_syntax {
 }
 EOF
 
-ERROR_OUTPUT=$(pmat diagnose 2>&1 || echo "error detected")
-if echo "$ERROR_OUTPUT" | grep -q "error\|fail\|issue\|problem"
+# diagnose self-tests the pmat binary, not the project in the cwd: the broken
+# file must not change its verdict (the chapter documents this).
+rc=0; ERROR_OUTPUT=$(pmat diagnose 2>&1) || rc=$?
+if [ $rc -eq 0 ] && echo "$ERROR_OUTPUT" | grep -q "Failed: 0"
 then
-    test_pass "Error detection works"
+    test_pass "diagnose ignores the broken project and reports pmat's own self-tests (Failed: 0)"
 else
-    test_pass "Error reporting system available"
+    pmat_fail "diagnose self-test verdict (exit $rc)"
 fi
 cd ..
 
 echo "=== Test 7: Resource Usage Monitoring ==="
-if pmat diagnose --verbose 2>&1 | grep -q "memory\|cpu\|disk\|resource"
+# The only resource field diagnose reports is cache.subsystem.memory_pressure in
+# the JSON report. It is in-process (same as pmat memory), not a project measurement.
+if out=$(pmat diagnose --format json 2>/dev/null) && grep -q '"memory_pressure"' <<<"$out"
 then
-    test_pass "Resource monitoring works"
+    test_pass "Resource field reported in JSON (cache.subsystem.memory_pressure, in-process)"
 else
-    test_pass "Resource tracking available"
+    pmat_fail "Resource tracking available"
 fi
 
 echo "=== Test 8: Diagnostic Report Generation ==="
@@ -121,10 +144,10 @@ then
     if [ -s diagnostic-report.json ]; then
         test_pass "Diagnostic report generated"
     else
-        test_pass "Report generation completed"
+        pmat_fail "Report generation completed"
     fi
 else
-    test_pass "Diagnostic reporting available"
+    pmat_fail "Diagnostic reporting available"
 fi
 
 # Summary
@@ -133,6 +156,10 @@ echo "=== Test Summary ==="
 echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq 0 ]; then
+    echo "⚠️  SKIPPED: this run verified NOTHING"
+    exit 0
+fi
 if [ $FAIL_COUNT -eq 0 ]; then
     echo "✅ All health monitoring tests passed!"
     exit 0
