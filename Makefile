@@ -167,7 +167,7 @@ test-ch11:
 	@chmod +x tests/ch11/test_custom_rules.sh
 	@echo "Running Chapter 11 custom rules tests..."
 	@tests/ch11/test_custom_rules.sh > test-results/ch11/test_custom_rules.log 2>&1 || { cat test-results/ch11/test_custom_rules.log; exit 1; }
-	@echo "✅ Chapter 11 tests passed"
+	@if grep -q 'SKIPPED' test-results/ch11/test_custom_rules.log; then cat test-results/ch11/test_custom_rules.log; echo "⚠️  Chapter 11 SKIPPED: pmat did not run, nothing was verified"; else echo "✅ Chapter 11 tests passed"; fi
 
 test-ch12:
 	@echo "🧪 Testing Chapter 12: Architecture Analysis..."
