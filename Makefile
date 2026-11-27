@@ -187,11 +187,8 @@ test-ch13:
 
 test-ch14:
 	@echo "🧪 Testing Chapter 14: Multi-Language Project Examples..."
-	@mkdir -p test-results/ch14
-	@chmod +x tests/ch13/test_minimal.sh
-	@echo "Running Chapter 14 language examples tests..."
-	@tests/ch13/test_minimal.sh > test-results/ch14/test_minimal.log 2>&1 || { cat test-results/ch14/test_minimal.log; exit 1; }
-	@echo "✅ Chapter 14 tests passed"
+	@echo "❌ No test script for Chapter 14 (Multi-Language Project Examples). tests/ch13/test_minimal.sh is the Chapter 13 script and is not run here. Decide chapter numbering, then add the script." >&2
+	@exit 1
 
 test-ch15:
 	@echo "🧪 Testing Chapter 15: Complete MCP Tools Reference..."
